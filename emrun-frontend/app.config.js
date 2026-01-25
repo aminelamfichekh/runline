@@ -52,7 +52,16 @@ module.exports = {
       },
     },
     scheme: 'emrun',
-    plugins: ['expo-router'],
+    plugins: [
+      'expo-router',
+      [
+        '@stripe/stripe-react-native',
+        {
+          merchantIdentifier: 'merchant.com.runline.app',
+          enableGooglePay: true
+        }
+      ]
+    ],
     extra: {
       apiUrl: apiUrl,
     },

@@ -2,10 +2,13 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { View, ActivityIndicator, Platform } from 'react-native';
+import { StripeProvider } from '@stripe/stripe-react-native';
 import { NotificationProvider } from '@/contexts/NotificationContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { colors } from '@/constants/colors';
 import '@/src/i18n';
+
+const STRIPE_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || '';
 
 // Web polyfill: Set API URL in window for web platform
 if (Platform.OS === 'web' && typeof window !== 'undefined') {
@@ -36,23 +39,29 @@ export default function RootLayout() {
   }
 
   return (
-    <AuthProvider>
-      <NotificationProvider>
-        <StatusBar style="light" />
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: colors.primary.dark },
-          }}
-        >
-          <Stack.Screen name="index" />
-          <Stack.Screen name="(auth)" />
-          <Stack.Screen name="(questionnaire)" />
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="test-connection" />
-          <Stack.Screen name="web-test" />
-        </Stack>
-      </NotificationProvider>
-    </AuthProvider>
+    <StripeProvider
+      publishableKey={STRIPE_PUBLISHABLE_KEY}
+      merchantIdentifier="merchant.com.runline.app"
+    >
+      <AuthProvider>
+        <NotificationProvider>
+          <StatusBar style="light" />
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: colors.primary.dark },
+            }}
+          >
+            <Stack.Screen name="index" />
+            <Stack.Screen name="(auth)" />
+            <Stack.Screen name="(questionnaire)" />
+            <Stack.Screen name="(subscription)" />
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="test-connection" />
+            <Stack.Screen name="web-test" />
+          </Stack>
+        </NotificationProvider>
+      </AuthProvider>
+    </StripeProvider>
   );
 }
