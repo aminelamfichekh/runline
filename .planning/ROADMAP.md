@@ -30,10 +30,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. User creates account after seeing value and subscribes via Stripe
   5. Anonymous session data transfers to user account on signup
   6. Subscription payment works on both iOS and Android
-**Plans**: TBD (1-3 plans)
+**Plans**: 3 plans
 
 Plans:
-- [ ] TBD
+- [ ] 01-01-PLAN.md — Complete 9-step questionnaire with wheel pickers, i18n, and state persistence
+- [ ] 01-02-PLAN.md — JWT authentication with secure storage and anonymous session transfer
+- [ ] 01-03-PLAN.md — Stripe subscription flow with PaymentSheet and webhook handling
 
 ### Phase 2: AI Plan Delivery
 **Goal**: Users receive AI-generated training plans that start first Monday after signup and auto-regenerate monthly
@@ -90,7 +92,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. User Acquisition | 0/TBD | Not started | - |
+| 1. User Acquisition | 0/3 | Planned | - |
 | 2. AI Plan Delivery | 0/TBD | Not started | - |
 | 3. User Retention | 0/TBD | Not started | - |
 | 4. Production Launch | 0/TBD | Not started | - |
