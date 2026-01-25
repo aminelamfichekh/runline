@@ -158,6 +158,46 @@
       "weekStructure": "Structure de la semaine"
     }
   },
+  "subscription": {
+    "pricing": {
+      "title": "Votre plan personnalisé",
+      "subtitle": "Accédez à votre plan d'entraînement et bénéficiez de mises à jour mensuelles",
+      "period": "/mois",
+      "cancelAnytime": "Annulez à tout moment",
+      "whatIncluded": "Ce qui est inclus",
+      "subscribe": "S'abonner - 9,99 €/mois"
+    },
+    "features": {
+      "personalizedPlan": "Plan d'entraînement personnalisé adapté à vos objectifs",
+      "monthlyRegeneration": "Régénération automatique chaque mois",
+      "adaptiveDifficulty": "Difficulté ajustée à votre progression",
+      "weeklySchedule": "Calendrier hebdomadaire détaillé",
+      "aiPowered": "Propulsé par l'intelligence artificielle"
+    },
+    "checkout": {
+      "title": "Paiement",
+      "securePayment": "Paiement sécurisé par Stripe",
+      "initializing": "Initialisation du paiement...",
+      "total": "Total",
+      "chargeToday": "Vous serez débité aujourd'hui, puis le même jour chaque mois",
+      "pay": "Payer 9,99 €",
+      "stripePowered": "Paiement sécurisé par Stripe"
+    },
+    "success": {
+      "title": "Bienvenue !",
+      "message": "Votre abonnement est actif. Votre plan d'entraînement est en cours de génération.",
+      "nextSteps": "Prochaines étapes",
+      "step1": "Votre plan sera généré le premier lundi suivant votre inscription",
+      "step2": "Vous recevrez une notification quand il sera prêt",
+      "step3": "Votre plan sera automatiquement régénéré chaque mois",
+      "continue": "Accéder à mon tableau de bord"
+    },
+    "errors": {
+      "initFailed": "Erreur d'initialisation du paiement",
+      "paymentFailed": "Paiement échoué",
+      "error": "Erreur"
+    }
+  },
   "common": {
     "loading": "Chargement...",
     "error": "Une erreur est survenue",
