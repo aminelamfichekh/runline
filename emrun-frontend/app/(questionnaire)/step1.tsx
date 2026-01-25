@@ -6,16 +6,18 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useQuestionnaireForm } from '@/hooks/useQuestionnaireForm';
 import { TextInputField } from '@/components/forms/TextInputField';
 import { NumberInputField } from '@/components/forms/NumberInputField';
 import { DatePickerField } from '@/components/forms/DatePickerField';
 import { SelectField } from '@/components/forms/SelectField';
 import { Button } from '@/components/ui/Button';
-import { ProgressBar } from '@/components/ui/ProgressBar';
+import { ProgressIndicator } from '@/components/ui/ProgressIndicator';
 
 export default function Step1Screen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { form, currentStep, totalSteps, nextStep, prevStep, isStepValid } = useQuestionnaireForm();
 
   const { formState: { errors }, setValue, watch } = form;
@@ -48,7 +50,7 @@ export default function Step1Screen() {
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <Text style={styles.backButtonText}>←</Text>
         </TouchableOpacity>
-        <ProgressBar current={currentStep} total={totalSteps} />
+        <ProgressIndicator currentStep={currentStep} totalSteps={totalSteps} />
         <TouchableOpacity onPress={() => router.push('/')} style={styles.closeButton}>
           <Text style={styles.closeButtonText}>✕</Text>
         </TouchableOpacity>
@@ -60,13 +62,13 @@ export default function Step1Screen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.content}>
-          <Text style={styles.title}>Informations de base</Text>
+          <Text style={styles.title}>{t('onboarding.step1.title')}</Text>
           <Text style={styles.subtitle}>
-            Parlez-nous de vous pour commencer
+            {t('onboarding.step1.description')}
           </Text>
 
           <TextInputField
-            label="Prénom"
+            label={t('onboarding.step1.firstName')}
             value={watch('first_name')}
             onChangeText={(text) => setValue('first_name', text, { shouldValidate: true })}
             error={errors.first_name?.message}
@@ -76,7 +78,7 @@ export default function Step1Screen() {
           />
 
           <TextInputField
-            label="Nom"
+            label={t('onboarding.step1.lastName')}
             value={watch('last_name')}
             onChangeText={(text) => setValue('last_name', text, { shouldValidate: true })}
             error={errors.last_name?.message}
@@ -86,7 +88,7 @@ export default function Step1Screen() {
           />
 
           <DatePickerField
-            label="Date de naissance"
+            label={t('onboarding.step1.birthDate')}
             value={watch('birth_date')}
             onChange={(date) => setValue('birth_date', date, { shouldValidate: true })}
             error={errors.birth_date?.message}
@@ -96,12 +98,12 @@ export default function Step1Screen() {
           />
 
           <SelectField
-            label="Sexe"
+            label={t('onboarding.step1.gender')}
             value={gender}
             options={[
-              { value: 'male', label: 'Homme' },
-              { value: 'female', label: 'Femme' },
-              { value: 'other', label: 'Autre' },
+              { value: 'male', label: t('onboarding.step1.male') },
+              { value: 'female', label: t('onboarding.step1.female') },
+              { value: 'other', label: t('onboarding.step1.other') },
             ]}
             onSelect={(value) => setValue('gender', value, { shouldValidate: true })}
             error={errors.gender?.message}
@@ -109,7 +111,7 @@ export default function Step1Screen() {
           />
 
           <NumberInputField
-            label="Taille (m)"
+            label={t('onboarding.step1.height')}
             value={watch('height_cm')}
             onChange={(value) => setValue('height_cm', value ?? 0, { shouldValidate: true })}
             error={errors.height_cm?.message}
@@ -121,7 +123,7 @@ export default function Step1Screen() {
           />
 
           <NumberInputField
-            label="Poids"
+            label={t('onboarding.step1.weight')}
             value={watch('weight_kg')}
             onChange={(value) => setValue('weight_kg', value ?? 0, { shouldValidate: true })}
             error={errors.weight_kg?.message}
@@ -135,7 +137,7 @@ export default function Step1Screen() {
 
       <View style={styles.footer}>
         <Button
-          title="Continuer"
+          title={t('onboarding.continue')}
           onPress={onSubmit}
           disabled={!isStepValid(currentStep)}
         />
