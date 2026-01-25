@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { View, ActivityIndicator, Platform } from 'react-native';
 import { NotificationProvider } from '@/contexts/NotificationContext';
+import { AuthProvider } from '@/contexts/AuthContext';
 import { colors } from '@/constants/colors';
 
 // Web polyfill: Set API URL in window for web platform
@@ -34,21 +35,23 @@ export default function RootLayout() {
   }
 
   return (
-    <NotificationProvider>
-      <StatusBar style="light" />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: colors.primary.dark },
-        }}
-      >
-        <Stack.Screen name="index" />
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(questionnaire)" />
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="test-connection" />
-        <Stack.Screen name="web-test" />
-      </Stack>
-    </NotificationProvider>
+    <AuthProvider>
+      <NotificationProvider>
+        <StatusBar style="light" />
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: colors.primary.dark },
+          }}
+        >
+          <Stack.Screen name="index" />
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="(questionnaire)" />
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="test-connection" />
+          <Stack.Screen name="web-test" />
+        </Stack>
+      </NotificationProvider>
+    </AuthProvider>
   );
 }

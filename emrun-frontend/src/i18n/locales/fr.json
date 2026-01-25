@@ -1,0 +1,172 @@
+{
+  "onboarding": {
+    "progress": "{{current}}/{{total}}",
+    "continue": "Continuer",
+    "back": "Retour",
+    "skip": "Passer",
+    "step1": {
+      "title": "Informations personnelles",
+      "description": "Parlez-nous de vous",
+      "firstName": "Prénom",
+      "lastName": "Nom",
+      "birthDate": "Date de naissance",
+      "gender": "Genre",
+      "male": "Homme",
+      "female": "Femme",
+      "other": "Autre",
+      "height": "Taille (cm)",
+      "weight": "Poids (kg)",
+      "errors": {
+        "firstNameRequired": "Le prénom est requis",
+        "lastNameRequired": "Le nom est requis",
+        "birthDateRequired": "La date de naissance est requise",
+        "genderRequired": "Le genre est requis",
+        "heightRequired": "La taille est requise",
+        "weightRequired": "Le poids est requis"
+      }
+    },
+    "step2": {
+      "title": "Quel est votre objectif principal ?",
+      "description": "Choisissez l'objectif qui vous correspond le mieux",
+      "goals": {
+        "courir_race": "Courir une course",
+        "ameliorer_chrono": "Améliorer mon chrono",
+        "rester_forme": "Rester en forme",
+        "perdre_poids": "Perdre du poids",
+        "autre": "Autre"
+      },
+      "otherPlaceholder": "Décrivez votre objectif",
+      "raceDistance": "Distance de la course",
+      "distances": {
+        "5k": "5 km",
+        "10k": "10 km",
+        "semi": "Semi-marathon (21 km)",
+        "marathon": "Marathon (42 km)",
+        "trail": "Trail",
+        "autre": "Autre distance"
+      }
+    },
+    "step3": {
+      "title": "Détails de votre course",
+      "description": "Aidez-nous à personnaliser votre plan",
+      "raceDate": "Date de la course",
+      "raceDatePlaceholder": "Sélectionnez une date",
+      "intermediateGoals": "Objectifs intermédiaires",
+      "intermediateGoalsPlaceholder": "Ex: Courir 10 km en moins de 50 minutes d'ici 2 mois"
+    },
+    "step4": {
+      "title": "Votre activité actuelle",
+      "description": "Combien courez-vous actuellement ?",
+      "weeklyVolume": "Volume hebdomadaire (km)",
+      "runsPerWeek": "Nombre de sorties par semaine",
+      "runs": {
+        "1": "1 sortie",
+        "2": "2 sorties",
+        "3": "3 sorties",
+        "4": "4 sorties",
+        "5": "5 sorties",
+        "6": "6 sorties",
+        "7": "7 sorties ou plus"
+      }
+    },
+    "step4a": {
+      "title": "Jours disponibles",
+      "description": "Quels jours pouvez-vous vous entraîner ?",
+      "selectDays": "Sélectionnez vos jours disponibles",
+      "days": {
+        "lundi": "Lundi",
+        "mardi": "Mardi",
+        "mercredi": "Mercredi",
+        "jeudi": "Jeudi",
+        "vendredi": "Vendredi",
+        "samedi": "Samedi",
+        "dimanche": "Dimanche"
+      },
+      "errors": {
+        "noDaysSelected": "Sélectionnez au moins un jour"
+      }
+    },
+    "step5": {
+      "title": "Expérience en course à pied",
+      "description": "Depuis combien de temps courez-vous ?",
+      "periods": {
+        "moins_1_mois": "Moins d'un mois",
+        "1_11_mois": "1 à 11 mois",
+        "1_10_ans": "1 à 10 ans",
+        "plus_10_ans": "Plus de 10 ans"
+      },
+      "months": "Nombre de mois",
+      "years": "Nombre d'années"
+    },
+    "step6": {
+      "title": "Problème à résoudre",
+      "description": "Y a-t-il quelque chose que vous aimeriez améliorer ?",
+      "problems": {
+        "blessures": "Éviter les blessures",
+        "endurance": "Améliorer l'endurance",
+        "vitesse": "Améliorer la vitesse",
+        "regularite": "Être plus régulier",
+        "motivation": "Rester motivé",
+        "technique": "Améliorer la technique",
+        "autre": "Autre"
+      },
+      "otherPlaceholder": "Décrivez votre problème"
+    },
+    "step7": {
+      "title": "Lieux d'entraînement",
+      "description": "Où préférez-vous courir ?",
+      "locations": {
+        "route": "Route/Ville",
+        "parc": "Parc",
+        "piste": "Piste d'athlétisme",
+        "trail": "Sentiers/Trail",
+        "tapis": "Tapis de course",
+        "autre": "Autre"
+      },
+      "otherPlaceholder": "Décrivez votre lieu préféré",
+      "errors": {
+        "noLocationSelected": "Sélectionnez au moins un lieu"
+      }
+    },
+    "step8": {
+      "title": "Informations complémentaires",
+      "description": "Derniers détails pour personnaliser votre plan",
+      "personalRecords": "Records personnels",
+      "personalRecordsPlaceholder": "Ex: 5 km en 22:30, 10 km en 48:15",
+      "previousInjuries": "Blessures antérieures",
+      "previousInjuriesPlaceholder": "Ex: Tendinite d'Achille en 2023",
+      "additionalContext": "Contexte additionnel",
+      "additionalContextPlaceholder": "Autres informations que nous devrions connaître"
+    },
+    "step9": {
+      "title": "Récapitulatif",
+      "description": "Vérifiez vos informations avant de continuer",
+      "personalInfo": "Informations personnelles",
+      "goal": "Objectif",
+      "currentActivity": "Activité actuelle",
+      "experience": "Expérience",
+      "availability": "Disponibilité",
+      "preferences": "Préférences",
+      "edit": "Modifier"
+    },
+    "preview": {
+      "title": "Votre plan personnalisé",
+      "description": "Voici un aperçu de votre plan d'entraînement",
+      "sampleWeek": "Semaine type",
+      "workoutsPerWeek": "{{count}} séances par semaine",
+      "viewPricing": "Voir le prix",
+      "weekStructure": "Structure de la semaine"
+    }
+  },
+  "common": {
+    "loading": "Chargement...",
+    "error": "Une erreur est survenue",
+    "retry": "Réessayer",
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "close": "Fermer",
+    "confirm": "Confirmer"
+  }
+}
