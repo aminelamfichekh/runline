@@ -5,6 +5,7 @@ import { View, ActivityIndicator, Platform } from 'react-native';
 import { NotificationProvider } from '@/contexts/NotificationContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { colors } from '@/constants/colors';
+import '@/src/i18n';
 
 // Web polyfill: Set API URL in window for web platform
 if (Platform.OS === 'web' && typeof window !== 'undefined') {
