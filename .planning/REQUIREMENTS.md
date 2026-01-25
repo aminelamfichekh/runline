@@ -137,13 +137,66 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (To be filled by roadmapper) | | |
+| ONBOARD-01 | Phase 1 | Pending |
+| ONBOARD-02 | Phase 1 | Pending |
+| ONBOARD-03 | Phase 1 | Pending |
+| ONBOARD-04 | Phase 1 | Pending |
+| ONBOARD-05 | Phase 1 | Pending |
+| ONBOARD-06 | Phase 1 | Pending |
+| ONBOARD-07 | Phase 1 | Pending |
+| ONBOARD-08 | Phase 1 | Pending |
+| AUTH-01 | Phase 1 | Pending |
+| AUTH-02 | Phase 1 | Pending |
+| AUTH-03 | Phase 1 | Pending |
+| AUTH-04 | Phase 1 | Pending |
+| AUTH-05 | Phase 1 | Pending |
+| SUB-01 | Phase 1 | Pending |
+| SUB-02 | Phase 1 | Pending |
+| SUB-03 | Phase 1 | Pending |
+| SUB-04 | Phase 1 | Pending |
+| SUB-05 | Phase 1 | Pending |
+| SUB-06 | Phase 1 | Pending |
+| PLAN-01 | Phase 2 | Pending |
+| PLAN-02 | Phase 2 | Pending |
+| PLAN-03 | Phase 2 | Pending |
+| PLAN-04 | Phase 2 | Pending |
+| PLAN-05 | Phase 2 | Pending |
+| PLAN-06 | Phase 2 | Pending |
+| PLAN-07 | Phase 2 | Pending |
+| PLAN-08 | Phase 2 | Pending |
+| PLAN-09 | Phase 2 | Pending |
+| DISPLAY-01 | Phase 2 | Pending |
+| DISPLAY-02 | Phase 2 | Pending |
+| DISPLAY-03 | Phase 2 | Pending |
+| DISPLAY-04 | Phase 2 | Pending |
+| DISPLAY-05 | Phase 2 | Pending |
+| DISPLAY-06 | Phase 2 | Pending |
+| DASH-01 | Phase 3 | Pending |
+| DASH-02 | Phase 3 | Pending |
+| DASH-03 | Phase 3 | Pending |
+| DASH-04 | Phase 3 | Pending |
+| PROF-01 | Phase 3 | Pending |
+| PROF-02 | Phase 3 | Pending |
+| PROF-03 | Phase 3 | Pending |
+| PROF-04 | Phase 3 | Pending |
+| PROF-05 | Phase 3 | Pending |
+| LEGAL-01 | Phase 3 | Pending |
+| LEGAL-02 | Phase 3 | Pending |
+| LEGAL-03 | Phase 3 | Pending |
+| LEGAL-04 | Phase 3 | Pending |
+| DEPLOY-01 | Phase 4 | Pending |
+| DEPLOY-02 | Phase 4 | Pending |
+| DEPLOY-03 | Phase 4 | Pending |
+| DEPLOY-04 | Phase 4 | Pending |
+| DEPLOY-05 | Phase 4 | Pending |
+| DEPLOY-06 | Phase 4 | Pending |
+| DEPLOY-07 | Phase 4 | Pending |
 
 **Coverage:**
-- v1 requirements: 37 total
-- Mapped to phases: (pending)
-- Unmapped: (pending)
+- v1 requirements: 54 total
+- Mapped to phases: 54/54 (100%)
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-01-25*
-*Last updated: 2026-01-25 after initial definition*
+*Last updated: 2026-01-25 after roadmap creation*
