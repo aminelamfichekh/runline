@@ -6,11 +6,12 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useQuestionnaireForm } from '@/hooks/useQuestionnaireForm';
 import { NumberInputField } from '@/components/forms/NumberInputField';
 import { SelectField } from '@/components/forms/SelectField';
 import { Button } from '@/components/ui/Button';
-import { ProgressBar } from '@/components/ui/ProgressBar';
+import { ProgressIndicator } from '@/components/ui/ProgressIndicator';
 import type { CurrentRunsPerWeek } from '@/types/profile';
 
 const RUNS_PER_WEEK_OPTIONS: { value: CurrentRunsPerWeek; label: string }[] = [
@@ -23,6 +24,7 @@ const RUNS_PER_WEEK_OPTIONS: { value: CurrentRunsPerWeek; label: string }[] = [
 
 export default function Step4Screen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { form, currentStep, totalSteps, nextStep, prevStep, isStepValid, getPreviousStepRoute } = useQuestionnaireForm();
 
   const { setValue, watch, formState: { errors } } = form;
@@ -44,48 +46,55 @@ export default function Step4Screen() {
 
   return (
     <View style={styles.container}>
+      {/* Header with Progress */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <Text style={styles.backButtonText}>←</Text>
         </TouchableOpacity>
-        <ProgressBar current={currentStep} total={totalSteps} />
+        <ProgressIndicator currentStep={currentStep} totalSteps={totalSteps} />
         <TouchableOpacity onPress={() => router.push('/')} style={styles.closeButton}>
           <Text style={styles.closeButtonText}>✕</Text>
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>Statut actuel de course</Text>
-        <Text style={styles.subtitle}>
-          Aidez-nous à comprendre votre routine de course actuelle.
-        </Text>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.content}>
+          <Text style={styles.title}>{t('onboarding.step4.title')}</Text>
+          <Text style={styles.subtitle}>
+            {t('onboarding.step4.description')}
+          </Text>
 
-        <NumberInputField
-          label="Volume hebdomadaire actuel"
-          value={watch('current_weekly_volume_km')}
-          onChange={(value) => setValue('current_weekly_volume_km', value ?? 0, { shouldValidate: true })}
-          error={errors.current_weekly_volume_km?.message}
-          required
-          min={0}
-          max={100}
-          step={5}
-          unit="km/sem"
-          helperText="Doit être un multiple de 5 (0-100km)"
-        />
+          <NumberInputField
+            label={t('onboarding.step4.weeklyVolume')}
+            value={watch('current_weekly_volume_km')}
+            onChange={(value) => setValue('current_weekly_volume_km', value ?? 0, { shouldValidate: true })}
+            error={errors.current_weekly_volume_km?.message}
+            required
+            min={0}
+            max={100}
+            step={5}
+            unit="km/sem"
+            helperText="Doit être un multiple de 5 (0-100km)"
+          />
 
-        <SelectField
-          label="Nombre de sorties par semaine"
-          value={watch('current_runs_per_week')}
-          options={RUNS_PER_WEEK_OPTIONS}
-          onSelect={(value) => setValue('current_runs_per_week', value, { shouldValidate: true })}
-          error={errors.current_runs_per_week?.message}
-          required
-        />
+          <SelectField
+            label={t('onboarding.step4.runsPerWeek')}
+            value={watch('current_runs_per_week')}
+            options={RUNS_PER_WEEK_OPTIONS}
+            onSelect={(value) => setValue('current_runs_per_week', value, { shouldValidate: true })}
+            error={errors.current_runs_per_week?.message}
+            required
+          />
+        </View>
       </ScrollView>
 
       <View style={styles.footer}>
         <Button
-          title="Continuer"
+          title={t('onboarding.continue')}
           onPress={onSubmit}
           disabled={!isStepValid(currentStep)}
         />
@@ -97,58 +106,72 @@ export default function Step4Screen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#0a0a0a',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 12,
+    paddingTop: 60,
+    paddingBottom: 20,
     gap: 12,
+    backgroundColor: '#0a0a0a',
   },
   backButton: {
-    width: 32,
-    height: 32,
+    width: 40,
+    height: 40,
     justifyContent: 'center',
     alignItems: 'center',
+    borderRadius: 20,
+    backgroundColor: '#1a1a1a',
   },
   backButtonText: {
     color: '#fff',
     fontSize: 24,
+    fontWeight: '300',
   },
   closeButton: {
-    width: 32,
-    height: 32,
+    width: 40,
+    height: 40,
     justifyContent: 'center',
     alignItems: 'center',
+    borderRadius: 20,
+    backgroundColor: '#1a1a1a',
   },
   closeButtonText: {
     color: '#fff',
     fontSize: 20,
+    fontWeight: '300',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 20,
   },
   content: {
-    flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
+    paddingTop: 8,
   },
   title: {
-    fontSize: 32,
-    fontWeight: '700',
+    fontSize: 36,
+    fontWeight: '800',
     color: '#fff',
     marginBottom: 8,
-    marginTop: 8,
+    letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 17,
     color: '#999',
-    marginBottom: 32,
+    marginBottom: 40,
+    fontWeight: '400',
+    lineHeight: 24,
   },
   footer: {
-    padding: 20,
+    padding: 24,
     paddingBottom: 40,
     borderTopWidth: 1,
     borderTopColor: '#1a1a1a',
+    backgroundColor: '#0a0a0a',
   },
 });
-
-

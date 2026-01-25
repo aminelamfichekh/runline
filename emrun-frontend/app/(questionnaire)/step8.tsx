@@ -6,15 +6,17 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useQuestionnaireForm } from '@/hooks/useQuestionnaireForm';
 import { TextInputField } from '@/components/forms/TextInputField';
 import { Button } from '@/components/ui/Button';
-import { ProgressBar } from '@/components/ui/ProgressBar';
+import { ProgressIndicator } from '@/components/ui/ProgressIndicator';
 import { profileApi } from '@/lib/api/profile';
 import { cleanConditionalFields } from '@/lib/validation/profileSchema';
 
 export default function Step8Screen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { form, currentStep, totalSteps, prevStep, isComplete, getPreviousStepRoute } = useQuestionnaireForm();
 
   const { setValue, watch, formState: { errors }, handleSubmit } = form;
@@ -134,55 +136,62 @@ export default function Step8Screen() {
 
   return (
     <View style={styles.container}>
+      {/* Header with Progress */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <Text style={styles.backButtonText}>←</Text>
         </TouchableOpacity>
-        <ProgressBar current={currentStep} total={totalSteps} />
+        <ProgressIndicator currentStep={currentStep} totalSteps={totalSteps} />
         <TouchableOpacity onPress={() => router.push('/')} style={styles.closeButton}>
           <Text style={styles.closeButtonText}>✕</Text>
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>Informations additionnelles</Text>
-        <Text style={styles.subtitle}>
-          Partagez tous les détails supplémentaires qui pourraient nous aider à créer un meilleur plan pour vous. (Tout est optionnel)
-        </Text>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.content}>
+          <Text style={styles.title}>{t('onboarding.step8.title')}</Text>
+          <Text style={styles.subtitle}>
+            {t('onboarding.step8.description')}
+          </Text>
 
-        <TextInputField
-          label="Équipement"
-          value={watch('equipment')}
-          onChangeText={(text) => setValue('equipment', text)}
-          error={errors.equipment?.message}
-          multiline
-          numberOfLines={3}
-          placeholder="ex: Chaussures de course, montre GPS, ceinture cardio"
-        />
+          <TextInputField
+            label="Équipement"
+            value={watch('equipment')}
+            onChangeText={(text) => setValue('equipment', text)}
+            error={errors.equipment?.message}
+            multiline
+            numberOfLines={3}
+            placeholder="ex: Chaussures de course, montre GPS, ceinture cardio"
+          />
 
-        <TextInputField
-          label="Contraintes personnelles/professionnelles"
-          value={watch('personal_constraints')}
-          onChangeText={(text) => setValue('personal_constraints', text)}
-          error={errors.personal_constraints?.message}
-          multiline
-          numberOfLines={4}
-          placeholder="ex: Horaires de travail, garde d'enfants"
-        />
+          <TextInputField
+            label="Contraintes personnelles/professionnelles"
+            value={watch('personal_constraints')}
+            onChangeText={(text) => setValue('personal_constraints', text)}
+            error={errors.personal_constraints?.message}
+            multiline
+            numberOfLines={4}
+            placeholder="ex: Horaires de travail, garde d'enfants"
+          />
 
-        <TextInputField
-          label="Blessures passées ou limitations"
-          value={watch('injuries')?.join(', ') || ''}
-          onChangeText={(text) => {
-            const injuries = text.split(',').map(i => i.trim()).filter(i => i);
-            setValue('injuries', injuries.length > 0 ? injuries : undefined);
-          }}
-          error={errors.injuries?.message}
-          multiline
-          numberOfLines={3}
-          placeholder="ex: Blessure au genou il y a 2 ans, douleur au bas du dos"
-          helperText="Séparez plusieurs éléments avec des virgules"
-        />
+          <TextInputField
+            label={t('onboarding.step8.previousInjuries')}
+            value={watch('injuries')?.join(', ') || ''}
+            onChangeText={(text) => {
+              const injuries = text.split(',').map(i => i.trim()).filter(i => i);
+              setValue('injuries', injuries.length > 0 ? injuries : undefined);
+            }}
+            error={errors.injuries?.message}
+            multiline
+            numberOfLines={3}
+            placeholder={t('onboarding.step8.previousInjuriesPlaceholder')}
+            helperText="Séparez plusieurs éléments avec des virgules"
+          />
+        </View>
       </ScrollView>
 
       <View style={styles.footer}>
@@ -205,57 +214,73 @@ export default function Step8Screen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#0a0a0a',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 12,
+    paddingTop: 60,
+    paddingBottom: 20,
     gap: 12,
+    backgroundColor: '#0a0a0a',
   },
   backButton: {
-    width: 32,
-    height: 32,
+    width: 40,
+    height: 40,
     justifyContent: 'center',
     alignItems: 'center',
+    borderRadius: 20,
+    backgroundColor: '#1a1a1a',
   },
   backButtonText: {
     color: '#fff',
     fontSize: 24,
+    fontWeight: '300',
   },
   closeButton: {
-    width: 32,
-    height: 32,
+    width: 40,
+    height: 40,
     justifyContent: 'center',
     alignItems: 'center',
+    borderRadius: 20,
+    backgroundColor: '#1a1a1a',
   },
   closeButtonText: {
     color: '#fff',
     fontSize: 20,
+    fontWeight: '300',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 20,
   },
   content: {
-    flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
+    paddingTop: 8,
   },
   title: {
-    fontSize: 32,
-    fontWeight: '700',
+    fontSize: 36,
+    fontWeight: '800',
     color: '#fff',
     marginBottom: 8,
-    marginTop: 8,
+    letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 17,
     color: '#999',
-    marginBottom: 32,
+    marginBottom: 40,
+    fontWeight: '400',
+    lineHeight: 24,
   },
   footer: {
-    padding: 20,
+    padding: 24,
     paddingBottom: 40,
     borderTopWidth: 1,
     borderTopColor: '#1a1a1a',
+    backgroundColor: '#0a0a0a',
   },
   completionHint: {
     color: '#ff9800',

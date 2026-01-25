@@ -7,12 +7,13 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useQuestionnaireForm } from '@/hooks/useQuestionnaireForm';
 import { SelectField } from '@/components/forms/SelectField';
 import { DatePickerField } from '@/components/forms/DatePickerField';
 import { TextInputField } from '@/components/forms/TextInputField';
 import { Button } from '@/components/ui/Button';
-import { ProgressBar } from '@/components/ui/ProgressBar';
+import { ProgressIndicator } from '@/components/ui/ProgressIndicator';
 import type { RaceDistance, CurrentRaceTime } from '@/types/profile';
 
 const RACE_DISTANCE_OPTIONS: { value: RaceDistance; label: string }[] = [
@@ -24,6 +25,7 @@ const RACE_DISTANCE_OPTIONS: { value: RaceDistance; label: string }[] = [
 
 export default function Step3Screen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { form, currentStep, totalSteps, nextStep, prevStep, isStepValid, primaryGoal, getPreviousStepRoute } = useQuestionnaireForm();
 
   const { setValue, watch, formState: { errors } } = form;
@@ -75,52 +77,58 @@ export default function Step3Screen() {
 
   return (
     <View style={styles.container}>
+      {/* Header with Progress */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <Text style={styles.backButtonText}>←</Text>
         </TouchableOpacity>
-        <ProgressBar current={currentStep} total={totalSteps} />
+        <ProgressIndicator currentStep={currentStep} totalSteps={totalSteps} />
         <TouchableOpacity onPress={() => router.push('/')} style={styles.closeButton}>
           <Text style={styles.closeButtonText}>✕</Text>
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>Détails de la course</Text>
-        <Text style={styles.subtitle}>
-          Parlez-nous de votre objectif de course pour créer un plan d'entraînement ciblé.
-        </Text>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.content}>
+          <Text style={styles.title}>{t('onboarding.step3.title')}</Text>
+          <Text style={styles.subtitle}>
+            {t('onboarding.step3.description')}
+          </Text>
 
-        <SelectField<RaceDistance>
-          label="Distance de la course"
-          value={watch('race_distance')}
-          options={RACE_DISTANCE_OPTIONS}
-          onSelect={(value) => setValue('race_distance', value as RaceDistance, { shouldValidate: true })}
-          error={errors.race_distance?.message}
-          required
-        />
+          <SelectField<RaceDistance>
+            label={t('onboarding.step2.raceDistance')}
+            value={watch('race_distance')}
+            options={RACE_DISTANCE_OPTIONS}
+            onSelect={(value) => setValue('race_distance', value as RaceDistance, { shouldValidate: true })}
+            error={errors.race_distance?.message}
+            required
+          />
 
-        <DatePickerField
-          label="Date de l'objectif"
-          value={watch('target_race_date')}
-          onChange={(date) => setValue('target_race_date', date, { shouldValidate: true })}
-          error={errors.target_race_date?.message}
-          required
-          minimumDate={today}
-        />
+          <DatePickerField
+            label={t('onboarding.step3.raceDate')}
+            value={watch('target_race_date')}
+            onChange={(date) => setValue('target_race_date', date, { shouldValidate: true })}
+            error={errors.target_race_date?.message}
+            required
+            minimumDate={today}
+          />
 
-        <TextInputField
-          label="Objectif(s) intermédiaire(s) (Optionnel)"
-          value={watch('intermediate_objectives')}
-          onChangeText={(text) => setValue('intermediate_objectives', text)}
-          error={errors.intermediate_objectives?.message}
-          multiline
-          numberOfLines={4}
-          placeholder="ex: Courir 5km sans m'arrêter"
-        />
+          <TextInputField
+            label={t('onboarding.step3.intermediateGoals')}
+            value={watch('intermediate_objectives')}
+            onChangeText={(text) => setValue('intermediate_objectives', text)}
+            error={errors.intermediate_objectives?.message}
+            multiline
+            numberOfLines={4}
+            placeholder={t('onboarding.step3.intermediateGoalsPlaceholder')}
+          />
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Record(s) personnel(s) (Optionnel)</Text>
+          <Text style={styles.sectionTitle}>{t('onboarding.step8.personalRecords')}</Text>
           <Text style={styles.sectionSubtitle}>
             Ajoutez vos meilleurs temps actuels pour nous aider à suivre votre progression.
           </Text>
@@ -161,11 +169,12 @@ export default function Step3Screen() {
             style={styles.addButton}
           />
         </View>
+        </View>
       </ScrollView>
 
       <View style={styles.footer}>
         <Button
-          title="Continuer"
+          title={t('onboarding.continue')}
           onPress={onSubmit}
           disabled={!isStepValid(currentStep)}
         />
@@ -177,51 +186,66 @@ export default function Step3Screen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#0a0a0a',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 12,
+    paddingTop: 60,
+    paddingBottom: 20,
     gap: 12,
+    backgroundColor: '#0a0a0a',
   },
   backButton: {
-    width: 32,
-    height: 32,
+    width: 40,
+    height: 40,
     justifyContent: 'center',
     alignItems: 'center',
+    borderRadius: 20,
+    backgroundColor: '#1a1a1a',
   },
   backButtonText: {
     color: '#fff',
     fontSize: 24,
+    fontWeight: '300',
   },
   closeButton: {
-    width: 32,
-    height: 32,
+    width: 40,
+    height: 40,
     justifyContent: 'center',
     alignItems: 'center',
+    borderRadius: 20,
+    backgroundColor: '#1a1a1a',
   },
   closeButtonText: {
     color: '#fff',
     fontSize: 20,
+    fontWeight: '300',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 20,
   },
   content: {
-    flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
+    paddingTop: 8,
   },
   title: {
-    fontSize: 32,
-    fontWeight: '700',
+    fontSize: 36,
+    fontWeight: '800',
     color: '#fff',
     marginBottom: 8,
-    marginTop: 8,
+    letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 17,
     color: '#999',
-    marginBottom: 32,
+    marginBottom: 40,
+    fontWeight: '400',
+    lineHeight: 24,
   },
   section: {
     marginTop: 8,
@@ -263,10 +287,11 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   footer: {
-    padding: 20,
+    padding: 24,
     paddingBottom: 40,
     borderTopWidth: 1,
     borderTopColor: '#1a1a1a',
+    backgroundColor: '#0a0a0a',
   },
 });
 
