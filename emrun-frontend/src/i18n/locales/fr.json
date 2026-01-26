@@ -1,78 +1,72 @@
 {
   "onboarding": {
-    "progress": "{{current}}/{{total}}",
     "continue": "Continuer",
     "back": "Retour",
     "skip": "Passer",
     "step1": {
-      "title": "Informations personnelles",
-      "description": "Parlez-nous de vous",
-      "firstName": "Prénom",
-      "lastName": "Nom",
-      "birthDate": "Date de naissance",
-      "gender": "Genre",
-      "male": "Homme",
-      "female": "Femme",
-      "other": "Autre",
-      "height": "Taille (cm)",
-      "weight": "Poids (kg)",
-      "errors": {
-        "firstNameRequired": "Le prénom est requis",
-        "lastNameRequired": "Le nom est requis",
-        "birthDateRequired": "La date de naissance est requise",
-        "genderRequired": "Le genre est requis",
-        "heightRequired": "La taille est requise",
-        "weightRequired": "Le poids est requis"
-      }
-    },
-    "step2": {
-      "title": "Quel est votre objectif principal ?",
-      "description": "Choisissez l'objectif qui vous correspond le mieux",
+      "number": "1",
+      "title": "Objectif principal",
+      "required": "requis",
       "goals": {
-        "courir_race": "Courir une course",
-        "ameliorer_chrono": "Améliorer mon chrono",
-        "rester_forme": "Rester en forme",
-        "perdre_poids": "Perdre du poids",
+        "commencer": "Commencer la course à pied",
+        "reprendre": "Reprendre la course à pied",
+        "preparer_course": "Me préparer à une/des course(s)",
         "autre": "Autre"
       },
-      "otherPlaceholder": "Décrivez votre objectif",
-      "raceDistance": "Distance de la course",
+      "autreLabel": "Précisez votre objectif",
+      "autrePlaceholder": "Décrivez votre objectif...",
+      "distanceLabel": "Distance de l'objectif",
       "distances": {
-        "5k": "5 km",
-        "10k": "10 km",
-        "semi": "Semi-marathon (21 km)",
-        "marathon": "Marathon (42 km)",
-        "trail": "Trail",
-        "autre": "Autre distance"
-      }
+        "5km": "5 km",
+        "10km": "10 km",
+        "semi": "Semi-marathon",
+        "marathon": "Marathon",
+        "autre": "Autre"
+      },
+      "dateLabel": "Date de l'objectif",
+      "datePlaceholder": "Sélectionnez une date",
+      "objectifsIntermediairesLabel": "Objectif(s) intermédiaire(s)",
+      "objectifsIntermediairesPlaceholder": "Distance(s) et date(s) à préciser",
+      "recordsLabel": "Record(s) personnel(s)",
+      "recordsPlaceholder": "Précisez la distance",
+      "emailLabel": "Email",
+      "emailPlaceholder": "votre@email.com"
+    },
+    "step2": {
+      "number": "2",
+      "title": "Informations personnelles",
+      "required": "requis",
+      "nomPrenomLabel": "Nom Prénom",
+      "nomPrenomPlaceholder": "Prénom Nom",
+      "ageLabel": "Âge",
+      "agePlaceholder": "Sélectionnez votre âge",
+      "sexeLabel": "Sexe",
+      "sexeHomme": "Homme",
+      "sexeFemme": "Femme",
+      "poidsLabel": "Poids",
+      "poidsUnit": "kg",
+      "tailleLabel": "Taille",
+      "tailleUnit": "cm",
+      "volumeLabel": "Volume actuel",
+      "volumeUnit": "km/semaine"
     },
     "step3": {
-      "title": "Détails de votre course",
-      "description": "Aidez-nous à personnaliser votre plan",
-      "raceDate": "Date de la course",
-      "raceDatePlaceholder": "Sélectionnez une date",
-      "intermediateGoals": "Objectifs intermédiaires",
-      "intermediateGoalsPlaceholder": "Ex: Courir 10 km en moins de 50 minutes d'ici 2 mois"
-    },
-    "step4": {
-      "title": "Votre activité actuelle",
-      "description": "Combien courez-vous actuellement ?",
-      "weeklyVolume": "Volume hebdomadaire (km)",
-      "runsPerWeek": "Nombre de sorties par semaine",
-      "runs": {
-        "1": "1 sortie",
-        "2": "2 sorties",
-        "3": "3 sorties",
-        "4": "4 sorties",
-        "5": "5 sorties",
-        "6": "6 sorties",
-        "7": "7 sorties ou plus"
+      "number": "3",
+      "title": "Nombre de sorties actuelles par semaine",
+      "required": "requis",
+      "options": {
+        "0": "Pas du tout (0)",
+        "1-2": "Un peu (1/2)",
+        "3-4": "Beaucoup (3/4)",
+        "5-6": "Passionnément (5/6)",
+        "7+": "A la folie (7 ou +)"
       }
     },
-    "step4a": {
+    "step4": {
+      "number": "4",
       "title": "Jours disponibles",
-      "description": "Quels jours pouvez-vous vous entraîner ?",
-      "selectDays": "Sélectionnez vos jours disponibles",
+      "required": "requis",
+      "subtitle": "Sélectionnez vos jours disponibles",
       "days": {
         "lundi": "Lundi",
         "mardi": "Mardi",
@@ -81,80 +75,59 @@
         "vendredi": "Vendredi",
         "samedi": "Samedi",
         "dimanche": "Dimanche"
-      },
-      "errors": {
-        "noDaysSelected": "Sélectionnez au moins un jour"
       }
     },
     "step5": {
-      "title": "Expérience en course à pied",
-      "description": "Depuis combien de temps courez-vous ?",
-      "periods": {
-        "moins_1_mois": "Moins d'un mois",
-        "1_11_mois": "1 à 11 mois",
-        "1_10_ans": "1 à 10 ans",
-        "plus_10_ans": "Plus de 10 ans"
-      },
-      "months": "Nombre de mois",
-      "years": "Nombre d'années"
+      "number": "5",
+      "title": "Depuis combien de temps cours-tu de manière régulière ?",
+      "required": "requis",
+      "placeholder": "Sélectionnez la durée"
     },
     "step6": {
+      "number": "6",
       "title": "Problème à résoudre",
-      "description": "Y a-t-il quelque chose que vous aimeriez améliorer ?",
-      "problems": {
-        "blessures": "Éviter les blessures",
-        "endurance": "Améliorer l'endurance",
-        "vitesse": "Améliorer la vitesse",
-        "regularite": "Être plus régulier",
-        "motivation": "Rester motivé",
-        "technique": "Améliorer la technique",
-        "autre": "Autre"
-      },
-      "otherPlaceholder": "Décrivez votre problème"
+      "optional": "optionnel",
+      "subtitle": "Besoin de structure, retour de blessure, motivation, autre",
+      "placeholder": "Décrivez votre problème..."
     },
     "step7": {
-      "title": "Lieux d'entraînement",
-      "description": "Où préférez-vous courir ?",
-      "locations": {
-        "route": "Route/Ville",
-        "parc": "Parc",
-        "piste": "Piste d'athlétisme",
-        "trail": "Sentiers/Trail",
-        "tapis": "Tapis de course",
-        "autre": "Autre"
-      },
-      "otherPlaceholder": "Décrivez votre lieu préféré",
-      "errors": {
-        "noLocationSelected": "Sélectionnez au moins un lieu"
-      }
+      "number": "7",
+      "title": "Blessure(s) passée(s) ou limitation(s) physique(s)",
+      "optional": "optionnel",
+      "placeholder": "Décrivez vos blessures ou limitations..."
     },
     "step8": {
-      "title": "Informations complémentaires",
-      "description": "Derniers détails pour personnaliser votre plan",
-      "personalRecords": "Records personnels",
-      "personalRecordsPlaceholder": "Ex: 5 km en 22:30, 10 km en 48:15",
-      "previousInjuries": "Blessures antérieures",
-      "previousInjuriesPlaceholder": "Ex: Tendinite d'Achille en 2023",
-      "additionalContext": "Contexte additionnel",
-      "additionalContextPlaceholder": "Autres informations que nous devrions connaître"
+      "number": "8",
+      "title": "Lieu(x) d'entraînement disponible(s)",
+      "required": "requis",
+      "subtitle": "Sélectionnez vos lieux d'entraînement",
+      "locations": {
+        "route": "Route",
+        "chemins": "Chemins",
+        "piste": "Piste",
+        "tapis": "Tapis",
+        "autre": "Autre"
+      },
+      "autrePlaceholder": "Précisez le lieu..."
     },
     "step9": {
-      "title": "Récapitulatif",
-      "description": "Vérifiez vos informations avant de continuer",
-      "personalInfo": "Informations personnelles",
-      "goal": "Objectif",
-      "currentActivity": "Activité actuelle",
-      "experience": "Expérience",
-      "availability": "Disponibilité",
-      "preferences": "Préférences",
-      "edit": "Modifier"
+      "number": "9",
+      "title": "Équipement",
+      "optional": "optionnel",
+      "subtitle": "Chaussures, ceinture cardio, montre GPS…",
+      "placeholder": "Décrivez votre équipement..."
+    },
+    "step10": {
+      "number": "10",
+      "title": "Contraintes personnelles / professionnelles",
+      "optional": "optionnel",
+      "subtitle": "Ex : travail de nuit, garde d'enfants…",
+      "placeholder": "Décrivez vos contraintes..."
     },
     "preview": {
       "title": "Votre plan personnalisé",
       "description": "Voici un aperçu de votre plan d'entraînement",
-      "sampleWeek": "Semaine type",
-      "workoutsPerWeek": "{{count}} séances par semaine",
-      "viewPricing": "Voir le prix",
+      "viewPricing": "Voir les tarifs",
       "weekStructure": "Structure de la semaine"
     }
   },
@@ -174,24 +147,6 @@
       "weeklySchedule": "Calendrier hebdomadaire détaillé",
       "aiPowered": "Propulsé par l'intelligence artificielle"
     },
-    "checkout": {
-      "title": "Paiement",
-      "securePayment": "Paiement sécurisé par Stripe",
-      "initializing": "Initialisation du paiement...",
-      "total": "Total",
-      "chargeToday": "Vous serez débité aujourd'hui, puis le même jour chaque mois",
-      "pay": "Payer 9,99 €",
-      "stripePowered": "Paiement sécurisé par Stripe"
-    },
-    "success": {
-      "title": "Bienvenue !",
-      "message": "Votre abonnement est actif. Votre plan d'entraînement est en cours de génération.",
-      "nextSteps": "Prochaines étapes",
-      "step1": "Votre plan sera généré le premier lundi suivant votre inscription",
-      "step2": "Vous recevrez une notification quand il sera prêt",
-      "step3": "Votre plan sera automatiquement régénéré chaque mois",
-      "continue": "Accéder à mon tableau de bord"
-    },
     "errors": {
       "initFailed": "Erreur d'initialisation du paiement",
       "paymentFailed": "Paiement échoué",
@@ -204,9 +159,6 @@
     "retry": "Réessayer",
     "cancel": "Annuler",
     "save": "Enregistrer",
-    "delete": "Supprimer",
-    "edit": "Modifier",
-    "close": "Fermer",
-    "confirm": "Confirmer"
+    "close": "Fermer"
   }
 }
