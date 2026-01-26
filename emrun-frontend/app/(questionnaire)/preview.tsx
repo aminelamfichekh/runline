@@ -22,8 +22,8 @@ export default function PreviewScreen() {
   const workoutsPerWeek = values.available_days?.length || 3;
 
   const handleViewPricing = () => {
-    // Navigate to pricing screen (to be implemented in next phase)
-    router.push('/');
+    // Navigate to pricing screen
+    router.push('/(subscription)/pricing');
   };
 
   const handleBack = () => {
