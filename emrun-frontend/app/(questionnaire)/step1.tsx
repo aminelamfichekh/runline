@@ -1,136 +1,175 @@
 /**
- * Step 1: Basic Information
- * first_name, last_name, birth_date, gender, height_cm, weight_kg
+ * Step 1: Objectif principal
+ * Includes conditional fields for race preparation
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useQuestionnaireForm } from '@/hooks/useQuestionnaireForm';
 import { TextInputField } from '@/components/forms/TextInputField';
-import { NumberInputField } from '@/components/forms/NumberInputField';
 import { DatePickerField } from '@/components/forms/DatePickerField';
-import { SelectField } from '@/components/forms/SelectField';
 import { Button } from '@/components/ui/Button';
-import { ProgressIndicator } from '@/components/ui/ProgressIndicator';
+import { colors } from '@/constants/colors';
+
+const GOAL_OPTIONS = [
+  { value: 'commencer', label: 'Commencer la course à pied' },
+  { value: 'reprendre', label: 'Reprendre la course à pied' },
+  { value: 'preparer_course', label: 'Me préparer à une/des course(s)' },
+  { value: 'autre', label: 'Autre' },
+];
+
+const DISTANCE_OPTIONS = [
+  { value: '5km', label: '5 km' },
+  { value: '10km', label: '10 km' },
+  { value: 'semi', label: 'Semi-marathon' },
+  { value: 'marathon', label: 'Marathon' },
+  { value: 'autre', label: 'Autre' },
+];
 
 export default function Step1Screen() {
   const router = useRouter();
   const { t } = useTranslation();
-  const { form, currentStep, totalSteps, nextStep, prevStep, isStepValid } = useQuestionnaireForm();
+  const { form } = useQuestionnaireForm();
+  const { setValue, watch } = form;
 
-  const { formState: { errors }, setValue, watch } = form;
+  const primary_goal = watch('primary_goal');
+  const showRaceFields = primary_goal === 'preparer_course';
+  const showOtherField = primary_goal === 'autre';
+  const showRecordsField = primary_goal === 'reprendre' || primary_goal === 'preparer_course';
 
-  const gender = watch('gender');
-
-  // Max date: today (can't be born in the future)
-  const maxDate = new Date();
-
-  // Min date: 120 years ago (reasonable maximum age)
-  const minDate = new Date();
-  minDate.setFullYear(minDate.getFullYear() - 120);
-
-  const onSubmit = () => {
-    if (isStepValid(currentStep)) {
-      nextStep();
-      router.replace('/(questionnaire)/step2');
-    }
+  const handleContinue = () => {
+    router.push('/(questionnaire)/step2');
   };
 
   const handleBack = () => {
-    prevStep();
-    router.replace('/');
+    router.push('/');
   };
 
   return (
     <View style={styles.container}>
-      {/* Header with Progress */}
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <Text style={styles.backButtonText}>←</Text>
         </TouchableOpacity>
-        <ProgressIndicator currentStep={currentStep} totalSteps={totalSteps} />
+        <Text style={styles.stepIndicator}>1/10</Text>
         <TouchableOpacity onPress={() => router.push('/')} style={styles.closeButton}>
-          <Text style={styles.closeButtonText}>✕</Text>
+          <Text style={styles.closeButtonText}>×</Text>
         </TouchableOpacity>
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.content}>
+          <Text style={styles.stepNumber}>1</Text>
           <Text style={styles.title}>{t('onboarding.step1.title')}</Text>
-          <Text style={styles.subtitle}>
-            {t('onboarding.step1.description')}
-          </Text>
+          <Text style={styles.required}>({t('onboarding.step1.required')})</Text>
 
+          {/* Goal Selection */}
+          <View style={styles.optionsContainer}>
+            {GOAL_OPTIONS.map((option) => (
+              <TouchableOpacity
+                key={option.value}
+                style={[
+                  styles.optionButton,
+                  primary_goal === option.value && styles.optionButtonSelected,
+                ]}
+                onPress={() => setValue('primary_goal', option.value)}
+              >
+                <Text
+                  style={[
+                    styles.optionText,
+                    primary_goal === option.value && styles.optionTextSelected,
+                  ]}
+                >
+                  {option.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* Conditional: Autre text field */}
+          {showOtherField && (
+            <TextInputField
+              label={t('onboarding.step1.autreLabel')}
+              value={watch('primary_goal_other')}
+              onChangeText={(text) => setValue('primary_goal_other', text)}
+              placeholder={t('onboarding.step1.autrePlaceholder')}
+              multiline
+            />
+          )}
+
+          {/* Conditional: Race distance */}
+          {showRaceFields && (
+            <>
+              <Text style={styles.sectionLabel}>{t('onboarding.step1.distanceLabel')}</Text>
+              <View style={styles.optionsContainer}>
+                {DISTANCE_OPTIONS.map((option) => (
+                  <TouchableOpacity
+                    key={option.value}
+                    style={[
+                      styles.optionButton,
+                      watch('race_distance') === option.value && styles.optionButtonSelected,
+                    ]}
+                    onPress={() => setValue('race_distance', option.value)}
+                  >
+                    <Text
+                      style={[
+                        styles.optionText,
+                        watch('race_distance') === option.value && styles.optionTextSelected,
+                      ]}
+                    >
+                      {option.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Race date */}
+              <DatePickerField
+                label={t('onboarding.step1.dateLabel')}
+                value={watch('race_date')}
+                onChange={(date) => setValue('race_date', date)}
+                placeholder={t('onboarding.step1.datePlaceholder')}
+              />
+
+              {/* Intermediate goals */}
+              <TextInputField
+                label={t('onboarding.step1.objectifsIntermediairesLabel')}
+                value={watch('objectifs_intermediaires')}
+                onChangeText={(text) => setValue('objectifs_intermediaires', text)}
+                placeholder={t('onboarding.step1.objectifsIntermediairesPlaceholder')}
+                multiline
+                optional
+              />
+            </>
+          )}
+
+          {/* Conditional: Personal records */}
+          {showRecordsField && (
+            <TextInputField
+              label={t('onboarding.step1.recordsLabel')}
+              value={watch('records')}
+              onChangeText={(text) => setValue('records', text)}
+              placeholder={t('onboarding.step1.recordsPlaceholder')}
+              multiline
+              optional
+            />
+          )}
+
+          {/* Email */}
           <TextInputField
-            label={t('onboarding.step1.firstName')}
-            value={watch('first_name')}
-            onChangeText={(text) => setValue('first_name', text, { shouldValidate: true })}
-            error={errors.first_name?.message}
-            required
-            autoCapitalize="words"
-            placeholder="Entrez votre prénom"
-          />
-
-          <TextInputField
-            label={t('onboarding.step1.lastName')}
-            value={watch('last_name')}
-            onChangeText={(text) => setValue('last_name', text, { shouldValidate: true })}
-            error={errors.last_name?.message}
-            required
-            autoCapitalize="words"
-            placeholder="Entrez votre nom"
-          />
-
-          <DatePickerField
-            label={t('onboarding.step1.birthDate')}
-            value={watch('birth_date')}
-            onChange={(date) => setValue('birth_date', date, { shouldValidate: true })}
-            error={errors.birth_date?.message}
-            required
-            minimumDate={minDate}
-            maximumDate={maxDate}
-          />
-
-          <SelectField
-            label={t('onboarding.step1.gender')}
-            value={gender}
-            options={[
-              { value: 'male', label: t('onboarding.step1.male') },
-              { value: 'female', label: t('onboarding.step1.female') },
-              { value: 'other', label: t('onboarding.step1.other') },
-            ]}
-            onSelect={(value) => setValue('gender', value, { shouldValidate: true })}
-            error={errors.gender?.message}
-            required
-          />
-
-          <NumberInputField
-            label={t('onboarding.step1.height')}
-            value={watch('height_cm')}
-            onChange={(value) => setValue('height_cm', value ?? 0, { shouldValidate: true })}
-            error={errors.height_cm?.message}
-            required
-            min={0.5}
-            max={2.5}
-            step={0.01}
-            unit="m"
-          />
-
-          <NumberInputField
-            label={t('onboarding.step1.weight')}
-            value={watch('weight_kg')}
-            onChange={(value) => setValue('weight_kg', value ?? 0, { shouldValidate: true })}
-            error={errors.weight_kg?.message}
-            required
-            min={20}
-            max={300}
-            unit="kg"
+            label={t('onboarding.step1.emailLabel')}
+            value={watch('email')}
+            onChangeText={(text) => setValue('email', text)}
+            placeholder={t('onboarding.step1.emailPlaceholder')}
+            keyboardType="email-address"
+            autoCapitalize="none"
           />
         </View>
       </ScrollView>
@@ -138,8 +177,7 @@ export default function Step1Screen() {
       <View style={styles.footer}>
         <Button
           title={t('onboarding.continue')}
-          onPress={onSubmit}
-          disabled={!isStepValid(currentStep)}
+          onPress={handleContinue}
         />
       </View>
     </View>
@@ -149,16 +187,15 @@ export default function Step1Screen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a0a0a',
+    backgroundColor: colors.primary.dark,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingTop: 60,
-    paddingBottom: 20,
-    gap: 12,
-    backgroundColor: '#0a0a0a',
+    paddingBottom: 16,
   },
   backButton: {
     width: 40,
@@ -166,55 +203,93 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 20,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: colors.primary.medium,
   },
   backButtonText: {
-    color: '#fff',
+    color: colors.text.primary,
     fontSize: 24,
     fontWeight: '300',
+  },
+  stepIndicator: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.text.secondary,
   },
   closeButton: {
     width: 40,
     height: 40,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 20,
-    backgroundColor: '#1a1a1a',
   },
   closeButtonText: {
-    color: '#fff',
-    fontSize: 20,
+    color: colors.text.secondary,
+    fontSize: 28,
     fontWeight: '300',
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 20,
+    paddingBottom: 24,
   },
   content: {
     paddingHorizontal: 24,
     paddingTop: 8,
   },
-  title: {
-    fontSize: 36,
+  stepNumber: {
+    fontSize: 48,
     fontWeight: '800',
-    color: '#fff',
+    color: colors.accent.blue,
     marginBottom: 8,
-    letterSpacing: -0.5,
   },
-  subtitle: {
-    fontSize: 17,
-    color: '#999',
-    marginBottom: 40,
-    fontWeight: '400',
-    lineHeight: 24,
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: colors.text.primary,
+    marginBottom: 4,
+  },
+  required: {
+    fontSize: 14,
+    color: colors.text.secondary,
+    marginBottom: 32,
+  },
+  sectionLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text.primary,
+    marginTop: 24,
+    marginBottom: 12,
+  },
+  optionsContainer: {
+    gap: 12,
+    marginBottom: 24,
+  },
+  optionButton: {
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    backgroundColor: colors.background.card,
+    borderWidth: 2,
+    borderColor: colors.border.medium,
+  },
+  optionButtonSelected: {
+    borderColor: colors.accent.blue,
+    backgroundColor: `${colors.accent.blue}15`,
+  },
+  optionText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: colors.text.primary,
+  },
+  optionTextSelected: {
+    color: colors.accent.blue,
+    fontWeight: '600',
   },
   footer: {
     padding: 24,
     paddingBottom: 40,
     borderTopWidth: 1,
-    borderTopColor: '#1a1a1a',
-    backgroundColor: '#0a0a0a',
+    borderTopColor: colors.border.medium,
+    backgroundColor: colors.primary.dark,
   },
 });

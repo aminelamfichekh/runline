@@ -1,5 +1,5 @@
 /**
- * Step 3: Nombre de sorties actuelles par semaine
+ * Step 10: Contraintes personnelles / professionnelles (optional)
  */
 
 import React from 'react';
@@ -7,27 +7,18 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useQuestionnaireForm } from '@/hooks/useQuestionnaireForm';
+import { TextInputField } from '@/components/forms/TextInputField';
 import { Button } from '@/components/ui/Button';
 import { colors } from '@/constants/colors';
 
-const OPTIONS = [
-  { value: '0', label: 'Pas du tout (0)' },
-  { value: '1-2', label: 'Un peu (1/2)' },
-  { value: '3-4', label: 'Beaucoup (3/4)' },
-  { value: '5-6', label: 'Passionnément (5/6)' },
-  { value: '7+', label: 'A la folie (7 ou +)' },
-];
-
-export default function Step3Screen() {
+export default function Step10Screen() {
   const router = useRouter();
   const { t } = useTranslation();
   const { form } = useQuestionnaireForm();
   const { setValue, watch } = form;
 
-  const runs_per_week = watch('runs_per_week');
-
   const handleContinue = () => {
-    router.push('/(questionnaire)/step4');
+    router.push('/(questionnaire)/preview');
   };
 
   const handleBack = () => {
@@ -40,7 +31,7 @@ export default function Step3Screen() {
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <Text style={styles.backButtonText}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.stepIndicator}>3/10</Text>
+        <Text style={styles.stepIndicator}>10/10</Text>
         <TouchableOpacity onPress={() => router.push('/')} style={styles.closeButton}>
           <Text style={styles.closeButtonText}>×</Text>
         </TouchableOpacity>
@@ -48,28 +39,25 @@ export default function Step3Screen() {
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
-          <Text style={styles.stepNumber}>3</Text>
-          <Text style={styles.title}>{t('onboarding.step3.title')}</Text>
-          <Text style={styles.required}>({t('onboarding.step3.required')})</Text>
+          <Text style={styles.stepNumber}>10</Text>
+          <Text style={styles.title}>{t('onboarding.step10.title')}</Text>
+          <Text style={styles.optional}>({t('onboarding.step10.optional')})</Text>
+          <Text style={styles.subtitle}>{t('onboarding.step10.subtitle')}</Text>
 
-          <View style={styles.optionsContainer}>
-            {OPTIONS.map((option) => (
-              <TouchableOpacity
-                key={option.value}
-                style={[styles.optionButton, runs_per_week === option.value && styles.optionButtonSelected]}
-                onPress={() => setValue('runs_per_week', option.value)}
-              >
-                <Text style={[styles.optionText, runs_per_week === option.value && styles.optionTextSelected]}>
-                  {option.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <TextInputField
+            label=""
+            value={watch('contraintes')}
+            onChangeText={(text) => setValue('contraintes', text)}
+            placeholder={t('onboarding.step10.placeholder')}
+            multiline
+            numberOfLines={5}
+            optional
+          />
         </View>
       </ScrollView>
 
       <View style={styles.footer}>
-        <Button title={t('onboarding.continue')} onPress={handleContinue} />
+        <Button title="Terminer le questionnaire" onPress={handleContinue} />
       </View>
     </View>
   );
@@ -88,11 +76,7 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 24, paddingTop: 8 },
   stepNumber: { fontSize: 48, fontWeight: '800', color: colors.accent.blue, marginBottom: 8 },
   title: { fontSize: 28, fontWeight: '700', color: colors.text.primary, marginBottom: 4 },
-  required: { fontSize: 14, color: colors.text.secondary, marginBottom: 32 },
-  optionsContainer: { gap: 12 },
-  optionButton: { paddingVertical: 16, paddingHorizontal: 20, borderRadius: 12, backgroundColor: colors.background.card, borderWidth: 2, borderColor: colors.border.medium },
-  optionButtonSelected: { borderColor: colors.accent.blue, backgroundColor: `${colors.accent.blue}15` },
-  optionText: { fontSize: 16, fontWeight: '500', color: colors.text.primary },
-  optionTextSelected: { color: colors.accent.blue, fontWeight: '600' },
+  optional: { fontSize: 14, color: colors.text.secondary, marginBottom: 8 },
+  subtitle: { fontSize: 15, color: colors.text.secondary, marginBottom: 24 },
   footer: { padding: 24, paddingBottom: 40, borderTopWidth: 1, borderTopColor: colors.border.medium, backgroundColor: colors.primary.dark },
 });
