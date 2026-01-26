@@ -12,7 +12,7 @@ RUNLINE launches through four phases: build the value-first onboarding flow that
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: User Acquisition** - Anonymous questionnaire to paid subscriber flow
+- [x] **Phase 1: User Acquisition** - Anonymous questionnaire to paid subscriber flow
 - [ ] **Phase 2: AI Plan Delivery** - Generate and display personalized training plans
 - [ ] **Phase 3: User Retention** - Dashboard, profile management, and legal compliance
 - [ ] **Phase 4: Production Launch** - Deploy to App Store and Google Play
@@ -22,7 +22,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 ### Phase 1: User Acquisition
 **Goal**: Users complete anonymous questionnaire, see personalized plan preview, and subscribe via Stripe
 **Depends on**: Nothing (first phase)
-**Requirements**: ONBOARD-01, ONBOARD-02, ONBOARD-03, ONBOARD-04, ONBOARD-05, ONBOARD-06, ONBOARD-07, ONBOARD-08, AUTH-01, AUTH-02, AUTH-03, AUTH-04, AUTH-05, SUB-01, SUB-02, SUB-03, SUB-04, SUB-05, SUB-06
+**Requirements**: ONBOARD-01, ONBOARD-02, ONBOARD-03, ONBOARD-04, ONBOARD-05, ONBOARD-06, ONBOARD-07, ONBOARD-08, AUTH-01, AUTH-02, AUTH-03, AUTH-05, SUB-01, SUB-02, SUB-03, SUB-06
 **Success Criteria** (what must be TRUE):
   1. User completes 9-step French questionnaire with wheel pickers without creating account
   2. User navigates back/forward through questionnaire without losing data
@@ -33,9 +33,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 3 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Complete 9-step questionnaire with wheel pickers, i18n, and state persistence
-- [ ] 01-02-PLAN.md — JWT authentication with secure storage and anonymous session transfer
-- [ ] 01-03-PLAN.md — Stripe subscription flow with PaymentSheet and webhook handling
+- [x] 01-01-PLAN.md — Complete 9-step questionnaire with wheel pickers, i18n, and state persistence
+- [x] 01-02-PLAN.md — JWT authentication with secure storage and anonymous session transfer
+- [x] 01-03-PLAN.md — Stripe subscription flow with PaymentSheet and webhook handling
 
 ### Phase 2: AI Plan Delivery
 **Goal**: Users receive AI-generated training plans that start first Monday after signup and auto-regenerate monthly
@@ -57,7 +57,7 @@ Plans:
 ### Phase 3: User Retention
 **Goal**: Users stay engaged with dashboard home page, manage their profile, and access required legal pages
 **Depends on**: Phase 2 (requires plans to display on dashboard)
-**Requirements**: DASH-01, DASH-02, DASH-03, DASH-04, PROF-01, PROF-02, PROF-03, PROF-04, PROF-05, LEGAL-01, LEGAL-02, LEGAL-03, LEGAL-04
+**Requirements**: DASH-01, DASH-02, DASH-03, DASH-04, PROF-01, PROF-02, PROF-03, PROF-04, PROF-05, AUTH-04, SUB-04, SUB-05, LEGAL-01, LEGAL-02, LEGAL-03, LEGAL-04
 **Success Criteria** (what must be TRUE):
   1. Home page shows current week's training overview and user's running goal
   2. Dashboard accessible immediately after login with smooth navigation to plans and profile
@@ -92,7 +92,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. User Acquisition | 0/3 | Planned | - |
+| 1. User Acquisition | 3/3 | Complete | 2026-01-26 |
 | 2. AI Plan Delivery | 0/TBD | Not started | - |
 | 3. User Retention | 0/TBD | Not started | - |
 | 4. Production Launch | 0/TBD | Not started | - |

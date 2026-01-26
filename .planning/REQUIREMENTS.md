@@ -137,25 +137,25 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ONBOARD-01 | Phase 1 | Pending |
-| ONBOARD-02 | Phase 1 | Pending |
-| ONBOARD-03 | Phase 1 | Pending |
-| ONBOARD-04 | Phase 1 | Pending |
-| ONBOARD-05 | Phase 1 | Pending |
-| ONBOARD-06 | Phase 1 | Pending |
-| ONBOARD-07 | Phase 1 | Pending |
-| ONBOARD-08 | Phase 1 | Pending |
-| AUTH-01 | Phase 1 | Pending |
-| AUTH-02 | Phase 1 | Pending |
-| AUTH-03 | Phase 1 | Pending |
-| AUTH-04 | Phase 1 | Pending |
-| AUTH-05 | Phase 1 | Pending |
-| SUB-01 | Phase 1 | Pending |
-| SUB-02 | Phase 1 | Pending |
-| SUB-03 | Phase 1 | Pending |
-| SUB-04 | Phase 1 | Pending |
-| SUB-05 | Phase 1 | Pending |
-| SUB-06 | Phase 1 | Pending |
+| ONBOARD-01 | Phase 1 | Complete |
+| ONBOARD-02 | Phase 1 | Complete |
+| ONBOARD-03 | Phase 1 | Complete |
+| ONBOARD-04 | Phase 1 | Complete |
+| ONBOARD-05 | Phase 1 | Complete |
+| ONBOARD-06 | Phase 1 | Complete |
+| ONBOARD-07 | Phase 1 | Complete |
+| ONBOARD-08 | Phase 1 | Complete |
+| AUTH-01 | Phase 1 | Complete |
+| AUTH-02 | Phase 1 | Complete |
+| AUTH-03 | Phase 1 | Complete |
+| AUTH-04 | Phase 3 | Pending |
+| AUTH-05 | Phase 1 | Complete |
+| SUB-01 | Phase 1 | Complete |
+| SUB-02 | Phase 1 | Complete |
+| SUB-03 | Phase 1 | Complete |
+| SUB-04 | Phase 3 | Pending |
+| SUB-05 | Phase 3 | Pending |
+| SUB-06 | Phase 1 | Complete |
 | PLAN-01 | Phase 2 | Pending |
 | PLAN-02 | Phase 2 | Pending |
 | PLAN-03 | Phase 2 | Pending |
