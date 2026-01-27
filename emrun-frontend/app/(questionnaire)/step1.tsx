@@ -29,7 +29,15 @@ export default function Step1Screen() {
     if (selectedGoal === 'other') {
       setValue('goal_other', otherText);
     }
-    router.push('/(questionnaire)/step2');
+
+    // Conditional navigation based on goal
+    if (selectedGoal === 'restart') {
+      router.push('/(questionnaire)/step2a'); // Pause + records
+    } else if (selectedGoal === 'race') {
+      router.push('/(questionnaire)/step2b'); // Objectives + records
+    } else {
+      router.push('/(questionnaire)/step2'); // Normal flow
+    }
   };
 
   const renderOption = (
@@ -88,11 +96,11 @@ export default function Step1Screen() {
         <Text style={styles.logo}>RUNLINE</Text>
         <View style={styles.progressContainer}>
           <View style={styles.progressLabels}>
-            <Text style={styles.progressText}>Étape 1 sur 4</Text>
-            <Text style={styles.progressPercent}>25%</Text>
+            <Text style={styles.progressText}>Étape 1 sur 9</Text>
+            <Text style={styles.progressPercent}>11%</Text>
           </View>
           <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: '25%' }]} />
+            <View style={[styles.progressFill, { width: '11%' }]} />
           </View>
         </View>
       </View>
