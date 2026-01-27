@@ -1,58 +1,92 @@
 /**
- * Step 6: Fréquence d'Entraînement
- * Converted from HTML design with radio selection
+ * Step 6: Expérience de Course
+ * Depuis combien de temps cours-tu de manière régulière ?
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuestionnaireForm } from '@/hooks/useQuestionnaireForm';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-type FrequencyOption = 'little' | 'much' | 'passionate' | 'crazy' | 'none';
+const ITEM_HEIGHT = 56;
+
+// Generate experience options: Je commence, 1-11 mois, 1-10 ans, + de 10 ans
+const generateExperienceOptions = () => {
+  const options = [];
+
+  // Je commence
+  options.push({ value: 'beginner', label: 'Je commence' });
+
+  // 1-11 mois
+  for (let i = 1; i <= 11; i++) {
+    options.push({ value: `${i}m`, label: `${i} mois` });
+  }
+
+  // 1-10 ans
+  for (let i = 1; i <= 10; i++) {
+    options.push({ value: `${i}y`, label: `${i} an${i > 1 ? 's' : ''}` });
+  }
+
+  // + de 10 ans
+  options.push({ value: '10+y', label: '+ de 10 ans' });
+
+  return options;
+};
 
 export default function Step6Screen() {
   const router = useRouter();
   const { form } = useQuestionnaireForm();
   const { setValue, watch } = form;
 
-  const [selectedFrequency, setSelectedFrequency] = useState<FrequencyOption | null>(
-    watch('training_frequency') || null
-  );
+  const experienceOptions = generateExperienceOptions();
+
+  const [selectedExperience, setSelectedExperience] = useState(experienceOptions[0].value);
+
+  const pickerScroll = useRef<ScrollView>(null);
+
+  // Scroll to selected item on mount
+  useEffect(() => {
+    const index = experienceOptions.findIndex(opt => opt.value === selectedExperience);
+    if (index >= 0 && pickerScroll.current) {
+      pickerScroll.current.scrollTo({ y: index * ITEM_HEIGHT, animated: false });
+    }
+  }, []);
 
   const handleContinue = () => {
-    setValue('training_frequency', selectedFrequency);
+    // TODO: Add form schema field for experience_level
+    // setValue('experience_level', selectedExperience);
     router.push('/(questionnaire)/step7');
   };
 
-  const renderOption = (value: FrequencyOption, title: string, subtitle: string) => {
-    const isSelected = selectedFrequency === value;
+  const renderPickerItem = (option: typeof experienceOptions[0], index: number) => {
+    const isSelected = option.value === selectedExperience;
 
     return (
       <TouchableOpacity
-        key={value}
-        onPress={() => setSelectedFrequency(value)}
-        activeOpacity={0.7}
-        style={[
-          styles.optionCard,
-          isSelected && styles.optionCardSelected
-        ]}
+        key={option.value}
+        style={styles.pickerItem}
+        onPress={() => {
+          setSelectedExperience(option.value);
+          pickerScroll.current?.scrollTo({ y: index * ITEM_HEIGHT, animated: true });
+        }}
       >
-        <View style={styles.optionContent}>
-          <View style={styles.textContainer}>
-            <Text style={styles.optionTitle}>{title}</Text>
-            <Text style={styles.optionSubtitle}>{subtitle}</Text>
-          </View>
-          <View style={[styles.radioCircle, isSelected && styles.radioCircleSelected]}>
-            {isSelected && <View style={styles.radioCircleInner} />}
-          </View>
-        </View>
+        <Text style={[
+          styles.pickerItemText,
+          isSelected && styles.pickerItemTextSelected,
+          !isSelected && styles.pickerItemTextUnselected
+        ]}>
+          {option.label}
+        </Text>
       </TouchableOpacity>
     );
   };
 
   return (
     <View style={styles.container}>
+      {/* Background Gradient */}
+      <View style={styles.backgroundGradient} />
+
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.topBar}>
@@ -64,11 +98,11 @@ export default function Step6Screen() {
         </View>
         <View style={styles.progressContainer}>
           <View style={styles.progressLabels}>
-            <Text style={styles.progressText}>Étape 4</Text>
-            <Text style={styles.progressPercent}>4/10</Text>
+            <Text style={styles.progressText}>Étape 6 sur 9</Text>
+            <Text style={styles.progressPercent}>67%</Text>
           </View>
           <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: '40%' }]} />
+            <View style={[styles.progressFill, { width: '67%' }]} />
           </View>
         </View>
       </View>
@@ -80,23 +114,31 @@ export default function Step6Screen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.mainContent}>
-          {/* Headline */}
+          {/* Question */}
           <View style={styles.headlineContainer}>
             <Text style={styles.headline}>
-              Nombre actuel de sorties par semaine
+              Depuis combien de temps{'\n'}
+              <Text style={styles.headlineHighlight}>cours-tu de manière régulière</Text> ?
             </Text>
             <Text style={styles.subheadline}>
-              Cela nous aide à calibrer votre plan d'entraînement initial.
+              Cela nous aide à adapter la progression de votre programme.
             </Text>
           </View>
 
-          {/* Options */}
-          <View style={styles.optionsContainer}>
-            {renderOption('little', 'Un peu', '1 ou 2 fois')}
-            {renderOption('much', 'Beaucoup', '3 ou 4 fois')}
-            {renderOption('passionate', 'Passionnément', '5 ou 6 fois')}
-            {renderOption('crazy', 'A la folie', '7 fois ou plus')}
-            {renderOption('none', 'Pas du tout', '0 fois (Débutant)')}
+          {/* Wheel Picker */}
+          <View style={styles.wheelPickerContainer}>
+            <View style={styles.selectionHighlight} />
+            <ScrollView
+              ref={pickerScroll}
+              showsVerticalScrollIndicator={false}
+              snapToInterval={ITEM_HEIGHT}
+              decelerationRate="fast"
+              contentContainerStyle={{ paddingVertical: ITEM_HEIGHT * 2 }}
+            >
+              {experienceOptions.map((option, index) => renderPickerItem(option, index))}
+            </ScrollView>
+            <View style={styles.pickerFadeTop} pointerEvents="none" />
+            <View style={styles.pickerFadeBottom} pointerEvents="none" />
           </View>
         </View>
       </ScrollView>
@@ -106,10 +148,10 @@ export default function Step6Screen() {
         <TouchableOpacity
           style={styles.continueButton}
           onPress={handleContinue}
-          disabled={!selectedFrequency}
           activeOpacity={0.8}
         >
           <Text style={styles.continueButtonText}>Continuer</Text>
+          <MaterialCommunityIcons name="arrow-right" size={20} color="#ffffff" />
         </TouchableOpacity>
       </View>
     </View>
@@ -119,12 +161,21 @@ export default function Step6Screen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f6f7f8',
+    backgroundColor: '#111921',
+  },
+  backgroundGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 500,
+    backgroundColor: 'rgba(50, 140, 231, 0.08)',
   },
   header: {
-    paddingTop: 16,
-    paddingBottom: 24,
-    paddingHorizontal: 16,
+    paddingTop: 60,
+    paddingBottom: 16,
+    paddingHorizontal: 24,
+    zIndex: 10,
   },
   topBar: {
     flexDirection: 'row',
@@ -138,14 +189,14 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#111921',
+    backgroundColor: '#1a2632',
   },
   logo: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: '700',
-    letterSpacing: 2,
-    color: '#111921',
-    textTransform: 'uppercase',
+    letterSpacing: 2.4,
+    color: '#93adc8',
+    textAlign: 'center',
   },
   progressContainer: {
     gap: 8,
@@ -156,21 +207,18 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   progressText: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '500',
-    color: '#64748b',
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
+    color: '#ffffff',
   },
   progressPercent: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#111921',
+    color: '#93adc8',
   },
   progressBar: {
     height: 6,
     width: '100%',
-    backgroundColor: '#1d2936',
+    backgroundColor: '#344d65',
     borderRadius: 9999,
     overflow: 'hidden',
   },
@@ -187,74 +235,87 @@ const styles = StyleSheet.create({
   },
   mainContent: {
     paddingHorizontal: 24,
+    paddingTop: 8,
   },
   headlineContainer: {
-    marginBottom: 32,
+    paddingVertical: 24,
+    marginBottom: 16,
   },
   headline: {
     fontSize: 30,
-    fontWeight: '800',
+    fontWeight: '700',
     lineHeight: 40,
-    letterSpacing: -0.5,
-    color: '#111921',
+    color: '#ffffff',
     marginBottom: 8,
+  },
+  headlineHighlight: {
+    color: '#328ce7',
   },
   subheadline: {
     fontSize: 14,
     lineHeight: 22,
-    color: '#64748b',
-    fontWeight: '300',
+    color: '#93adc8',
   },
-  optionsContainer: {
-    gap: 12,
-  },
-  optionCard: {
-    borderRadius: 12,
+  wheelPickerContainer: {
+    height: 256,
+    width: '100%',
+    backgroundColor: 'rgba(26, 38, 50, 0.4)',
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#1d2936',
-    backgroundColor: 'rgba(29, 41, 54, 0.3)',
-    padding: 20,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+    position: 'relative',
+    overflow: 'hidden',
+    marginBottom: 32,
   },
-  optionCardSelected: {
-    borderColor: '#328ce7',
-    backgroundColor: 'rgba(50, 140, 231, 0.08)',
+  selectionHighlight: {
+    position: 'absolute',
+    top: '50%',
+    left: 0,
+    right: 0,
+    height: ITEM_HEIGHT,
+    transform: [{ translateY: -ITEM_HEIGHT / 2 }],
+    backgroundColor: 'rgba(50, 140, 231, 0.1)',
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: 'rgba(50, 140, 231, 0.2)',
+    zIndex: 0,
   },
-  optionContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 16,
-  },
-  textContainer: {
-    flex: 1,
-  },
-  optionTitle: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#111921',
-  },
-  optionSubtitle: {
-    fontSize: 14,
-    color: '#64748b',
-    marginTop: 2,
-  },
-  radioCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#64748b',
+  pickerItem: {
+    height: ITEM_HEIGHT,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  radioCircleSelected: {
-    borderColor: '#328ce7',
+  pickerItemText: {
+    fontSize: 18,
+    fontWeight: '500',
   },
-  radioCircleInner: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#328ce7',
+  pickerItemTextSelected: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#328ce7',
+  },
+  pickerItemTextUnselected: {
+    color: 'rgba(255, 255, 255, 0.3)',
+  },
+  pickerFadeTop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 96,
+    backgroundColor: 'transparent',
+    zIndex: 20,
+    pointerEvents: 'none',
+  },
+  pickerFadeBottom: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 96,
+    backgroundColor: 'transparent',
+    zIndex: 20,
+    pointerEvents: 'none',
   },
   footer: {
     position: 'absolute',
@@ -263,28 +324,26 @@ const styles = StyleSheet.create({
     right: 0,
     padding: 24,
     paddingBottom: 40,
-    backgroundColor: 'transparent',
   },
   continueButton: {
     width: '100%',
     backgroundColor: '#328ce7',
-    paddingVertical: 14,
+    paddingVertical: 16,
     paddingHorizontal: 24,
     borderRadius: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 56,
-    shadowColor: 'rgba(50, 140, 231, 0.2)',
+    gap: 8,
+    shadowColor: '#328ce7',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 1,
+    shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 8,
   },
   continueButtonText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     color: '#ffffff',
-    letterSpacing: 0.5,
   },
 });
