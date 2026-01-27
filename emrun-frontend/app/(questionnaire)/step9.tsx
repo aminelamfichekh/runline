@@ -1,82 +1,27 @@
 /**
- * Step 9: Lieux d'Entraînement (Training Locations)
- * Converted from HTML design with checkboxes
+ * Step 9: Blessures et Contraintes
+ * Optional text areas for injuries and constraints
  */
 
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuestionnaireForm } from '@/hooks/useQuestionnaireForm';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-
-type LocationValue = 'park' | 'road' | 'track' | 'trail' | 'treadmill';
-
-interface LocationOption {
-  value: LocationValue;
-  icon: string;
-  title: string;
-  subtitle: string;
-}
-
-const LOCATIONS: LocationOption[] = [
-  { value: 'park', icon: 'pine-tree', title: 'Parc', subtitle: 'Sentiers aménagés' },
-  { value: 'road', icon: 'road-variant', title: 'Route', subtitle: 'Bitume, ville' },
-  { value: 'track', icon: 'run', title: "Piste d'athlétisme", subtitle: 'Surface synthétique' },
-  { value: 'trail', icon: 'terrain', title: 'Trail / Nature', subtitle: 'Chemins escarpés, forêt' },
-  { value: 'treadmill', icon: 'dumbbell', title: 'Tapis de course', subtitle: 'En salle ou chez soi' },
-];
 
 export default function Step9Screen() {
   const router = useRouter();
   const { form } = useQuestionnaireForm();
   const { setValue, watch } = form;
 
-  const [selectedLocations, setSelectedLocations] = useState<LocationValue[]>(
-    watch('training_locations') || []
-  );
-
-  const toggleLocation = (location: LocationValue) => {
-    setSelectedLocations(prev => {
-      if (prev.includes(location)) {
-        return prev.filter(l => l !== location);
-      } else {
-        return [...prev, location];
-      }
-    });
-  };
+  const [injuries, setInjuries] = useState('');
+  const [constraints, setConstraints] = useState('');
 
   const handleContinue = () => {
-    setValue('training_locations', selectedLocations);
+    // TODO: Add form schema fields for injuries_text and personal_constraints
+    // setValue('injuries_text', injuries);
+    // setValue('personal_constraints', constraints);
     router.push('/(questionnaire)/preview');
-  };
-
-  const renderLocationCard = (location: LocationOption) => {
-    const isSelected = selectedLocations.includes(location.value);
-
-    return (
-      <TouchableOpacity
-        key={location.value}
-        onPress={() => toggleLocation(location.value)}
-        activeOpacity={0.7}
-        style={[
-          styles.locationCard,
-          isSelected && styles.locationCardSelected
-        ]}
-      >
-        <View style={styles.iconContainer}>
-          <MaterialCommunityIcons name={location.icon as any} size={24} color="#328ce7" />
-        </View>
-        <View style={styles.textContainer}>
-          <Text style={styles.locationTitle}>{location.title}</Text>
-          <Text style={styles.locationSubtitle}>{location.subtitle}</Text>
-        </View>
-        <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
-          {isSelected && (
-            <MaterialCommunityIcons name="check" size={16} color="#ffffff" />
-          )}
-        </View>
-      </TouchableOpacity>
-    );
   };
 
   return (
@@ -86,14 +31,20 @@ export default function Step9Screen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.logo}>RUNLINE</Text>
+        <View style={styles.topBar}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <MaterialCommunityIcons name="arrow-left" size={24} color="#ffffff" />
+          </TouchableOpacity>
+          <Text style={styles.logo}>RUNLINE</Text>
+          <View style={{ width: 40 }} />
+        </View>
         <View style={styles.progressContainer}>
           <View style={styles.progressLabels}>
-            <Text style={styles.progressText}>Étape 2 sur 4</Text>
-            <Text style={styles.progressPercent}>50%</Text>
+            <Text style={styles.progressText}>Étape 9 sur 9</Text>
+            <Text style={styles.progressPercent}>100%</Text>
           </View>
           <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: '50%' }]} />
+            <View style={[styles.progressFill, { width: '100%' }]} />
           </View>
         </View>
       </View>
@@ -108,16 +59,51 @@ export default function Step9Screen() {
           {/* Headline */}
           <View style={styles.headlineContainer}>
             <Text style={styles.headline}>
-              Vos <Text style={styles.headlineHighlight}>lieux de pratique</Text>
+              Informations{'\n'}
+              <Text style={styles.headlineHighlight}>complémentaires</Text>
             </Text>
             <Text style={styles.subheadline}>
-              Sélectionnez tous les terrains sur lesquels vous avez l'habitude de courir.
+              Ces informations facultatives nous aident à personnaliser davantage votre programme.
             </Text>
           </View>
 
-          {/* Location Options */}
-          <View style={styles.locationsContainer}>
-            {LOCATIONS.map(renderLocationCard)}
+          {/* Injuries Section */}
+          <View style={styles.inputSection}>
+            <Text style={styles.inputLabel}>
+              Blessure(s) passée(s) ou limitation(s) physique(s){' '}
+              <Text style={styles.inputOptional}>(Optionnel)</Text>
+            </Text>
+            <TextInput
+              style={styles.textInput}
+              placeholder="Ex: Tendinite d'Achille, douleur au genou..."
+              placeholderTextColor="#5a7690"
+              value={injuries}
+              onChangeText={setInjuries}
+              multiline
+              numberOfLines={4}
+              textAlignVertical="top"
+            />
+          </View>
+
+          {/* Constraints Section */}
+          <View style={styles.inputSection}>
+            <Text style={styles.inputLabel}>
+              Contraintes personnelles / professionnelles{' '}
+              <Text style={styles.inputOptional}>(Optionnel)</Text>
+            </Text>
+            <Text style={styles.inputSubtitle}>
+              Ex : travail de nuit, garde d'enfants…
+            </Text>
+            <TextInput
+              style={styles.textInput}
+              placeholder="Partagez vos contraintes pour un plan adapté..."
+              placeholderTextColor="#5a7690"
+              value={constraints}
+              onChangeText={setConstraints}
+              multiline
+              numberOfLines={4}
+              textAlignVertical="top"
+            />
           </View>
         </View>
       </ScrollView>
@@ -129,8 +115,8 @@ export default function Step9Screen() {
           onPress={handleContinue}
           activeOpacity={0.8}
         >
-          <Text style={styles.continueButtonText}>Continuer</Text>
-          <MaterialCommunityIcons name="arrow-right" size={20} color="#ffffff" />
+          <Text style={styles.continueButtonText}>Terminer</Text>
+          <MaterialCommunityIcons name="check" size={20} color="#ffffff" />
         </TouchableOpacity>
       </View>
     </View>
@@ -156,13 +142,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     zIndex: 10,
   },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#1a2632',
+  },
   logo: {
     fontSize: 14,
     fontWeight: '700',
     letterSpacing: 2.4,
     color: '#93adc8',
     textAlign: 'center',
-    marginBottom: 24,
   },
   progressContainer: {
     gap: 8,
@@ -205,6 +204,7 @@ const styles = StyleSheet.create({
   },
   headlineContainer: {
     paddingVertical: 24,
+    marginBottom: 16,
   },
   headline: {
     fontSize: 30,
@@ -221,60 +221,36 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: '#93adc8',
   },
-  locationsContainer: {
-    gap: 12,
+  inputSection: {
+    marginBottom: 24,
+    gap: 8,
   },
-  locationCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
+  inputLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  inputOptional: {
+    fontSize: 14,
+    fontWeight: '400',
+    color: '#93adc8',
+  },
+  inputSubtitle: {
+    fontSize: 14,
+    color: '#93adc8',
+    marginTop: -4,
+  },
+  textInput: {
+    width: '100%',
+    backgroundColor: '#1a2632',
+    color: '#ffffff',
+    fontSize: 14,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#344d65',
-    backgroundColor: '#1a2632',
-  },
-  locationCardSelected: {
-    borderColor: '#328ce7',
-    backgroundColor: 'rgba(50, 140, 231, 0.05)',
-  },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    backgroundColor: '#243442',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  textContainer: {
-    flex: 1,
-  },
-  locationTitle: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#ffffff',
-  },
-  locationSubtitle: {
-    fontSize: 12,
-    color: '#93adc8',
-    marginTop: 2,
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
-    borderWidth: 2,
-    borderColor: '#5a7690',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  checkboxSelected: {
-    borderColor: '#328ce7',
-    backgroundColor: '#328ce7',
-    shadowColor: '#328ce7',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    minHeight: 120,
   },
   footer: {
     position: 'absolute',
