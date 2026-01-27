@@ -1,6 +1,7 @@
 /**
- * Step 2: Informations personnelles
- * Converted from HTML design with form inputs
+ * Step 3b: Préparer une course - Objectives + records (CONDITIONAL)
+ * Shows only if user selects "Me préparer à une/des course(s)"
+ * Comes after step3 (Poids/Taille)
  */
 
 import React, { useState } from 'react';
@@ -8,51 +9,20 @@ import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet } from 
 import { useRouter } from 'expo-router';
 import { useQuestionnaireForm } from '@/hooks/useQuestionnaireForm';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Picker } from '@react-native-picker/picker';
 
-export default function Step2Screen() {
+export default function Step3bScreen() {
   const router = useRouter();
   const { form } = useQuestionnaireForm();
   const { setValue, watch } = form;
 
-  const [name, setName] = useState(watch('name') || '');
-  const [email, setEmail] = useState(watch('email') || '');
-  const [sex, setSex] = useState(watch('sex') || '');
-  const [age, setAge] = useState(watch('age')?.toString() || '');
+  const [objectives, setObjectives] = useState(watch('objectives') || '');
+  const [records, setRecords] = useState(watch('records') || '');
 
   const handleContinue = () => {
-    setValue('name', name);
-    setValue('email', email);
-    setValue('sex', sex);
-    setValue('age', parseInt(age) || 0);
-    router.push('/(questionnaire)/step3');
+    setValue('objectives', objectives);
+    setValue('records', records);
+    router.push('/(questionnaire)/step4');
   };
-
-  const renderInputCard = (
-    icon: string,
-    label: string,
-    placeholder: string,
-    value: string,
-    onChangeText: (text: string) => void,
-    keyboardType: any = 'default'
-  ) => (
-    <View style={styles.inputCard}>
-      <View style={styles.iconContainer}>
-        <MaterialCommunityIcons name={icon as any} size={24} color="#93adc8" />
-      </View>
-      <View style={styles.inputContent}>
-        <Text style={styles.inputLabel}>{label}</Text>
-        <TextInput
-          style={styles.textInput}
-          placeholder={placeholder}
-          placeholderTextColor="#64748b"
-          value={value}
-          onChangeText={onChangeText}
-          keyboardType={keyboardType}
-        />
-      </View>
-    </View>
-  );
 
   return (
     <View style={styles.container}>
@@ -61,14 +31,20 @@ export default function Step2Screen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.logo}>RUNLINE</Text>
+        <View style={styles.topBar}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <MaterialCommunityIcons name="arrow-left" size={24} color="#ffffff" />
+          </TouchableOpacity>
+          <Text style={styles.logo}>RUNLINE</Text>
+          <View style={{ width: 40 }} />
+        </View>
         <View style={styles.progressContainer}>
           <View style={styles.progressLabels}>
-            <Text style={styles.progressText}>Étape 2 sur 9</Text>
-            <Text style={styles.progressPercent}>22%</Text>
+            <Text style={styles.progressText}>Préparation</Text>
+            <Text style={styles.progressPercent}>Info supplémentaire</Text>
           </View>
           <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: '22%' }]} />
+            <View style={[styles.progressFill, { width: '15%' }]} />
           </View>
         </View>
       </View>
@@ -83,43 +59,49 @@ export default function Step2Screen() {
           {/* Headline */}
           <View style={styles.headlineContainer}>
             <Text style={styles.headline}>
-              Vos {'\n'}
-              <Text style={styles.headlineHighlight}>informations personnelles</Text>
+              Vos <Text style={styles.headlineHighlight}>objectifs de course</Text>
             </Text>
             <Text style={styles.subheadline}>
-              Ces détails nous aident à personnaliser votre plan d'entraînement et calculer vos zones d'effort.
+              Partagez-nous vos objectifs pour créer un plan adapté.
             </Text>
           </View>
 
-          {/* Form */}
-          <View style={styles.formContainer}>
-            {renderInputCard('email', 'Email', 'nom@exemple.com', email, setEmail, 'email-address')}
-            {renderInputCard('account', 'Nom & Prénom', 'Ex: Thomas Dupont', name, setName)}
+          {/* Objectives Input */}
+          <View style={styles.inputSection}>
+            <Text style={styles.inputLabel}>
+              Objectif(s) intermédiaire(s) <Text style={styles.inputOptional}>(Optionnel)</Text>
+            </Text>
+            <Text style={styles.inputSubtitle}>
+              Distance(s) et date(s) à préciser
+            </Text>
+            <TextInput
+              style={styles.textInput}
+              placeholder="Ex: 10km en mars, Semi-marathon en mai..."
+              placeholderTextColor="#5a7690"
+              value={objectives}
+              onChangeText={setObjectives}
+              multiline
+              numberOfLines={4}
+            />
+          </View>
 
-            {/* Sex Picker */}
-            <View style={styles.inputCard}>
-              <View style={styles.iconContainer}>
-                <MaterialCommunityIcons name="gender-male-female" size={24} color="#93adc8" />
-              </View>
-              <View style={styles.inputContent}>
-                <Text style={styles.inputLabel}>Sexe</Text>
-                <View style={styles.pickerContainer}>
-                  <Picker
-                    selectedValue={sex}
-                    onValueChange={(value) => setSex(value)}
-                    style={styles.picker}
-                    dropdownIconColor="#93adc8"
-                  >
-                    <Picker.Item label="Sélectionner" value="" color="#64748b" />
-                    <Picker.Item label="Homme" value="homme" color="#ffffff" />
-                    <Picker.Item label="Femme" value="femme" color="#ffffff" />
-                    <Picker.Item label="Autre" value="autre" color="#ffffff" />
-                  </Picker>
-                </View>
-              </View>
-            </View>
-
-            {renderInputCard('cake', 'Âge', 'Ex: 28', age, setAge, 'numeric')}
+          {/* Records Input */}
+          <View style={styles.inputSection}>
+            <Text style={styles.inputLabel}>
+              Record(s) personnel(s) <Text style={styles.inputOptional}>(Optionnel)</Text>
+            </Text>
+            <Text style={styles.inputSubtitle}>
+              Préciser la distance
+            </Text>
+            <TextInput
+              style={styles.textInput}
+              placeholder="Ex: 5km en 25min, 10km en 55min, Semi en 2h..."
+              placeholderTextColor="#5a7690"
+              value={records}
+              onChangeText={setRecords}
+              multiline
+              numberOfLines={3}
+            />
           </View>
         </View>
       </ScrollView>
@@ -158,13 +140,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     zIndex: 10,
   },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#1a2632',
+  },
   logo: {
     fontSize: 14,
     fontWeight: '700',
     letterSpacing: 2.4,
     color: '#93adc8',
     textAlign: 'center',
-    marginBottom: 24,
   },
   progressContainer: {
     gap: 8,
@@ -207,6 +202,7 @@ const styles = StyleSheet.create({
   },
   headlineContainer: {
     paddingVertical: 24,
+    marginBottom: 16,
   },
   headline: {
     fontSize: 30,
@@ -223,48 +219,37 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: '#93adc8',
   },
-  formContainer: {
-    gap: 16,
+  inputSection: {
+    marginBottom: 24,
+    gap: 8,
   },
-  inputCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
+  inputLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  inputOptional: {
+    fontSize: 14,
+    fontWeight: '400',
+    color: '#93adc8',
+  },
+  inputSubtitle: {
+    fontSize: 14,
+    color: '#93adc8',
+    marginTop: -4,
+  },
+  textInput: {
+    width: '100%',
+    backgroundColor: '#1a2632',
+    color: '#ffffff',
+    fontSize: 14,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#344d65',
-    backgroundColor: '#1a2632',
-  },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    backgroundColor: '#243442',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  inputContent: {
-    flex: 1,
-  },
-  inputLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#93adc8',
-    marginBottom: 4,
-  },
-  textInput: {
-    fontSize: 15,
-    color: '#ffffff',
-    padding: 0,
-    margin: 0,
-  },
-  pickerContainer: {
-    marginTop: -8,
-  },
-  picker: {
-    color: '#ffffff',
-    backgroundColor: 'transparent',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    minHeight: 100,
+    textAlignVertical: 'top',
   },
   footer: {
     position: 'absolute',

@@ -30,14 +30,9 @@ export default function Step1Screen() {
       setValue('goal_other', otherText);
     }
 
-    // Conditional navigation based on goal
-    if (selectedGoal === 'restart') {
-      router.push('/(questionnaire)/step2a'); // Pause + records
-    } else if (selectedGoal === 'race') {
-      router.push('/(questionnaire)/step2b'); // Objectives + records
-    } else {
-      router.push('/(questionnaire)/step2'); // Normal flow
-    }
+    // Everyone goes to step2 first (Email, Name, Sex, Age)
+    // Conditional routing happens after step3 (Poids, Taille)
+    router.push('/(questionnaire)/step2');
   };
 
   const renderOption = (
