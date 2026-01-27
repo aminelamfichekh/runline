@@ -1,188 +1,135 @@
 /**
  * Step 2: Informations personnelles
- * With wheel pickers for age, weight, height, volume
+ * Converted from HTML design with form inputs
  */
 
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useTranslation } from 'react-i18next';
-import { WheelPicker } from '@quidone/react-native-wheel-picker';
 import { useQuestionnaireForm } from '@/hooks/useQuestionnaireForm';
-import { TextInputField } from '@/components/forms/TextInputField';
-import { Button } from '@/components/ui/Button';
-import { colors } from '@/constants/colors';
-
-// Generate arrays for wheel pickers
-const ages = Array.from({ length: 83 }, (_, i) => ({ value: i + 18, label: `${i + 18} ans` }));
-const weights = Array.from({ length: 151 }, (_, i) => ({ value: i + 30, label: `${i + 30} kg` }));
-const heights = Array.from({ length: 121 }, (_, i) => ({ value: i + 130, label: `${i + 130} cm` }));
-const volumes = Array.from({ length: 21 }, (_, i) => ({ value: i * 5, label: `${i * 5} km/sem` }));
-
-type PickerType = 'age' | 'weight' | 'height' | 'volume' | null;
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Picker } from '@react-native-picker/picker';
 
 export default function Step2Screen() {
   const router = useRouter();
-  const { t } = useTranslation();
   const { form } = useQuestionnaireForm();
   const { setValue, watch } = form;
 
-  const [activePicker, setActivePicker] = useState<PickerType>(null);
-  const [tempValue, setTempValue] = useState<number | null>(null);
-
-  const age = watch('age') || 25;
-  const weight = watch('weight') || 70;
-  const height = watch('height') || 170;
-  const volume = watch('volume') || 20;
-  const sexe = watch('sexe');
-
-  const openPicker = (type: PickerType) => {
-    if (type === 'age') setTempValue(age);
-    else if (type === 'weight') setTempValue(weight);
-    else if (type === 'height') setTempValue(height);
-    else if (type === 'volume') setTempValue(volume);
-    setActivePicker(type);
-  };
-
-  const confirmPicker = () => {
-    if (tempValue !== null && activePicker) {
-      setValue(activePicker, tempValue);
-    }
-    setActivePicker(null);
-  };
+  const [name, setName] = useState(watch('name') || '');
+  const [email, setEmail] = useState(watch('email') || '');
+  const [sex, setSex] = useState(watch('sex') || '');
+  const [age, setAge] = useState(watch('age')?.toString() || '');
 
   const handleContinue = () => {
+    setValue('name', name);
+    setValue('email', email);
+    setValue('sex', sex);
+    setValue('age', parseInt(age) || 0);
     router.push('/(questionnaire)/step3');
   };
 
-  const handleBack = () => {
-    router.back();
-  };
-
-  const getPickerData = () => {
-    if (activePicker === 'age') return ages;
-    if (activePicker === 'weight') return weights;
-    if (activePicker === 'height') return heights;
-    if (activePicker === 'volume') return volumes;
-    return [];
-  };
-
-  const getCurrentIndex = () => {
-    if (activePicker === 'age') return ages.findIndex(a => a.value === (tempValue || age));
-    if (activePicker === 'weight') return weights.findIndex(w => w.value === (tempValue || weight));
-    if (activePicker === 'height') return heights.findIndex(h => h.value === (tempValue || height));
-    if (activePicker === 'volume') return volumes.findIndex(v => v.value === (tempValue || volume));
-    return 0;
-  };
+  const renderInputCard = (
+    icon: string,
+    label: string,
+    placeholder: string,
+    value: string,
+    onChangeText: (text: string) => void,
+    keyboardType: any = 'default'
+  ) => (
+    <View style={styles.inputCard}>
+      <View style={styles.iconContainer}>
+        <MaterialCommunityIcons name={icon as any} size={24} color="#93adc8" />
+      </View>
+      <View style={styles.inputContent}>
+        <Text style={styles.inputLabel}>{label}</Text>
+        <TextInput
+          style={styles.textInput}
+          placeholder={placeholder}
+          placeholderTextColor="#64748b"
+          value={value}
+          onChangeText={onChangeText}
+          keyboardType={keyboardType}
+        />
+      </View>
+    </View>
+  );
 
   return (
     <View style={styles.container}>
+      {/* Background Gradient */}
+      <View style={styles.backgroundGradient} />
+
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <Text style={styles.backButtonText}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.stepIndicator}>2/10</Text>
-        <TouchableOpacity onPress={() => router.push('/')} style={styles.closeButton}>
-          <Text style={styles.closeButtonText}>×</Text>
-        </TouchableOpacity>
+        <Text style={styles.logo}>RUNLINE</Text>
+        <View style={styles.progressContainer}>
+          <View style={styles.progressBar}>
+            <View style={[styles.progressFill, { width: '50%' }]} />
+          </View>
+        </View>
       </View>
 
+      {/* Main Content */}
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.content}>
-          <Text style={styles.stepNumber}>2</Text>
-          <Text style={styles.title}>{t('onboarding.step2.title')}</Text>
-          <Text style={styles.required}>({t('onboarding.step2.required')})</Text>
-
-          {/* Nom Prénom */}
-          <TextInputField
-            label={t('onboarding.step2.nomPrenomLabel')}
-            value={watch('nom_prenom')}
-            onChangeText={(text) => setValue('nom_prenom', text)}
-            placeholder={t('onboarding.step2.nomPrenomPlaceholder')}
-          />
-
-          {/* Age - Wheel Picker */}
-          <Text style={styles.label}>{t('onboarding.step2.ageLabel')}</Text>
-          <TouchableOpacity style={styles.pickerButton} onPress={() => openPicker('age')}>
-            <Text style={styles.pickerButtonText}>{age} ans</Text>
-            <Text style={styles.pickerButtonIcon}>▼</Text>
-          </TouchableOpacity>
-
-          {/* Sexe */}
-          <Text style={styles.label}>{t('onboarding.step2.sexeLabel')}</Text>
-          <View style={styles.optionsRow}>
-            <TouchableOpacity
-              style={[styles.optionButton, sexe === 'homme' && styles.optionButtonSelected]}
-              onPress={() => setValue('sexe', 'homme')}
-            >
-              <Text style={[styles.optionText, sexe === 'homme' && styles.optionTextSelected]}>
-                {t('onboarding.step2.sexeHomme')}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.optionButton, sexe === 'femme' && styles.optionButtonSelected]}
-              onPress={() => setValue('sexe', 'femme')}
-            >
-              <Text style={[styles.optionText, sexe === 'femme' && styles.optionTextSelected]}>
-                {t('onboarding.step2.sexeFemme')}
-              </Text>
-            </TouchableOpacity>
+        <View style={styles.mainContent}>
+          {/* Headline */}
+          <View style={styles.headlineContainer}>
+            <Text style={styles.headline}>
+              Vos {'\n'}
+              <Text style={styles.headlineHighlight}>informations personnelles</Text>
+            </Text>
+            <Text style={styles.subheadline}>
+              Ces détails nous aident à personnaliser votre plan d'entraînement et calculer vos zones d'effort.
+            </Text>
           </View>
 
-          {/* Poids - Wheel Picker */}
-          <Text style={styles.label}>{t('onboarding.step2.poidsLabel')}</Text>
-          <TouchableOpacity style={styles.pickerButton} onPress={() => openPicker('weight')}>
-            <Text style={styles.pickerButtonText}>{weight} kg</Text>
-            <Text style={styles.pickerButtonIcon}>▼</Text>
-          </TouchableOpacity>
+          {/* Form */}
+          <View style={styles.formContainer}>
+            {renderInputCard('account', 'Nom & Prénom', 'Ex: Thomas Dupont', name, setName)}
+            {renderInputCard('email', 'Email', 'nom@exemple.com', email, setEmail, 'email-address')}
 
-          {/* Taille - Wheel Picker */}
-          <Text style={styles.label}>{t('onboarding.step2.tailleLabel')}</Text>
-          <TouchableOpacity style={styles.pickerButton} onPress={() => openPicker('height')}>
-            <Text style={styles.pickerButtonText}>{height} cm</Text>
-            <Text style={styles.pickerButtonIcon}>▼</Text>
-          </TouchableOpacity>
+            {/* Sex Picker */}
+            <View style={styles.inputCard}>
+              <View style={styles.iconContainer}>
+                <MaterialCommunityIcons name="gender-male-female" size={24} color="#93adc8" />
+              </View>
+              <View style={styles.inputContent}>
+                <Text style={styles.inputLabel}>Sexe</Text>
+                <View style={styles.pickerContainer}>
+                  <Picker
+                    selectedValue={sex}
+                    onValueChange={(value) => setSex(value)}
+                    style={styles.picker}
+                    dropdownIconColor="#93adc8"
+                  >
+                    <Picker.Item label="Sélectionner" value="" color="#64748b" />
+                    <Picker.Item label="Homme" value="homme" color="#ffffff" />
+                    <Picker.Item label="Femme" value="femme" color="#ffffff" />
+                    <Picker.Item label="Autre" value="autre" color="#ffffff" />
+                  </Picker>
+                </View>
+              </View>
+            </View>
 
-          {/* Volume - Wheel Picker */}
-          <Text style={styles.label}>{t('onboarding.step2.volumeLabel')}</Text>
-          <TouchableOpacity style={styles.pickerButton} onPress={() => openPicker('volume')}>
-            <Text style={styles.pickerButtonText}>{volume} km/semaine</Text>
-            <Text style={styles.pickerButtonIcon}>▼</Text>
-          </TouchableOpacity>
+            {renderInputCard('cake', 'Âge', 'Ex: 28', age, setAge, 'numeric')}
+          </View>
         </View>
       </ScrollView>
 
-      {/* Wheel Picker Modal */}
-      <Modal visible={activePicker !== null} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={() => setActivePicker(null)}>
-                <Text style={styles.modalCancel}>Annuler</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={confirmPicker}>
-                <Text style={styles.modalConfirm}>Confirmer</Text>
-              </TouchableOpacity>
-            </View>
-            <WheelPicker
-              data={getPickerData()}
-              value={tempValue}
-              onValueChanged={({ item }) => setTempValue(item.value)}
-              itemHeight={50}
-              selectedIndicatorStyle={styles.selectedIndicator}
-              itemTextStyle={styles.wheelItemText}
-            />
-          </View>
-        </View>
-      </Modal>
-
+      {/* Footer Button */}
       <View style={styles.footer}>
-        <Button title={t('onboarding.continue')} onPress={handleContinue} />
+        <TouchableOpacity
+          style={styles.continueButton}
+          onPress={handleContinue}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.continueButtonText}>Continuer</Text>
+          <MaterialCommunityIcons name="arrow-right" size={20} color="#ffffff" />
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -191,169 +138,143 @@ export default function Step2Screen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.primary.dark,
+    backgroundColor: '#111921',
+  },
+  backgroundGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 500,
+    backgroundColor: 'rgba(50, 140, 231, 0.08)',
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
     paddingTop: 60,
     paddingBottom: 16,
+    paddingHorizontal: 24,
+    zIndex: 10,
   },
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 20,
-    backgroundColor: colors.primary.medium,
+  logo: {
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 2.4,
+    color: '#93adc8',
+    textAlign: 'center',
+    marginBottom: 24,
   },
-  backButtonText: {
-    color: colors.text.primary,
-    fontSize: 24,
-    fontWeight: '300',
+  progressContainer: {
+    gap: 8,
   },
-  stepIndicator: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.text.secondary,
+  progressBar: {
+    height: 6,
+    width: '100%',
+    backgroundColor: '#344d65',
+    borderRadius: 9999,
+    overflow: 'hidden',
   },
-  closeButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  closeButtonText: {
-    color: colors.text.secondary,
-    fontSize: 28,
-    fontWeight: '300',
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#328ce7',
+    borderRadius: 9999,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 24,
+    paddingBottom: 120,
   },
-  content: {
+  mainContent: {
     paddingHorizontal: 24,
     paddingTop: 8,
   },
-  stepNumber: {
-    fontSize: 48,
-    fontWeight: '800',
-    color: colors.accent.blue,
+  headlineContainer: {
+    paddingVertical: 24,
+  },
+  headline: {
+    fontSize: 30,
+    fontWeight: '700',
+    lineHeight: 40,
+    color: '#ffffff',
     marginBottom: 8,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: colors.text.primary,
+  headlineHighlight: {
+    color: '#328ce7',
+  },
+  subheadline: {
+    fontSize: 14,
+    lineHeight: 22,
+    color: '#93adc8',
+  },
+  formContainer: {
+    gap: 16,
+  },
+  inputCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#344d65',
+    backgroundColor: '#1a2632',
+  },
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: '#243442',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  inputContent: {
+    flex: 1,
+  },
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#93adc8',
     marginBottom: 4,
   },
-  required: {
-    fontSize: 14,
-    color: colors.text.secondary,
-    marginBottom: 32,
+  textInput: {
+    fontSize: 15,
+    color: '#ffffff',
+    padding: 0,
+    margin: 0,
   },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text.primary,
-    marginTop: 20,
-    marginBottom: 8,
+  pickerContainer: {
+    marginTop: -8,
   },
-  pickerButton: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: colors.background.card,
-    borderWidth: 2,
-    borderColor: colors.border.medium,
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-  },
-  pickerButtonText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: colors.text.primary,
-  },
-  pickerButtonIcon: {
-    fontSize: 12,
-    color: colors.text.secondary,
-  },
-  optionsRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  optionButton: {
-    flex: 1,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    backgroundColor: colors.background.card,
-    borderWidth: 2,
-    borderColor: colors.border.medium,
-    alignItems: 'center',
-  },
-  optionButtonSelected: {
-    borderColor: colors.accent.blue,
-    backgroundColor: `${colors.accent.blue}15`,
-  },
-  optionText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: colors.text.primary,
-  },
-  optionTextSelected: {
-    color: colors.accent.blue,
-    fontWeight: '600',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: colors.primary.medium,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingBottom: 40,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.medium,
-  },
-  modalCancel: {
-    fontSize: 16,
-    color: colors.text.secondary,
-  },
-  modalConfirm: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.accent.blue,
-  },
-  selectedIndicator: {
-    backgroundColor: `${colors.accent.blue}20`,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: colors.accent.blue,
-  },
-  wheelItemText: {
-    fontSize: 18,
-    color: colors.text.primary,
+  picker: {
+    color: '#ffffff',
+    backgroundColor: 'transparent',
   },
   footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     padding: 24,
     paddingBottom: 40,
-    borderTopWidth: 1,
-    borderTopColor: colors.border.medium,
-    backgroundColor: colors.primary.dark,
+  },
+  continueButton: {
+    width: '100%',
+    backgroundColor: '#328ce7',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: '#328ce7',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  continueButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#ffffff',
   },
 });

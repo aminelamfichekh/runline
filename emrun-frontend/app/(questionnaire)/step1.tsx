@@ -1,184 +1,141 @@
 /**
  * Step 1: Objectif principal
- * Includes conditional fields for race preparation
+ * Converted from HTML design with NativeWind styling
  */
 
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useTranslation } from 'react-i18next';
 import { useQuestionnaireForm } from '@/hooks/useQuestionnaireForm';
-import { TextInputField } from '@/components/forms/TextInputField';
-import { DatePickerField } from '@/components/forms/DatePickerField';
-import { Button } from '@/components/ui/Button';
-import { colors } from '@/constants/colors';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
-const GOAL_OPTIONS = [
-  { value: 'commencer', label: 'Commencer la course à pied' },
-  { value: 'reprendre', label: 'Reprendre la course à pied' },
-  { value: 'preparer_course', label: 'Me préparer à une/des course(s)' },
-  { value: 'autre', label: 'Autre' },
-];
-
-const DISTANCE_OPTIONS = [
-  { value: '5km', label: '5 km' },
-  { value: '10km', label: '10 km' },
-  { value: 'semi', label: 'Semi-marathon' },
-  { value: 'marathon', label: 'Marathon' },
-  { value: 'autre', label: 'Autre' },
-];
+type GoalOption = 'start' | 'restart' | 'race' | 'other';
 
 export default function Step1Screen() {
   const router = useRouter();
-  const { t } = useTranslation();
   const { form } = useQuestionnaireForm();
   const { setValue, watch } = form;
 
-  const primary_goal = watch('primary_goal');
-  const showRaceFields = primary_goal === 'preparer_course';
-  const showOtherField = primary_goal === 'autre';
-  const showRecordsField = primary_goal === 'reprendre' || primary_goal === 'preparer_course';
+  const [selectedGoal, setSelectedGoal] = useState<GoalOption | null>(watch('goal') || null);
+  const [otherText, setOtherText] = useState(watch('goal_other') || '');
+
+  const handleGoalSelect = (goal: GoalOption) => {
+    setSelectedGoal(goal);
+    setValue('goal', goal);
+  };
 
   const handleContinue = () => {
+    if (selectedGoal === 'other') {
+      setValue('goal_other', otherText);
+    }
     router.push('/(questionnaire)/step2');
   };
 
-  const handleBack = () => {
-    router.push('/');
+  const renderOption = (
+    value: GoalOption,
+    icon: string,
+    title: string,
+    subtitle: string,
+    hasInput = false
+  ) => {
+    const isSelected = selectedGoal === value;
+
+    return (
+      <TouchableOpacity
+        key={value}
+        onPress={() => handleGoalSelect(value)}
+        activeOpacity={0.7}
+        style={[
+          styles.optionCard,
+          isSelected && styles.optionCardSelected
+        ]}
+      >
+        <View style={styles.optionContent}>
+          <View style={styles.iconContainer}>
+            <MaterialCommunityIcons name={icon as any} size={24} color="#328ce7" />
+          </View>
+          <View style={styles.textContainer}>
+            <Text style={styles.optionTitle}>{title}</Text>
+            <Text style={styles.optionSubtitle}>{subtitle}</Text>
+          </View>
+          <View style={[styles.radioCircle, isSelected && styles.radioCircleSelected]}>
+            {isSelected && <View style={styles.radioCircleInner} />}
+          </View>
+        </View>
+        {hasInput && isSelected && (
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.textInput}
+              placeholder="Précisez votre objectif..."
+              placeholderTextColor="#5a7690"
+              value={otherText}
+              onChangeText={setOtherText}
+            />
+          </View>
+        )}
+      </TouchableOpacity>
+    );
   };
 
   return (
     <View style={styles.container}>
+      {/* Background Gradient */}
+      <View style={styles.backgroundGradient} />
+
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <Text style={styles.backButtonText}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.stepIndicator}>1/10</Text>
-        <TouchableOpacity onPress={() => router.push('/')} style={styles.closeButton}>
-          <Text style={styles.closeButtonText}>×</Text>
-        </TouchableOpacity>
+        <Text style={styles.logo}>RUNLINE</Text>
+        <View style={styles.progressContainer}>
+          <View style={styles.progressLabels}>
+            <Text style={styles.progressText}>Étape 1 sur 4</Text>
+            <Text style={styles.progressPercent}>25%</Text>
+          </View>
+          <View style={styles.progressBar}>
+            <View style={[styles.progressFill, { width: '25%' }]} />
+          </View>
+        </View>
       </View>
 
+      {/* Main Content */}
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.content}>
-          <Text style={styles.stepNumber}>1</Text>
-          <Text style={styles.title}>{t('onboarding.step1.title')}</Text>
-          <Text style={styles.required}>({t('onboarding.step1.required')})</Text>
-
-          {/* Goal Selection */}
-          <View style={styles.optionsContainer}>
-            {GOAL_OPTIONS.map((option) => (
-              <TouchableOpacity
-                key={option.value}
-                style={[
-                  styles.optionButton,
-                  primary_goal === option.value && styles.optionButtonSelected,
-                ]}
-                onPress={() => setValue('primary_goal', option.value)}
-              >
-                <Text
-                  style={[
-                    styles.optionText,
-                    primary_goal === option.value && styles.optionTextSelected,
-                  ]}
-                >
-                  {option.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
+        <View style={styles.mainContent}>
+          {/* Headline */}
+          <View style={styles.headlineContainer}>
+            <Text style={styles.headline}>
+              Quel est votre {'\n'}
+              <Text style={styles.headlineHighlight}>objectif principal</Text> ?
+            </Text>
+            <Text style={styles.subheadline}>
+              Nous adapterons votre programme d'entraînement en fonction de votre choix.
+            </Text>
           </View>
 
-          {/* Conditional: Autre text field */}
-          {showOtherField && (
-            <TextInputField
-              label={t('onboarding.step1.autreLabel')}
-              value={watch('primary_goal_other')}
-              onChangeText={(text) => setValue('primary_goal_other', text)}
-              placeholder={t('onboarding.step1.autrePlaceholder')}
-              multiline
-            />
-          )}
-
-          {/* Conditional: Race distance */}
-          {showRaceFields && (
-            <>
-              <Text style={styles.sectionLabel}>{t('onboarding.step1.distanceLabel')}</Text>
-              <View style={styles.optionsContainer}>
-                {DISTANCE_OPTIONS.map((option) => (
-                  <TouchableOpacity
-                    key={option.value}
-                    style={[
-                      styles.optionButton,
-                      watch('race_distance') === option.value && styles.optionButtonSelected,
-                    ]}
-                    onPress={() => setValue('race_distance', option.value)}
-                  >
-                    <Text
-                      style={[
-                        styles.optionText,
-                        watch('race_distance') === option.value && styles.optionTextSelected,
-                      ]}
-                    >
-                      {option.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              {/* Race date */}
-              <DatePickerField
-                label={t('onboarding.step1.dateLabel')}
-                value={watch('race_date')}
-                onChange={(date) => setValue('race_date', date)}
-                placeholder={t('onboarding.step1.datePlaceholder')}
-              />
-
-              {/* Intermediate goals */}
-              <TextInputField
-                label={t('onboarding.step1.objectifsIntermediairesLabel')}
-                value={watch('objectifs_intermediaires')}
-                onChangeText={(text) => setValue('objectifs_intermediaires', text)}
-                placeholder={t('onboarding.step1.objectifsIntermediairesPlaceholder')}
-                multiline
-                optional
-              />
-            </>
-          )}
-
-          {/* Conditional: Personal records */}
-          {showRecordsField && (
-            <TextInputField
-              label={t('onboarding.step1.recordsLabel')}
-              value={watch('records')}
-              onChangeText={(text) => setValue('records', text)}
-              placeholder={t('onboarding.step1.recordsPlaceholder')}
-              multiline
-              optional
-            />
-          )}
-
-          {/* Email */}
-          <TextInputField
-            label={t('onboarding.step1.emailLabel')}
-            value={watch('email')}
-            onChangeText={(text) => setValue('email', text)}
-            placeholder={t('onboarding.step1.emailPlaceholder')}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
+          {/* Options */}
+          <View style={styles.optionsContainer}>
+            {renderOption('start', 'run-fast', 'Commencer la course', 'Pour les débutants')}
+            {renderOption('restart', 'reload', 'Reprendre la course', 'Après une pause')}
+            {renderOption('race', 'trophy', 'Préparer une course', '10k, Semi, Marathon...')}
+            {renderOption('other', 'note-edit', 'Autre', '', true)}
+          </View>
         </View>
       </ScrollView>
 
+      {/* Footer Button */}
       <View style={styles.footer}>
-        <Button
-          title={t('onboarding.continue')}
+        <TouchableOpacity
+          style={styles.continueButton}
           onPress={handleContinue}
-        />
+          disabled={!selectedGoal}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.continueButtonText}>Continuer</Text>
+          <MaterialCommunityIcons name="arrow-right" size={20} color="#ffffff" />
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -187,109 +144,188 @@ export default function Step1Screen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.primary.dark,
+    backgroundColor: '#111921',
+  },
+  backgroundGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 500,
+    backgroundColor: 'rgba(50, 140, 231, 0.08)',
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
     paddingTop: 60,
     paddingBottom: 16,
+    paddingHorizontal: 24,
+    zIndex: 10,
   },
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 20,
-    backgroundColor: colors.primary.medium,
+  logo: {
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 2.4,
+    color: '#93adc8',
+    textAlign: 'center',
+    marginBottom: 24,
   },
-  backButtonText: {
-    color: colors.text.primary,
-    fontSize: 24,
-    fontWeight: '300',
+  progressContainer: {
+    gap: 8,
   },
-  stepIndicator: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.text.secondary,
+  progressLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
   },
-  closeButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
+  progressText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#ffffff',
   },
-  closeButtonText: {
-    color: colors.text.secondary,
-    fontSize: 28,
-    fontWeight: '300',
+  progressPercent: {
+    fontSize: 12,
+    color: '#93adc8',
+  },
+  progressBar: {
+    height: 6,
+    width: '100%',
+    backgroundColor: '#344d65',
+    borderRadius: 9999,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#328ce7',
+    borderRadius: 9999,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 24,
+    paddingBottom: 120,
   },
-  content: {
+  mainContent: {
     paddingHorizontal: 24,
     paddingTop: 8,
   },
-  stepNumber: {
-    fontSize: 48,
-    fontWeight: '800',
-    color: colors.accent.blue,
+  headlineContainer: {
+    paddingVertical: 24,
+  },
+  headline: {
+    fontSize: 30,
+    fontWeight: '700',
+    lineHeight: 40,
+    color: '#ffffff',
     marginBottom: 8,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: colors.text.primary,
-    marginBottom: 4,
+  headlineHighlight: {
+    color: '#328ce7',
   },
-  required: {
+  subheadline: {
     fontSize: 14,
-    color: colors.text.secondary,
-    marginBottom: 32,
-  },
-  sectionLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text.primary,
-    marginTop: 24,
-    marginBottom: 12,
+    lineHeight: 22,
+    color: '#93adc8',
   },
   optionsContainer: {
     gap: 12,
-    marginBottom: 24,
   },
-  optionButton: {
-    paddingVertical: 16,
-    paddingHorizontal: 20,
+  optionCard: {
     borderRadius: 12,
-    backgroundColor: colors.background.card,
-    borderWidth: 2,
-    borderColor: colors.border.medium,
+    borderWidth: 1,
+    borderColor: '#344d65',
+    backgroundColor: '#1a2632',
+    padding: 16,
   },
-  optionButtonSelected: {
-    borderColor: colors.accent.blue,
-    backgroundColor: `${colors.accent.blue}15`,
+  optionCardSelected: {
+    borderColor: '#328ce7',
+    backgroundColor: 'rgba(50, 140, 231, 0.05)',
   },
-  optionText: {
-    fontSize: 16,
+  optionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: '#243442',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  textContainer: {
+    flex: 1,
+  },
+  optionTitle: {
+    fontSize: 15,
     fontWeight: '500',
-    color: colors.text.primary,
+    color: '#ffffff',
   },
-  optionTextSelected: {
-    color: colors.accent.blue,
-    fontWeight: '600',
+  optionSubtitle: {
+    fontSize: 12,
+    color: '#93adc8',
+    marginTop: 2,
+  },
+  radioCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#5a7690',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  radioCircleSelected: {
+    borderColor: '#328ce7',
+    backgroundColor: 'rgba(50, 140, 231, 0.2)',
+  },
+  radioCircleInner: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#328ce7',
+  },
+  inputContainer: {
+    marginTop: 12,
+    paddingLeft: 56,
+  },
+  textInput: {
+    width: '100%',
+    backgroundColor: '#111921',
+    color: '#ffffff',
+    fontSize: 14,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#344d65',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
   },
   footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     padding: 24,
     paddingBottom: 40,
-    borderTopWidth: 1,
-    borderTopColor: colors.border.medium,
-    backgroundColor: colors.primary.dark,
+  },
+  continueButton: {
+    width: '100%',
+    backgroundColor: '#328ce7',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: '#328ce7',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  continueButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#ffffff',
   },
 });

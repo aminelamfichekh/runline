@@ -1,127 +1,264 @@
 /**
- * Step 8: Lieu(x) d'entraînement disponible(s) (multiple selection)
+ * Step 8: Expérience de Course
+ * Converted from HTML design with quick options
  */
 
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useTranslation } from 'react-i18next';
 import { useQuestionnaireForm } from '@/hooks/useQuestionnaireForm';
-import { TextInputField } from '@/components/forms/TextInputField';
-import { Button } from '@/components/ui/Button';
-import { colors } from '@/constants/colors';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-const LOCATIONS = [
-  { value: 'route', label: 'Route' },
-  { value: 'chemins', label: 'Chemins' },
-  { value: 'piste', label: 'Piste' },
-  { value: 'tapis', label: 'Tapis' },
-  { value: 'autre', label: 'Autre' },
-];
+type ExperienceOption = 'beginner' | 'few_months' | 'few_years' | 'experienced';
 
 export default function Step8Screen() {
   const router = useRouter();
-  const { t } = useTranslation();
   const { form } = useQuestionnaireForm();
   const { setValue, watch } = form;
 
-  const training_locations = watch('training_locations') || [];
-  const showOtherField = training_locations.includes('autre');
-
-  const toggleLocation = (location: string) => {
-    const current = training_locations as string[];
-    if (current.includes(location)) {
-      setValue('training_locations', current.filter(l => l !== location));
-    } else {
-      setValue('training_locations', [...current, location]);
-    }
-  };
+  const [selectedExperience, setSelectedExperience] = useState<ExperienceOption | null>(
+    watch('experience_level') || null
+  );
 
   const handleContinue = () => {
-    router.push('/(questionnaire)/step9');
+    setValue('experience_level', selectedExperience);
+    router.push('/(questionnaire)/preview');
   };
 
-  const handleBack = () => {
-    router.back();
+  const renderQuickOption = (
+    value: ExperienceOption,
+    icon: string,
+    title: string,
+    subtitle: string
+  ) => {
+    const isSelected = selectedExperience === value;
+
+    return (
+      <TouchableOpacity
+        key={value}
+        onPress={() => setSelectedExperience(value)}
+        activeOpacity={0.7}
+        style={[
+          styles.quickOption,
+          isSelected && styles.quickOptionSelected
+        ]}
+      >
+        <View style={styles.quickOptionIcon}>
+          <MaterialCommunityIcons name={icon as any} size={40} color="#328ce7" />
+        </View>
+        <Text style={styles.quickOptionTitle}>{title}</Text>
+        <Text style={styles.quickOptionSubtitle}>{subtitle}</Text>
+      </TouchableOpacity>
+    );
   };
 
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <Text style={styles.backButtonText}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.stepIndicator}>8/10</Text>
-        <TouchableOpacity onPress={() => router.push('/')} style={styles.closeButton}>
-          <Text style={styles.closeButtonText}>×</Text>
-        </TouchableOpacity>
+        <Text style={styles.logo}>RUNLINE</Text>
+        <View style={styles.progressContainer}>
+          <View style={styles.progressLabels}>
+            <Text style={styles.progressText}>Étape 6</Text>
+            <Text style={styles.progressPercent}>75%</Text>
+          </View>
+          <View style={styles.progressBar}>
+            <View style={[styles.progressFill, { width: '75%' }]} />
+          </View>
+        </View>
       </View>
 
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.content}>
-          <Text style={styles.stepNumber}>8</Text>
-          <Text style={styles.title}>{t('onboarding.step8.title')}</Text>
-          <Text style={styles.required}>({t('onboarding.step8.required')})</Text>
-          <Text style={styles.subtitle}>{t('onboarding.step8.subtitle')}</Text>
+      {/* Main Content */}
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.mainContent}>
+          {/* Question */}
+          <Text style={styles.headline}>
+            Depuis combien de temps cours-tu de manière régulière ?
+          </Text>
 
-          <View style={styles.optionsContainer}>
-            {LOCATIONS.map((location) => {
-              const isSelected = training_locations.includes(location.value);
-              return (
-                <TouchableOpacity
-                  key={location.value}
-                  style={[styles.locationButton, isSelected && styles.locationButtonSelected]}
-                  onPress={() => toggleLocation(location.value)}
-                >
-                  <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
-                    {isSelected && <Text style={styles.checkmark}>✓</Text>}
-                  </View>
-                  <Text style={[styles.locationText, isSelected && styles.locationTextSelected]}>{location.label}</Text>
-                </TouchableOpacity>
-              );
-            })}
+          {/* Quick Options Grid */}
+          <View style={styles.quickOptionsGrid}>
+            {renderQuickOption(
+              'beginner',
+              'run',
+              'Je commence',
+              'Nouveau coureur'
+            )}
+            {renderQuickOption(
+              'few_months',
+              'calendar-month',
+              'Quelques mois',
+              '3-6 mois'
+            )}
+            {renderQuickOption(
+              'few_years',
+              'calendar-range',
+              'Quelques années',
+              '1-3 ans'
+            )}
+            {renderQuickOption(
+              'experienced',
+              'star',
+              'Expérimenté',
+              '3+ ans'
+            )}
           </View>
-
-          {showOtherField && (
-            <TextInputField
-              label=""
-              value={watch('training_locations_other')}
-              onChangeText={(text) => setValue('training_locations_other', text)}
-              placeholder={t('onboarding.step8.autrePlaceholder')}
-            />
-          )}
         </View>
       </ScrollView>
 
+      {/* Footer Button */}
       <View style={styles.footer}>
-        <Button title={t('onboarding.continue')} onPress={handleContinue} />
+        <TouchableOpacity
+          style={styles.continueButton}
+          onPress={handleContinue}
+          disabled={!selectedExperience}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.continueButtonText}>Continuer</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.primary.dark },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 60, paddingBottom: 16 },
-  backButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center', borderRadius: 20, backgroundColor: colors.primary.medium },
-  backButtonText: { color: colors.text.primary, fontSize: 24, fontWeight: '300' },
-  stepIndicator: { fontSize: 15, fontWeight: '600', color: colors.text.secondary },
-  closeButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
-  closeButtonText: { color: colors.text.secondary, fontSize: 28, fontWeight: '300' },
-  scrollView: { flex: 1 },
-  scrollContent: { paddingBottom: 24 },
-  content: { paddingHorizontal: 24, paddingTop: 8 },
-  stepNumber: { fontSize: 48, fontWeight: '800', color: colors.accent.blue, marginBottom: 8 },
-  title: { fontSize: 28, fontWeight: '700', color: colors.text.primary, marginBottom: 4 },
-  required: { fontSize: 14, color: colors.text.secondary, marginBottom: 8 },
-  subtitle: { fontSize: 15, color: colors.text.secondary, marginBottom: 24 },
-  optionsContainer: { gap: 12, marginBottom: 24 },
-  locationButton: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16, paddingHorizontal: 20, borderRadius: 12, backgroundColor: colors.background.card, borderWidth: 2, borderColor: colors.border.medium },
-  locationButtonSelected: { borderColor: colors.accent.blue, backgroundColor: `${colors.accent.blue}15` },
-  checkbox: { width: 24, height: 24, borderRadius: 6, borderWidth: 2, borderColor: colors.border.medium, marginRight: 16, justifyContent: 'center', alignItems: 'center' },
-  checkboxSelected: { backgroundColor: colors.accent.blue, borderColor: colors.accent.blue },
-  checkmark: { color: colors.text.primary, fontSize: 16, fontWeight: '700' },
-  locationText: { fontSize: 16, fontWeight: '500', color: colors.text.primary },
-  locationTextSelected: { color: colors.accent.blue, fontWeight: '600' },
-  footer: { padding: 24, paddingBottom: 40, borderTopWidth: 1, borderTopColor: colors.border.medium, backgroundColor: colors.primary.dark },
+  container: {
+    flex: 1,
+    backgroundColor: '#f6f7f8',
+  },
+  header: {
+    paddingTop: 32,
+    paddingBottom: 16,
+    paddingHorizontal: 24,
+  },
+  logo: {
+    fontSize: 20,
+    fontWeight: '800',
+    letterSpacing: 3,
+    color: '#328ce7',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  progressContainer: {
+    gap: 8,
+  },
+  progressLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+  },
+  progressText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#64748b',
+  },
+  progressPercent: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#111921',
+  },
+  progressBar: {
+    height: 6,
+    width: '100%',
+    backgroundColor: '#cbd5e1',
+    borderRadius: 9999,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#328ce7',
+    borderRadius: 9999,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 120,
+  },
+  mainContent: {
+    paddingHorizontal: 24,
+    paddingTop: 16,
+  },
+  headline: {
+    fontSize: 28,
+    fontWeight: '700',
+    lineHeight: 38,
+    color: '#111921',
+    textAlign: 'center',
+    marginBottom: 32,
+  },
+  quickOptionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+  },
+  quickOption: {
+    width: '47%',
+    aspectRatio: 1,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    backgroundColor: '#ffffff',
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  quickOptionSelected: {
+    borderColor: '#328ce7',
+    backgroundColor: 'rgba(50, 140, 231, 0.05)',
+    borderWidth: 2,
+  },
+  quickOptionIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(50, 140, 231, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  quickOptionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111921',
+    textAlign: 'center',
+  },
+  quickOptionSubtitle: {
+    fontSize: 12,
+    color: '#64748b',
+    textAlign: 'center',
+  },
+  footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 24,
+    paddingBottom: 40,
+    backgroundColor: '#f6f7f8',
+  },
+  continueButton: {
+    width: '100%',
+    backgroundColor: '#328ce7',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#328ce7',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  continueButtonText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
 });
