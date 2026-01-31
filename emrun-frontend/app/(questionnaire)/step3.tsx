@@ -1,120 +1,58 @@
 /**
  * Step 3: Poids / Taille
- * Weight and Height pickers with conditional routing
+ * Uses unified WheelPicker for weight and height.
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuestionnaireForm } from '@/hooks/useQuestionnaireForm';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { WheelPicker } from '@/components/ui/WheelPicker';
 
-const ITEM_HEIGHT = 56;
-
-// Generate weight options (30-180 kg)
-const generateWeightOptions = () => {
-  const options = [];
-  for (let i = 30; i <= 180; i++) {
-    options.push({ value: i, label: `${i} kg` });
-  }
-  return options;
-};
-
-// Generate height options (130-250 cm)
-const generateHeightOptions = () => {
-  const options = [];
-  for (let i = 130; i <= 250; i++) {
-    options.push({ value: i, label: `${i} cm` });
-  }
-  return options;
-};
+const weightOptions = Array.from({ length: 151 }, (_, i) => 30 + i).map((v) => ({
+  value: v,
+  label: `${v} kg`,
+}));
+const heightOptions = Array.from({ length: 121 }, (_, i) => 130 + i).map((v) => ({
+  value: v,
+  label: `${v} cm`,
+}));
 
 export default function Step3Screen() {
   const router = useRouter();
   const { form } = useQuestionnaireForm();
   const { setValue, watch } = form;
 
-  const weightOptions = generateWeightOptions();
-  const heightOptions = generateHeightOptions();
+  const watchedWeightKg = watch('weight_kg') as number | undefined;
+  const watchedLegacyWeight = watch('weight') as number | undefined;
+  const watchedHeightMeters = watch('height_cm') as number | undefined;
+  const watchedLegacyHeight = watch('height') as number | undefined;
 
-  const [selectedWeight, setSelectedWeight] = useState(watch('weight') || 70); // Default 70kg
-  const [selectedHeight, setSelectedHeight] = useState(watch('height') || 170); // Default 170cm
+  const initialWeight = watchedWeightKg ?? watchedLegacyWeight ?? 70;
+  const initialHeightCm =
+    (typeof watchedHeightMeters === 'number' && watchedHeightMeters > 0
+      ? Math.round(watchedHeightMeters * 100)
+      : undefined) ?? watchedLegacyHeight ?? 170;
 
-  const weightScroll = useRef<ScrollView>(null);
-  const heightScroll = useRef<ScrollView>(null);
-
-  // Scroll to selected items on mount
-  useEffect(() => {
-    const weightIndex = weightOptions.findIndex(opt => opt.value === selectedWeight);
-    const heightIndex = heightOptions.findIndex(opt => opt.value === selectedHeight);
-
-    if (weightIndex >= 0 && weightScroll.current) {
-      weightScroll.current.scrollTo({ y: weightIndex * ITEM_HEIGHT, animated: false });
-    }
-    if (heightIndex >= 0 && heightScroll.current) {
-      heightScroll.current.scrollTo({ y: heightIndex * ITEM_HEIGHT, animated: false });
-    }
-  }, []);
+  const [selectedWeight, setSelectedWeight] = useState(initialWeight);
+  const [selectedHeight, setSelectedHeight] = useState(initialHeightCm);
 
   const handleContinue = () => {
-    setValue('weight', selectedWeight);
-    setValue('height', selectedHeight);
+    // Map to backend physical fields
+    setValue('weight_kg', selectedWeight);
+    // profileSchema.height_cm actually expects meters between 0.5 and 2.5
+    setValue('height_cm', selectedHeight / 100);
 
-    // Conditional routing based on goal from step1
-    const goal = watch('goal');
-    if (goal === 'restart') {
+    // Conditional routing based on primary_goal from step1
+    const primaryGoal = watch('primary_goal') as string | undefined;
+    if (primaryGoal === 'reprendre') {
       router.push('/(questionnaire)/step3a'); // Reprendre - pause + records
-    } else if (goal === 'race') {
+    } else if (primaryGoal === 'courir_race' || primaryGoal === 'ameliorer_chrono') {
       router.push('/(questionnaire)/step3b'); // Préparer course - objectives + records
     } else {
       router.push('/(questionnaire)/step4'); // Normal flow
     }
-  };
-
-  const renderWeightItem = (option: typeof weightOptions[0], index: number) => {
-    const isSelected = option.value === selectedWeight;
-
-    return (
-      <TouchableOpacity
-        key={option.value}
-        style={styles.pickerItem}
-        onPress={() => {
-          setSelectedWeight(option.value);
-          weightScroll.current?.scrollTo({ y: index * ITEM_HEIGHT, animated: true });
-        }}
-      >
-        <Text style={[
-          styles.pickerItemText,
-          isSelected && styles.pickerItemTextSelected,
-          !isSelected && styles.pickerItemTextUnselected
-        ]}>
-          {option.label}
-        </Text>
-      </TouchableOpacity>
-    );
-  };
-
-  const renderHeightItem = (option: typeof heightOptions[0], index: number) => {
-    const isSelected = option.value === selectedHeight;
-
-    return (
-      <TouchableOpacity
-        key={option.value}
-        style={styles.pickerItem}
-        onPress={() => {
-          setSelectedHeight(option.value);
-          heightScroll.current?.scrollTo({ y: index * ITEM_HEIGHT, animated: true });
-        }}
-      >
-        <Text style={[
-          styles.pickerItemText,
-          isSelected && styles.pickerItemTextSelected,
-          !isSelected && styles.pickerItemTextUnselected
-        ]}>
-          {option.label}
-        </Text>
-      </TouchableOpacity>
-    );
   };
 
   return (
@@ -125,17 +63,13 @@ export default function Step3Screen() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.topBar}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity onPress={() => router.push('/(questionnaire)/step2')} style={styles.backButton}>
             <MaterialCommunityIcons name="arrow-left" size={24} color="#ffffff" />
           </TouchableOpacity>
           <Text style={styles.logo}>RUNLINE</Text>
           <View style={{ width: 40 }} />
         </View>
         <View style={styles.progressContainer}>
-          <View style={styles.progressLabels}>
-            <Text style={styles.progressText}>Étape 3 sur 9</Text>
-            <Text style={styles.progressPercent}>33%</Text>
-          </View>
           <View style={styles.progressBar}>
             <View style={[styles.progressFill, { width: '33%' }]} />
           </View>
@@ -143,61 +77,51 @@ export default function Step3Screen() {
       </View>
 
       {/* Main Content */}
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.mainContent}>
+      <View style={styles.mainContentWrapper}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.mainContent}>
           {/* Question */}
           <View style={styles.headlineContainer}>
             <Text style={styles.headline}>
-              Votre <Text style={styles.headlineHighlight}>poids et taille</Text>
+              Votre <Text style={styles.headlineHighlight}>morphologie</Text>
             </Text>
             <Text style={styles.subheadline}>
-              Ces informations nous aident à personnaliser vos zones d'effort.
+              Ces informations nous aident à personnaliser votre plan d&apos;entraînement.
             </Text>
           </View>
 
-          {/* Weight Picker */}
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Poids</Text>
-            <View style={styles.wheelPickerContainer}>
-              <View style={styles.selectionHighlight} />
-              <ScrollView
-                ref={weightScroll}
-                showsVerticalScrollIndicator={false}
-                snapToInterval={ITEM_HEIGHT}
-                decelerationRate="fast"
-                contentContainerStyle={{ paddingVertical: ITEM_HEIGHT * 2 }}
-              >
-                {weightOptions.map((option, index) => renderWeightItem(option, index))}
-              </ScrollView>
-              <View style={styles.pickerFadeTop} pointerEvents="none" />
-              <View style={styles.pickerFadeBottom} pointerEvents="none" />
+          {/* FlatList fake wheels – Poids & Taille */}
+          <View style={styles.pickerRow}>
+            <View style={styles.pickerHalf}>
+              <Text style={styles.pickerTriggerLabel}>Poids (kg)</Text>
+              <WheelPicker
+                data={weightOptions}
+                onValueChange={setSelectedWeight}
+                itemHeight={40}
+                wheelHeight={200}
+                fontSize={15}
+                highlightColor="#328ce7"
+              />
+            </View>
+            <View style={styles.pickerHalf}>
+              <Text style={styles.pickerTriggerLabel}>Taille (cm)</Text>
+              <WheelPicker
+                data={heightOptions}
+                onValueChange={setSelectedHeight}
+                itemHeight={40}
+                wheelHeight={200}
+                fontSize={15}
+                highlightColor="#328ce7"
+              />
             </View>
           </View>
-
-          {/* Height Picker */}
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Taille</Text>
-            <View style={styles.wheelPickerContainer}>
-              <View style={styles.selectionHighlight} />
-              <ScrollView
-                ref={heightScroll}
-                showsVerticalScrollIndicator={false}
-                snapToInterval={ITEM_HEIGHT}
-                decelerationRate="fast"
-                contentContainerStyle={{ paddingVertical: ITEM_HEIGHT * 2 }}
-              >
-                {heightOptions.map((option, index) => renderHeightItem(option, index))}
-              </ScrollView>
-              <View style={styles.pickerFadeTop} pointerEvents="none" />
-              <View style={styles.pickerFadeBottom} pointerEvents="none" />
-            </View>
           </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </View>
 
       {/* Footer Button */}
       <View style={styles.footer}>
@@ -224,7 +148,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 500,
+    bottom: 0,
     backgroundColor: 'rgba(50, 140, 231, 0.08)',
   },
   header: {
@@ -289,6 +213,9 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 120,
   },
+  mainContentWrapper: {
+    flex: 1,
+  },
   mainContent: {
     paddingHorizontal: 24,
     paddingTop: 8,
@@ -296,6 +223,7 @@ const styles = StyleSheet.create({
   headlineContainer: {
     paddingVertical: 24,
     marginBottom: 16,
+    alignItems: 'center',
   },
   headline: {
     fontSize: 30,
@@ -303,6 +231,7 @@ const styles = StyleSheet.create({
     lineHeight: 40,
     color: '#ffffff',
     marginBottom: 8,
+    textAlign: 'center',
   },
   headlineHighlight: {
     color: '#328ce7',
@@ -311,75 +240,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 22,
     color: '#93adc8',
+    textAlign: 'center',
+    paddingHorizontal: 16,
   },
-  section: {
-    marginBottom: 24,
+  pickerRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
   },
-  sectionLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#ffffff',
-    marginBottom: 12,
+  pickerHalf: {
+    flex: 1,
+    gap: 8,
   },
-  wheelPickerContainer: {
-    height: 200,
-    width: '100%',
-    backgroundColor: 'rgba(26, 38, 50, 0.4)',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  selectionHighlight: {
-    position: 'absolute',
-    top: '50%',
-    left: 0,
-    right: 0,
-    height: ITEM_HEIGHT,
-    transform: [{ translateY: -ITEM_HEIGHT / 2 }],
-    backgroundColor: 'rgba(50, 140, 231, 0.1)',
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: 'rgba(50, 140, 231, 0.2)',
-    zIndex: 0,
-  },
-  pickerItem: {
-    height: ITEM_HEIGHT,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  pickerItemText: {
-    fontSize: 18,
-    fontWeight: '500',
-  },
-  pickerItemTextSelected: {
-    fontSize: 24,
+  pickerTriggerLabel: {
+    fontSize: 12,
     fontWeight: '700',
-    color: '#328ce7',
-  },
-  pickerItemTextUnselected: {
-    color: 'rgba(255, 255, 255, 0.3)',
-  },
-  pickerFadeTop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 72,
-    backgroundColor: 'transparent',
-    zIndex: 20,
-    pointerEvents: 'none',
-  },
-  pickerFadeBottom: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 72,
-    backgroundColor: 'transparent',
-    zIndex: 20,
-    pointerEvents: 'none',
+    letterSpacing: 1,
+    textTransform: 'uppercase' as any,
+    color: '#587a9a',
   },
   footer: {
     position: 'absolute',

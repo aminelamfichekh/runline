@@ -93,17 +93,44 @@ export default function LoginScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
+      {/* Radial-like background glow */}
+      <View style={styles.backgroundGlow} />
+
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.content}>
-          <View style={styles.header}>
-            <Text style={styles.title}>Bon retour</Text>
-            <Text style={styles.subtitle}>Connectez-vous pour continuer</Text>
+        <View style={styles.inner}>
+          {/* Top bar */}
+          <View style={styles.headerBar}>
+            <TouchableOpacity
+              style={styles.backButton}
+              activeOpacity={0.7}
+              onPress={() => router.replace('/')}
+            >
+              <Text style={styles.backIcon}>{'‹'}</Text>
+            </TouchableOpacity>
+
+            <View style={styles.brandWrapper}>
+              <View style={styles.brandLogo}>
+                <Text style={styles.brandBolt}>⚡</Text>
+              </View>
+              <Text style={styles.brandText}>RUNLINE</Text>
+            </View>
+
+            <View style={{ width: 48 }} />
           </View>
 
+          {/* Headline */}
+          <View style={styles.headlineBlock}>
+            <Text style={styles.title}>
+              Bon <Text style={styles.titleHighlight}>retour</Text> parmi nous
+            </Text>
+            <Text style={styles.subtitle}>Prêt pour votre prochaine session ?</Text>
+          </View>
+
+          {/* Form */}
           <View style={styles.form}>
             <TextInputField
               label="Email"
@@ -114,7 +141,7 @@ export default function LoginScreen() {
               keyboardType="email-address"
               autoCapitalize="none"
               autoComplete="email"
-              placeholder="Entrez votre email"
+              placeholder="votre@email.com"
             />
 
             <TextInputField
@@ -126,26 +153,36 @@ export default function LoginScreen() {
               secureTextEntry
               autoCapitalize="none"
               autoComplete="password"
-              placeholder="Entrez votre mot de passe"
+              placeholder="••••••••"
             />
 
+            <View style={styles.forgotRow}>
+              <TouchableOpacity
+                onPress={() =>
+                  Alert.alert(
+                    'Mot de passe oublié',
+                    "Cette action n'est pas encore configurée. Veuillez contacter le support."
+                  )
+                }
+              >
+                <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
+              </TouchableOpacity>
+            </View>
+
             <Button
-              title="Se connecter"
+              title="Me connecter"
               onPress={handleSubmit(onSubmit)}
               loading={isLoading}
               disabled={isLoading}
             />
           </View>
 
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Vous n'avez pas de compte ? </Text>
-            <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
-              <Text style={styles.footerLink}>S'inscrire</Text>
-            </TouchableOpacity>
-          </View>
+          {/* No "continuer avec" / social section as requested */}
+          {/* No sign up link - login page is only for existing users */}
+          {/* Users who want to create an account should go through the questionnaire flow */}
 
           {/* Debug / recovery action: clear tokens and questionnaire state */}
-          <View style={[styles.footer, { marginTop: 16 }]}>
+          <View style={styles.debugFooter}>
             <TouchableOpacity
               onPress={async () => {
                 try {
@@ -155,19 +192,28 @@ export default function LoginScreen() {
                     QUESTIONNAIRE_PENDING_ATTACH,
                     QUESTIONNAIRE_DRAFT,
                   ]);
-                  Alert.alert('Session réinitialisée', 'Toutes les données de connexion et du questionnaire ont été effacées.', [
-                    {
-                      text: 'OK',
-                      onPress: () => router.replace('/'),
-                    },
-                  ]);
+                  Alert.alert(
+                    'Session réinitialisée',
+                    'Toutes les données de connexion et du questionnaire ont été effacées.',
+                    [
+                      {
+                        text: 'OK',
+                        onPress: () => router.replace('/'),
+                      },
+                    ]
+                  );
                 } catch (error: any) {
                   console.error('Reset session error:', error);
-                  Alert.alert('Erreur', `Échec de la réinitialisation de la session : ${error?.message || 'Erreur inconnue'}. Veuillez réessayer.`);
+                  Alert.alert(
+                    'Erreur',
+                    `Échec de la réinitialisation de la session : ${
+                      error?.message || 'Erreur inconnue'
+                    }. Veuillez réessayer.`
+                  );
                 }
               }}
             >
-              <Text style={[styles.footerLink, { fontSize: 13, color: '#888' }]}>
+              <Text style={styles.debugText}>
                 Réinitialiser la session (effacer connexion & questionnaire)
               </Text>
             </TouchableOpacity>
@@ -181,52 +227,112 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a0a0a',
+    backgroundColor: '#111921',
+  },
+  backgroundGlow: {
+    position: 'absolute',
+    top: -160,
+    left: -80,
+    right: -80,
+    height: 320,
+    borderRadius: 320,
+    backgroundColor: 'rgba(50, 140, 231, 0.25)',
+    opacity: 0.4,
   },
   scrollContent: {
     flexGrow: 1,
   },
-  content: {
+  inner: {
     flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 80,
-    paddingBottom: 40,
+    maxWidth: 480,
+    alignSelf: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 32,
+    paddingBottom: 32,
   },
-  header: {
-    marginBottom: 48,
+  headerBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 12,
+  },
+  backButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+  },
+  backIcon: {
+    color: '#ffffff',
+    fontSize: 20,
+  },
+  brandWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  brandLogo: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#328ce7',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  brandBolt: {
+    color: '#ffffff',
+    fontSize: 18,
+  },
+  brandText: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: 3,
+  },
+  headlineBlock: {
+    paddingTop: 32,
+    paddingBottom: 24,
     alignItems: 'center',
   },
   title: {
     fontSize: 36,
     fontWeight: '800',
-    color: '#fff',
+    color: '#ffffff',
     marginBottom: 8,
     letterSpacing: -0.5,
+    textAlign: 'center',
+  },
+  titleHighlight: {
+    color: '#328ce7',
   },
   subtitle: {
-    fontSize: 17,
-    color: '#999',
-    fontWeight: '400',
+    fontSize: 14,
+    color: '#93adc8',
+    fontWeight: '300',
+    textAlign: 'center',
   },
   form: {
     marginBottom: 32,
+    gap: 12,
   },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+  forgotRow: {
+    alignItems: 'flex-end',
+    marginBottom: 8,
+  },
+  forgotText: {
+    fontSize: 13,
+    color: '#328ce7',
+    fontWeight: '500',
+  },
+  debugFooter: {
+    marginTop: 12,
     alignItems: 'center',
   },
-  footerText: {
-    fontSize: 15,
-    color: '#999',
-  },
-  footerLink: {
-    fontSize: 15,
-    color: '#fff',
-    fontWeight: '600',
+  debugText: {
+    fontSize: 12,
+    color: '#888',
+    textAlign: 'center',
+    textDecorationLine: 'underline',
   },
 });
-
-
-

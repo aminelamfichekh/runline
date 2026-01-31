@@ -86,17 +86,13 @@ export default function Step7Screen() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.topBar}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity onPress={() => router.push('/(questionnaire)/step6')} style={styles.backButton}>
             <MaterialCommunityIcons name="arrow-left" size={24} color="#ffffff" />
           </TouchableOpacity>
           <Text style={styles.logo}>RUNLINE</Text>
           <View style={{ width: 40 }} />
         </View>
         <View style={styles.progressContainer}>
-          <View style={styles.progressLabels}>
-            <Text style={styles.progressText}>Étape 7 sur 9</Text>
-            <Text style={styles.progressPercent}>78%</Text>
-          </View>
           <View style={styles.progressBar}>
             <View style={[styles.progressFill, { width: '78%' }]} />
           </View>
@@ -152,7 +148,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 500,
+    bottom: 0,
     backgroundColor: 'rgba(50, 140, 231, 0.08)',
   },
   header: {

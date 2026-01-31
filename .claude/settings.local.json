@@ -5,7 +5,17 @@
       "Skill(gsd:map-codebase:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Skill(gsd:execute-phase)",
+      "Skill(gsd:execute-phase:*)",
+      "Bash(git check-ignore:*)",
+      "Bash(wc:*)",
+      "Skill(gsd:quick)",
+      "Skill(gsd:quick:*)",
+      "Bash(npm install:*)",
+      "Bash(git reset:*)",
+      "Bash(git checkout:*)",
+      "Bash(npx expo start --clear)"
     ]
   }
 }

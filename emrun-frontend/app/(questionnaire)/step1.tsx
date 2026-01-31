@@ -8,26 +8,65 @@ import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet } from 
 import { useRouter } from 'expo-router';
 import { useQuestionnaireForm } from '@/hooks/useQuestionnaireForm';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 
 type GoalOption = 'start' | 'restart' | 'race' | 'other';
 
 export default function Step1Screen() {
   const router = useRouter();
-  const { form } = useQuestionnaireForm();
+  const { form, handleFieldChange } = useQuestionnaireForm();
   const { setValue, watch } = form;
 
-  const [selectedGoal, setSelectedGoal] = useState<GoalOption | null>(watch('goal') || null);
-  const [otherText, setOtherText] = useState(watch('goal_other') || '');
+  const primaryGoal = watch('primary_goal') as string | undefined;
+  const mapPrimaryToGoal = (value?: string): GoalOption | null => {
+    switch (value) {
+      case 'me_lancer':
+      case 'entretenir':
+      case 'ameliorer_condition':
+        return 'start';
+      case 'reprendre':
+        return 'restart';
+      case 'courir_race':
+      case 'ameliorer_chrono':
+        return 'race';
+      case 'autre':
+        return 'other';
+      default:
+        return null;
+    }
+  };
+
+  const [selectedGoal, setSelectedGoal] = useState<GoalOption | null>(mapPrimaryToGoal(primaryGoal));
+  const [otherText, setOtherText] = useState(watch('primary_goal_other') || '');
 
   const handleGoalSelect = (goal: GoalOption) => {
     setSelectedGoal(goal);
-    setValue('goal', goal);
+    // Map UI goal to backend primary_goal enum
+    let primary_goal: string | undefined;
+    switch (goal) {
+      case 'start':
+        primary_goal = 'me_lancer';
+        break;
+      case 'restart':
+        primary_goal = 'reprendre';
+        break;
+      case 'race':
+        primary_goal = 'courir_race';
+        break;
+      case 'other':
+        primary_goal = 'autre';
+        break;
+      default:
+        primary_goal = undefined;
+    }
+
+    if (primary_goal) {
+      handleFieldChange('primary_goal', primary_goal as any);
+    }
   };
 
   const handleContinue = () => {
     if (selectedGoal === 'other') {
-      setValue('goal_other', otherText);
+      setValue('primary_goal_other', otherText);
     }
 
     // Everyone goes to step2 first (Email, Name, Sex, Age)
@@ -55,16 +94,23 @@ export default function Step1Screen() {
         ]}
       >
         <View style={styles.optionContent}>
-          <View style={styles.iconContainer}>
-            <MaterialCommunityIcons name={icon as any} size={24} color="#328ce7" />
-          </View>
-          <View style={styles.textContainer}>
-            <Text style={styles.optionTitle}>{title}</Text>
-            <Text style={styles.optionSubtitle}>{subtitle}</Text>
-          </View>
+          {/* Custom radio indicator on the left */}
           <View style={[styles.radioCircle, isSelected && styles.radioCircleSelected]}>
             {isSelected && <View style={styles.radioCircleInner} />}
           </View>
+
+          {/* Label */}
+          <View style={styles.textContainer}>
+            <Text style={styles.optionTitle}>{title}</Text>
+          </View>
+
+          {/* Trailing icon */}
+          <MaterialCommunityIcons
+            name={icon as any}
+            size={22}
+            color={isSelected ? '#328ce7' : 'rgba(255, 255, 255, 0.2)'}
+            style={styles.trailingIcon}
+          />
         </View>
         {hasInput && isSelected && (
           <View style={styles.inputContainer}>
@@ -74,6 +120,9 @@ export default function Step1Screen() {
               placeholderTextColor="#5a7690"
               value={otherText}
               onChangeText={setOtherText}
+              selectionColor="#328ce7"
+              cursorColor="#328ce7"
+              underlineColorAndroid="transparent"
             />
           </View>
         )}
@@ -88,12 +137,15 @@ export default function Step1Screen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.logo}>RUNLINE</Text>
+        <View style={styles.topBar}>
+          <TouchableOpacity onPress={() => router.push('/')} style={styles.backButton}>
+            <MaterialCommunityIcons name="arrow-left" size={24} color="#ffffff" />
+          </TouchableOpacity>
+          <Text style={styles.logo}>RUNLINE</Text>
+          {/* Spacer for symmetry */}
+          <View style={{ width: 40 }} />
+        </View>
         <View style={styles.progressContainer}>
-          <View style={styles.progressLabels}>
-            <Text style={styles.progressText}>Étape 1 sur 9</Text>
-            <Text style={styles.progressPercent}>11%</Text>
-          </View>
           <View style={styles.progressBar}>
             <View style={[styles.progressFill, { width: '11%' }]} />
           </View>
@@ -112,9 +164,6 @@ export default function Step1Screen() {
             <Text style={styles.headline}>
               Quel est votre {'\n'}
               <Text style={styles.headlineHighlight}>objectif principal</Text> ?
-            </Text>
-            <Text style={styles.subheadline}>
-              Nous adapterons votre programme d'entraînement en fonction de votre choix.
             </Text>
           </View>
 
@@ -154,7 +203,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 500,
+    bottom: 0,
     backgroundColor: 'rgba(50, 140, 231, 0.08)',
   },
   header: {
@@ -163,13 +212,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     zIndex: 10,
   },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#1a2632',
+  },
   logo: {
     fontSize: 14,
     fontWeight: '700',
     letterSpacing: 2.4,
     color: '#93adc8',
     textAlign: 'center',
-    marginBottom: 24,
   },
   progressContainer: {
     gap: 8,
@@ -211,14 +273,16 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   headlineContainer: {
-    paddingVertical: 24,
+    paddingVertical: 32,
+    alignItems: 'center',
   },
   headline: {
-    fontSize: 30,
+    fontSize: 32,
     fontWeight: '700',
     lineHeight: 40,
     color: '#ffffff',
     marginBottom: 8,
+    textAlign: 'center',
   },
   headlineHighlight: {
     color: '#328ce7',
@@ -232,48 +296,40 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   optionCard: {
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#344d65',
-    backgroundColor: '#1a2632',
-    padding: 16,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: 'rgba(26, 38, 50, 0.5)',
+    paddingVertical: 20,
+    paddingHorizontal: 16,
   },
   optionCardSelected: {
     borderColor: '#328ce7',
     backgroundColor: 'rgba(50, 140, 231, 0.05)',
+    shadowColor: '#328ce7',
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 0 },
   },
   optionContent: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    backgroundColor: '#243442',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
   textContainer: {
     flex: 1,
+    marginLeft: 12,
   },
   optionTitle: {
     fontSize: 15,
     fontWeight: '500',
     color: '#ffffff',
   },
-  optionSubtitle: {
-    fontSize: 12,
-    color: '#93adc8',
-    marginTop: 2,
-  },
   radioCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#5a7690',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -286,6 +342,9 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     backgroundColor: '#328ce7',
+  },
+  trailingIcon: {
+    marginLeft: 12,
   },
   inputContainer: {
     marginTop: 12,

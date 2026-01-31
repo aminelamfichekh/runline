@@ -1,85 +1,71 @@
 /**
  * Step 6: Expérience de Course
- * Depuis combien de temps cours-tu de manière régulière ?
+ * Uses FlatList fake wheel for experience.
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuestionnaireForm } from '@/hooks/useQuestionnaireForm';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { WheelPicker } from '@/components/ui/WheelPicker';
 
-const ITEM_HEIGHT = 56;
-
-// Generate experience options: Je commence, 1-11 mois, 1-10 ans, + de 10 ans
 const generateExperienceOptions = () => {
-  const options = [];
-
-  // Je commence
-  options.push({ value: 'beginner', label: 'Je commence' });
-
-  // 1-11 mois
-  for (let i = 1; i <= 11; i++) {
-    options.push({ value: `${i}m`, label: `${i} mois` });
-  }
-
-  // 1-10 ans
-  for (let i = 1; i <= 10; i++) {
-    options.push({ value: `${i}y`, label: `${i} an${i > 1 ? 's' : ''}` });
-  }
-
-  // + de 10 ans
+  const options: { value: string; label: string }[] = [{ value: 'beginner', label: 'Je commence' }];
+  for (let i = 1; i <= 11; i++) options.push({ value: `${i}m`, label: `${i} mois` });
+  for (let i = 1; i <= 10; i++) options.push({ value: `${i}y`, label: `${i} an${i > 1 ? 's' : ''}` });
   options.push({ value: '10+y', label: '+ de 10 ans' });
-
   return options;
 };
+
+const experienceOptions = generateExperienceOptions();
 
 export default function Step6Screen() {
   const router = useRouter();
   const { form } = useQuestionnaireForm();
   const { setValue, watch } = form;
 
-  const experienceOptions = generateExperienceOptions();
+  const period = watch('running_experience_period') as
+    | 'je_commence'
+    | '1_11_mois'
+    | '1_10_ans'
+    | 'plus_10_ans'
+    | undefined;
+  const months = watch('running_experience_months') as string | undefined;
+  const years = watch('running_experience_years') as string | undefined;
 
-  const [selectedExperience, setSelectedExperience] = useState(experienceOptions[0].value);
-
-  const pickerScroll = useRef<ScrollView>(null);
-
-  // Scroll to selected item on mount
-  useEffect(() => {
-    const index = experienceOptions.findIndex(opt => opt.value === selectedExperience);
-    if (index >= 0 && pickerScroll.current) {
-      pickerScroll.current.scrollTo({ y: index * ITEM_HEIGHT, animated: false });
-    }
-  }, []);
-
-  const handleContinue = () => {
-    // TODO: Add form schema field for experience_level
-    // setValue('experience_level', selectedExperience);
-    router.push('/(questionnaire)/step7');
+  const deriveInitialExperience = (): string => {
+    if (period === 'je_commence') return 'beginner';
+    if (period === '1_11_mois' && months) return months;
+    if (period === '1_10_ans' && years) return years;
+    if (period === 'plus_10_ans') return '10+y';
+    return experienceOptions[0].value;
   };
 
-  const renderPickerItem = (option: typeof experienceOptions[0], index: number) => {
-    const isSelected = option.value === selectedExperience;
+  const [selectedExperience, setSelectedExperience] = useState(deriveInitialExperience());
 
-    return (
-      <TouchableOpacity
-        key={option.value}
-        style={styles.pickerItem}
-        onPress={() => {
-          setSelectedExperience(option.value);
-          pickerScroll.current?.scrollTo({ y: index * ITEM_HEIGHT, animated: true });
-        }}
-      >
-        <Text style={[
-          styles.pickerItemText,
-          isSelected && styles.pickerItemTextSelected,
-          !isSelected && styles.pickerItemTextUnselected
-        ]}>
-          {option.label}
-        </Text>
-      </TouchableOpacity>
-    );
+  const handleContinue = () => {
+    // Map selectedExperience to backend running_experience_* fields
+    if (selectedExperience === 'beginner') {
+      setValue('running_experience_period', 'je_commence');
+      setValue('running_experience_months', undefined);
+      setValue('running_experience_years', undefined);
+    } else if (selectedExperience.endsWith('m')) {
+      // 1-11 mois
+      setValue('running_experience_period', '1_11_mois');
+      setValue('running_experience_months', selectedExperience);
+      setValue('running_experience_years', undefined);
+    } else if (selectedExperience === '10+y') {
+      setValue('running_experience_period', 'plus_10_ans');
+      setValue('running_experience_months', undefined);
+      setValue('running_experience_years', undefined);
+    } else if (selectedExperience.endsWith('y')) {
+      // 1-10 ans
+      setValue('running_experience_period', '1_10_ans');
+      setValue('running_experience_years', selectedExperience);
+      setValue('running_experience_months', undefined);
+    }
+    router.push('/(questionnaire)/step7');
   };
 
   return (
@@ -90,17 +76,13 @@ export default function Step6Screen() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.topBar}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity onPress={() => router.push('/(questionnaire)/step5')} style={styles.backButton}>
             <MaterialCommunityIcons name="arrow-left" size={24} color="#ffffff" />
           </TouchableOpacity>
           <Text style={styles.logo}>RUNLINE</Text>
           <View style={{ width: 40 }} />
         </View>
         <View style={styles.progressContainer}>
-          <View style={styles.progressLabels}>
-            <Text style={styles.progressText}>Étape 6 sur 9</Text>
-            <Text style={styles.progressPercent}>67%</Text>
-          </View>
           <View style={styles.progressBar}>
             <View style={[styles.progressFill, { width: '67%' }]} />
           </View>
@@ -108,40 +90,38 @@ export default function Step6Screen() {
       </View>
 
       {/* Main Content */}
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.mainContent}>
-          {/* Question */}
-          <View style={styles.headlineContainer}>
-            <Text style={styles.headline}>
-              Depuis combien de temps{'\n'}
-              <Text style={styles.headlineHighlight}>cours-tu de manière régulière</Text> ?
-            </Text>
-            <Text style={styles.subheadline}>
-              Cela nous aide à adapter la progression de votre programme.
-            </Text>
-          </View>
+      <View style={styles.mainContentWrapper}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.mainContent}>
+            {/* Question */}
+            <View style={styles.headlineContainer}>
+              <Text style={styles.headline}>
+                Depuis combien de temps{'\n'}
+                <Text style={styles.headlineHighlight}>cours-tu de manière régulière</Text> ?
+              </Text>
+              <Text style={styles.subheadline}>
+                Cela nous aide à adapter la progression de votre programme.
+              </Text>
+            </View>
 
-          {/* Wheel Picker */}
-          <View style={styles.wheelPickerContainer}>
-            <View style={styles.selectionHighlight} />
-            <ScrollView
-              ref={pickerScroll}
-              showsVerticalScrollIndicator={false}
-              snapToInterval={ITEM_HEIGHT}
-              decelerationRate="fast"
-              contentContainerStyle={{ paddingVertical: ITEM_HEIGHT * 2 }}
-            >
-              {experienceOptions.map((option, index) => renderPickerItem(option, index))}
-            </ScrollView>
-            <View style={styles.pickerFadeTop} pointerEvents="none" />
-            <View style={styles.pickerFadeBottom} pointerEvents="none" />
+            {/* FlatList fake wheel – expérience */}
+            <View style={styles.pickerTriggerWrap}>
+              <WheelPicker
+                data={experienceOptions}
+                onValueChange={setSelectedExperience}
+                itemHeight={44}
+                wheelHeight={308}
+                fontSize={17}
+                highlightColor="#328ce7"
+              />
+            </View>
           </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </View>
 
       {/* Footer Button */}
       <View style={styles.footer}>
@@ -168,7 +148,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 500,
+    bottom: 0,
     backgroundColor: 'rgba(50, 140, 231, 0.08)',
   },
   header: {
@@ -233,6 +213,9 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 120,
   },
+  mainContentWrapper: {
+    flex: 1,
+  },
   mainContent: {
     paddingHorizontal: 24,
     paddingTop: 8,
@@ -256,66 +239,8 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: '#93adc8',
   },
-  wheelPickerContainer: {
-    height: 256,
-    width: '100%',
-    backgroundColor: 'rgba(26, 38, 50, 0.4)',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
-    position: 'relative',
-    overflow: 'hidden',
+  pickerTriggerWrap: {
     marginBottom: 32,
-  },
-  selectionHighlight: {
-    position: 'absolute',
-    top: '50%',
-    left: 0,
-    right: 0,
-    height: ITEM_HEIGHT,
-    transform: [{ translateY: -ITEM_HEIGHT / 2 }],
-    backgroundColor: 'rgba(50, 140, 231, 0.1)',
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: 'rgba(50, 140, 231, 0.2)',
-    zIndex: 0,
-  },
-  pickerItem: {
-    height: ITEM_HEIGHT,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  pickerItemText: {
-    fontSize: 18,
-    fontWeight: '500',
-  },
-  pickerItemTextSelected: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#328ce7',
-  },
-  pickerItemTextUnselected: {
-    color: 'rgba(255, 255, 255, 0.3)',
-  },
-  pickerFadeTop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 96,
-    backgroundColor: 'transparent',
-    zIndex: 20,
-    pointerEvents: 'none',
-  },
-  pickerFadeBottom: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 96,
-    backgroundColor: 'transparent',
-    zIndex: 20,
-    pointerEvents: 'none',
   },
   footer: {
     position: 'absolute',

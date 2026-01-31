@@ -49,6 +49,11 @@ export const profileSchema = z.object({
     })
   ).optional(),
 
+  // Additional race-related context from questionnaire (optional free text)
+  pause_duration: z.string().max(255).optional(),
+  objectives: z.string().max(1000).optional(),
+  records: z.string().max(1000).optional(),
+
   // Current Running Status
   current_weekly_volume_km: z.number().int().min(0).max(100).refine(
     isMultipleOf5,

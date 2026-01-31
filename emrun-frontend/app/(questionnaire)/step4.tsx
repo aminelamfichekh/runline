@@ -16,16 +16,71 @@ export default function Step4Screen() {
   const { form } = useQuestionnaireForm();
   const { setValue, watch } = form;
 
+  // Map existing backend value to local frequency option if present
+  const currentRunsPerWeek = watch('current_runs_per_week') as
+    | '0'
+    | '1_2'
+    | '3_4'
+    | '5_6'
+    | '7_plus'
+    | undefined;
+
+  const mapBackendToFrequency = (value?: typeof currentRunsPerWeek): FrequencyOption | null => {
+    switch (value) {
+      case '0':
+        return 'none';
+      case '1_2':
+        return 'little';
+      case '3_4':
+        return 'much';
+      case '5_6':
+        return 'passionate';
+      case '7_plus':
+        return 'crazy';
+      default:
+        return null;
+    }
+  };
+
   const [selectedFrequency, setSelectedFrequency] = useState<FrequencyOption | null>(
-    watch('training_frequency') || null
+    mapBackendToFrequency(currentRunsPerWeek)
   );
 
   const handleContinue = () => {
-    setValue('training_frequency', selectedFrequency);
+    // Map UI choice to backend current_runs_per_week enum
+    let backendValue: '0' | '1_2' | '3_4' | '5_6' | '7_plus' | undefined;
+    switch (selectedFrequency) {
+      case 'none':
+        backendValue = '0';
+        break;
+      case 'little':
+        backendValue = '1_2';
+        break;
+      case 'much':
+        backendValue = '3_4';
+        break;
+      case 'passionate':
+        backendValue = '5_6';
+        break;
+      case 'crazy':
+        backendValue = '7_plus';
+        break;
+      default:
+        backendValue = undefined;
+    }
+
+    if (backendValue) {
+      setValue('current_runs_per_week', backendValue);
+    }
     router.push('/(questionnaire)/step5');
   };
 
-  const renderOption = (value: FrequencyOption, title: string, subtitle: string) => {
+  const renderOption = (
+    value: FrequencyOption,
+    icon: string,
+    title: string,
+    subtitle: string
+  ) => {
     const isSelected = selectedFrequency === value;
 
     return (
@@ -39,12 +94,43 @@ export default function Step4Screen() {
         ]}
       >
         <View style={styles.optionContent}>
-          <View style={styles.textContainer}>
-            <Text style={styles.optionTitle}>{title}</Text>
-            <Text style={styles.optionSubtitle}>{subtitle}</Text>
+          {/* Left: icon + texts */}
+          <View style={styles.optionLeft}>
+            <View
+              style={[
+                styles.optionIconContainer,
+                isSelected && styles.optionIconContainerSelected,
+              ]}
+            >
+              <MaterialCommunityIcons
+                name={icon as any}
+                size={22}
+                color={isSelected ? '#328ce7' : '#93adc8'}
+              />
+            </View>
+            <View style={styles.textContainer}>
+              <Text
+                style={[
+                  styles.optionTitle,
+                  isSelected && styles.optionTitleSelected,
+                ]}
+              >
+                {title}
+              </Text>
+              <Text style={styles.optionSubtitle}>{subtitle}</Text>
+            </View>
           </View>
-          <View style={[styles.radioCircle, isSelected && styles.radioCircleSelected]}>
-            {isSelected && <View style={styles.radioCircleInner} />}
+
+          {/* Right: circular check indicator */}
+          <View
+            style={[
+              styles.checkCircle,
+              isSelected && styles.checkCircleSelected,
+            ]}
+          >
+            {isSelected && (
+              <MaterialCommunityIcons name="check" size={14} color="#ffffff" />
+            )}
           </View>
         </View>
       </TouchableOpacity>
@@ -59,17 +145,13 @@ export default function Step4Screen() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.topBar}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity onPress={() => router.push('/(questionnaire)/step3')} style={styles.backButton}>
             <MaterialCommunityIcons name="arrow-left" size={24} color="#ffffff" />
           </TouchableOpacity>
           <Text style={styles.logo}>RUNLINE</Text>
           <View style={{ width: 40 }} />
         </View>
         <View style={styles.progressContainer}>
-          <View style={styles.progressLabels}>
-            <Text style={styles.progressText}>Étape 4 sur 9</Text>
-            <Text style={styles.progressPercent}>44%</Text>
-          </View>
           <View style={styles.progressBar}>
             <View style={[styles.progressFill, { width: '44%' }]} />
           </View>
@@ -86,21 +168,20 @@ export default function Step4Screen() {
           {/* Headline */}
           <View style={styles.headlineContainer}>
             <Text style={styles.headline}>
-              Nombre actuel de{'\n'}
-              <Text style={styles.headlineHighlight}>sorties par semaine</Text>
+              Votre <Text style={styles.headlineHighlight}>fréquence</Text> de course
             </Text>
             <Text style={styles.subheadline}>
-              Cela nous aide à calibrer votre plan d'entraînement initial.
+              Combien de fois courez-vous par semaine ? Ces informations nous aident à adapter votre programme.
             </Text>
           </View>
 
           {/* Options */}
           <View style={styles.optionsContainer}>
-            {renderOption('none', 'Pas du tout', '0')}
-            {renderOption('little', 'Un peu', '1/2')}
-            {renderOption('much', 'Beaucoup', '3/4')}
-            {renderOption('passionate', 'Passionnément', '5/6')}
-            {renderOption('crazy', 'A la folie', '7 ou +')}
+            {renderOption('little', 'emoji-people', 'Un peu', '1-2 fois par semaine')}
+            {renderOption('much', 'run-fast', 'Beaucoup', '3-4 fois par semaine')}
+            {renderOption('passionate', 'speedometer', 'Passionnément', '5-6 fois par semaine')}
+            {renderOption('crazy', 'fire', 'A la folie', '7+ fois par semaine')}
+            {renderOption('none', 'block-helper', 'Pas du tout', '0 - Je débute')}
           </View>
         </View>
       </ScrollView>
@@ -131,7 +212,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 500,
+    bottom: 0,
     backgroundColor: 'rgba(50, 140, 231, 0.08)',
   },
   header: {
@@ -222,20 +303,42 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   optionCard: {
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#344d65',
-    backgroundColor: '#1a2632',
-    padding: 16,
+    backgroundColor: 'rgba(26, 35, 45, 0.8)',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
   },
   optionCardSelected: {
     borderColor: '#328ce7',
-    backgroundColor: 'rgba(50, 140, 231, 0.05)',
+    backgroundColor: 'rgba(50, 140, 231, 0.08)',
+    shadowColor: '#328ce7',
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
   },
   optionContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  optionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  optionIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: '#111a22',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  optionIconContainerSelected: {
+    backgroundColor: 'rgba(50, 140, 231, 0.2)',
   },
   textContainer: {
     flex: 1,
@@ -245,28 +348,25 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#ffffff',
   },
+  optionTitleSelected: {
+    color: '#328ce7',
+  },
   optionSubtitle: {
     fontSize: 12,
     color: '#93adc8',
     marginTop: 2,
   },
-  radioCircle: {
+  checkCircle: {
     width: 20,
     height: 20,
     borderRadius: 10,
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: '#5a7690',
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  radioCircleSelected: {
+  checkCircleSelected: {
     borderColor: '#328ce7',
-    backgroundColor: 'rgba(50, 140, 231, 0.2)',
-  },
-  radioCircleInner: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
     backgroundColor: '#328ce7',
   },
   footer: {

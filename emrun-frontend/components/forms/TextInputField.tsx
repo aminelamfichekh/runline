@@ -24,6 +24,9 @@ export const TextInputField: React.FC<TextInputFieldProps> = ({
       <TextInput
         style={[styles.input, error && styles.inputError]}
         placeholderTextColor="#666"
+        selectionColor="#328ce7"
+        cursorColor="#328ce7"
+        underlineColorAndroid="transparent"
         {...textInputProps}
       />
       {helperText && !error && <Text style={styles.helperText}>{helperText}</Text>}

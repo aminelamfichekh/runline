@@ -32,17 +32,13 @@ export default function Step3bScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.topBar}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity onPress={() => router.push('/(questionnaire)/step3')} style={styles.backButton}>
             <MaterialCommunityIcons name="arrow-left" size={24} color="#ffffff" />
           </TouchableOpacity>
           <Text style={styles.logo}>RUNLINE</Text>
           <View style={{ width: 40 }} />
         </View>
         <View style={styles.progressContainer}>
-          <View style={styles.progressLabels}>
-            <Text style={styles.progressText}>Préparation</Text>
-            <Text style={styles.progressPercent}>Info supplémentaire</Text>
-          </View>
           <View style={styles.progressBar}>
             <View style={[styles.progressFill, { width: '15%' }]} />
           </View>
@@ -58,6 +54,7 @@ export default function Step3bScreen() {
         <View style={styles.mainContent}>
           {/* Headline */}
           <View style={styles.headlineContainer}>
+            <Text style={styles.preLabel}>Préparer</Text>
             <Text style={styles.headline}>
               Vos <Text style={styles.headlineHighlight}>objectifs de course</Text>
             </Text>
@@ -101,6 +98,9 @@ export default function Step3bScreen() {
               onChangeText={setRecords}
               multiline
               numberOfLines={3}
+              selectionColor="#328ce7"
+              cursorColor="#328ce7"
+              underlineColorAndroid="transparent"
             />
           </View>
         </View>
@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 500,
+    bottom: 0,
     backgroundColor: 'rgba(50, 140, 231, 0.08)',
   },
   header: {
@@ -203,6 +203,15 @@ const styles = StyleSheet.create({
   headlineContainer: {
     paddingVertical: 24,
     marginBottom: 16,
+    alignItems: 'flex-start',
+  },
+  preLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#328ce7',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 4,
   },
   headline: {
     fontSize: 30,

@@ -1,88 +1,45 @@
 /**
  * Step 3a: Reprendre la course - Pause duration + records (CONDITIONAL)
- * Shows only if user selects "Reprendre la course à pied"
- * Comes after step3 (Poids/Taille)
+ * Uses FlatList fake wheel for pause duration.
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuestionnaireForm } from '@/hooks/useQuestionnaireForm';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { WheelPicker } from '@/components/ui/WheelPicker';
 
-const ITEM_HEIGHT = 56;
-
-// Generate pause duration options
 const generatePauseOptions = () => {
-  const options = [];
-
-  // 1-4 semaines
+  const options: { value: string; label: string }[] = [];
   for (let i = 1; i <= 4; i++) {
     options.push({ value: `${i}w`, label: `${i} semaine${i > 1 ? 's' : ''}` });
   }
-
-  // 1-11 mois
   for (let i = 1; i <= 11; i++) {
     options.push({ value: `${i}m`, label: `${i} mois` });
   }
-
-  // 1-10 ans
   for (let i = 1; i <= 10; i++) {
     options.push({ value: `${i}y`, label: `${i} an${i > 1 ? 's' : ''}` });
   }
-
-  // + de 10 ans
   options.push({ value: '10+y', label: '+ de 10 ans' });
-
   return options;
 };
+
+const pauseOptions = generatePauseOptions();
+const defaultPause = pauseOptions[8]?.value ?? '2m';
 
 export default function Step3aScreen() {
   const router = useRouter();
   const { form } = useQuestionnaireForm();
   const { setValue, watch } = form;
 
-  const pauseOptions = generatePauseOptions();
-  const [selectedPauseDuration, setSelectedPauseDuration] = useState(watch('pause_duration') || pauseOptions[8].value); // Default to 2 mois
+  const [selectedPauseDuration, setSelectedPauseDuration] = useState(watch('pause_duration') || defaultPause);
   const [records, setRecords] = useState(watch('records') || '');
-
-  const pickerScroll = useRef<ScrollView>(null);
-
-  // Scroll to selected item on mount
-  useEffect(() => {
-    const index = pauseOptions.findIndex(opt => opt.value === selectedPauseDuration);
-    if (index >= 0 && pickerScroll.current) {
-      pickerScroll.current.scrollTo({ y: index * ITEM_HEIGHT, animated: false });
-    }
-  }, []);
 
   const handleContinue = () => {
     setValue('pause_duration', selectedPauseDuration);
     setValue('records', records);
     router.push('/(questionnaire)/step4');
-  };
-
-  const renderPickerItem = (option: typeof pauseOptions[0], index: number) => {
-    const isSelected = option.value === selectedPauseDuration;
-
-    return (
-      <TouchableOpacity
-        key={option.value}
-        style={styles.pickerItem}
-        onPress={() => {
-          setSelectedPauseDuration(option.value);
-          pickerScroll.current?.scrollTo({ y: index * ITEM_HEIGHT, animated: true });
-        }}
-      >
-        <Text style={[
-          styles.pickerItemText,
-          isSelected && styles.pickerItemTextSelected,
-          !isSelected && styles.pickerItemTextUnselected
-        ]}>
-          {option.label}
-        </Text>
-      </TouchableOpacity>
-    );
   };
 
   return (
@@ -93,17 +50,13 @@ export default function Step3aScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.topBar}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity onPress={() => router.push('/(questionnaire)/step3')} style={styles.backButton}>
             <MaterialCommunityIcons name="arrow-left" size={24} color="#ffffff" />
           </TouchableOpacity>
           <Text style={styles.logo}>RUNLINE</Text>
           <View style={{ width: 40 }} />
         </View>
         <View style={styles.progressContainer}>
-          <View style={styles.progressLabels}>
-            <Text style={styles.progressText}>Reprise</Text>
-            <Text style={styles.progressPercent}>Info supplémentaire</Text>
-          </View>
           <View style={styles.progressBar}>
             <View style={[styles.progressFill, { width: '15%' }]} />
           </View>
@@ -111,59 +64,60 @@ export default function Step3aScreen() {
       </View>
 
       {/* Main Content */}
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.mainContent}>
-          {/* Question */}
-          <View style={styles.headlineContainer}>
-            <Text style={styles.headline}>
-              Depuis combien de temps as-tu{'\n'}
-              <Text style={styles.headlineHighlight}>arrêté la course</Text> ?
-            </Text>
-            <Text style={styles.subheadline}>
-              Cela nous aide à adapter votre reprise en douceur.
-            </Text>
-          </View>
+      <View style={styles.mainContentWrapper}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.mainContent}>
+            {/* Question */}
+            <View style={styles.headlineContainer}>
+              <Text style={styles.headline}>
+                Depuis combien de temps as-tu{'\n'}
+                <Text style={styles.headlineHighlight}>arrêté la course</Text> ?
+              </Text>
+              <Text style={styles.subheadline}>
+                Cela nous aide à adapter votre reprise en douceur.
+              </Text>
+            </View>
 
-          {/* Wheel Picker */}
-          <View style={styles.wheelPickerContainer}>
-            <View style={styles.selectionHighlight} />
-            <ScrollView
-              ref={pickerScroll}
-              showsVerticalScrollIndicator={false}
-              snapToInterval={ITEM_HEIGHT}
-              decelerationRate="fast"
-              contentContainerStyle={{ paddingVertical: ITEM_HEIGHT * 2 }}
-            >
-              {pauseOptions.map((option, index) => renderPickerItem(option, index))}
-            </ScrollView>
-            <View style={styles.pickerFadeTop} pointerEvents="none" />
-            <View style={styles.pickerFadeBottom} pointerEvents="none" />
-          </View>
+            {/* FlatList fake wheel – pause duration */}
+            <View style={styles.pickerTriggerWrap}>
+              <WheelPicker
+                data={pauseOptions}
+                onValueChange={setSelectedPauseDuration}
+                itemHeight={44}
+                wheelHeight={308}
+                fontSize={17}
+                highlightColor="#328ce7"
+              />
+            </View>
 
-          {/* Optional Records */}
-          <View style={styles.recordsSection}>
-            <Text style={styles.recordsLabel}>
-              Record(s) personnel(s) <Text style={styles.recordsOptional}>(Optionnel)</Text>
-            </Text>
-            <Text style={styles.recordsSubtitle}>
-              Ex: 5km en 25min, 10km en 55min, Semi en 2h...
-            </Text>
-            <TextInput
-              style={styles.textInput}
-              placeholder="Vos meilleurs temps..."
-              placeholderTextColor="#5a7690"
-              value={records}
-              onChangeText={setRecords}
-              multiline
-              numberOfLines={3}
-            />
+            {/* Optional Records */}
+            <View style={styles.recordsSection}>
+              <Text style={styles.recordsLabel}>
+                Record(s) personnel(s) <Text style={styles.recordsOptional}>(Optionnel)</Text>
+              </Text>
+              <Text style={styles.recordsSubtitle}>
+                Ex: 5km en 25min, 10km en 55min, Semi en 2h...
+              </Text>
+              <TextInput
+                style={styles.textInput}
+                placeholder="Vos meilleurs temps..."
+                placeholderTextColor="#5a7690"
+                value={records}
+                onChangeText={setRecords}
+                multiline
+                numberOfLines={3}
+                selectionColor="#328ce7"
+                cursorColor="#328ce7"
+                underlineColorAndroid="transparent"
+              />
+            </View>
           </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </View>
 
       {/* Footer Button */}
       <View style={styles.footer}>
@@ -190,7 +144,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 500,
+    bottom: 0,
     backgroundColor: 'rgba(50, 140, 231, 0.08)',
   },
   header: {
@@ -255,6 +209,9 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 120,
   },
+  mainContentWrapper: {
+    flex: 1,
+  },
   mainContent: {
     paddingHorizontal: 24,
     paddingTop: 8,
@@ -278,66 +235,8 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: '#93adc8',
   },
-  wheelPickerContainer: {
-    height: 256,
-    width: '100%',
-    backgroundColor: 'rgba(26, 38, 50, 0.4)',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
-    position: 'relative',
-    overflow: 'hidden',
+  pickerTriggerWrap: {
     marginBottom: 32,
-  },
-  selectionHighlight: {
-    position: 'absolute',
-    top: '50%',
-    left: 0,
-    right: 0,
-    height: ITEM_HEIGHT,
-    transform: [{ translateY: -ITEM_HEIGHT / 2 }],
-    backgroundColor: 'rgba(50, 140, 231, 0.1)',
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: 'rgba(50, 140, 231, 0.2)',
-    zIndex: 0,
-  },
-  pickerItem: {
-    height: ITEM_HEIGHT,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  pickerItemText: {
-    fontSize: 18,
-    fontWeight: '500',
-  },
-  pickerItemTextSelected: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#328ce7',
-  },
-  pickerItemTextUnselected: {
-    color: 'rgba(255, 255, 255, 0.3)',
-  },
-  pickerFadeTop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 96,
-    backgroundColor: 'transparent',
-    zIndex: 20,
-    pointerEvents: 'none',
-  },
-  pickerFadeBottom: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 96,
-    backgroundColor: 'transparent',
-    zIndex: 20,
-    pointerEvents: 'none',
   },
   recordsSection: {
     gap: 12,

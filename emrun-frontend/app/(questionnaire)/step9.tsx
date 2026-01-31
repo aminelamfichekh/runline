@@ -14,13 +14,32 @@ export default function Step9Screen() {
   const { form } = useQuestionnaireForm();
   const { setValue, watch } = form;
 
-  const [injuries, setInjuries] = useState('');
-  const [constraints, setConstraints] = useState('');
+  const watchedInjuries = watch('injuries') as string[] | undefined;
+  const watchedConstraints = watch('personal_constraints') as string | undefined;
+
+  const [injuries, setInjuries] = useState(
+    watchedInjuries && watchedInjuries.length > 0 ? watchedInjuries.join('\n') : ''
+  );
+  const [constraints, setConstraints] = useState(watchedConstraints || '');
 
   const handleContinue = () => {
-    // TODO: Add form schema fields for injuries_text and personal_constraints
-    // setValue('injuries_text', injuries);
-    // setValue('personal_constraints', constraints);
+    // Map multi-line injuries text to string[] for backend
+    const lines = injuries
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0);
+    if (lines.length > 0) {
+      setValue('injuries', lines);
+    } else {
+      setValue('injuries', undefined);
+    }
+
+    // Personal constraints map directly
+    if (constraints.trim().length > 0) {
+      setValue('personal_constraints', constraints.trim());
+    } else {
+      setValue('personal_constraints', undefined);
+    }
     router.push('/(questionnaire)/preview');
   };
 
@@ -32,17 +51,13 @@ export default function Step9Screen() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.topBar}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity onPress={() => router.push('/(questionnaire)/step8')} style={styles.backButton}>
             <MaterialCommunityIcons name="arrow-left" size={24} color="#ffffff" />
           </TouchableOpacity>
           <Text style={styles.logo}>RUNLINE</Text>
           <View style={{ width: 40 }} />
         </View>
         <View style={styles.progressContainer}>
-          <View style={styles.progressLabels}>
-            <Text style={styles.progressText}>Étape 9 sur 9</Text>
-            <Text style={styles.progressPercent}>100%</Text>
-          </View>
           <View style={styles.progressBar}>
             <View style={[styles.progressFill, { width: '100%' }]} />
           </View>
@@ -103,6 +118,9 @@ export default function Step9Screen() {
               multiline
               numberOfLines={4}
               textAlignVertical="top"
+              selectionColor="#328ce7"
+              cursorColor="#328ce7"
+              underlineColorAndroid="transparent"
             />
           </View>
         </View>
@@ -133,7 +151,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 500,
+    bottom: 0,
     backgroundColor: 'rgba(50, 140, 231, 0.08)',
   },
   header: {
