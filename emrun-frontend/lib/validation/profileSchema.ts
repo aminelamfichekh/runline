@@ -39,7 +39,9 @@ export const profileSchema = z.object({
   primary_goal_other: z.string().max(500).optional(),
 
   // Race Goal Details (conditional)
-  race_distance: z.enum(['5km', '10km', 'semi_marathon', 'marathon', 'autre']).optional(),
+  race_distance: z.enum(['5km', '10km', '15km', '20km', '25km', 'semi_marathon', 'marathon', 'autre']).optional(),
+  race_distance_km: z.number().int().min(1).max(50).optional(), // when race_distance === 'autre' (legacy)
+  race_distance_other: z.string().max(500).optional(), // text description when race_distance === 'autre'
   target_race_date: z.string().optional(),
   intermediate_objectives: z.string().max(1000).optional(),
   current_race_times: z.array(
@@ -69,12 +71,15 @@ export const profileSchema = z.object({
   // Running Experience
   running_experience_period: z.enum([
     'je_commence',
+    'je_reprends',
+    '1_4_semaines',
     '1_11_mois',
     '1_10_ans',
     'plus_10_ans',
   ], {
     required_error: 'La période d\'expérience de course est requise',
   }),
+  running_experience_weeks: z.string().optional(),
   running_experience_months: z.string().optional(),
   running_experience_years: z.string().optional(),
 
@@ -113,6 +118,13 @@ export const profileSchema = z.object({
         code: z.ZodIssueCode.custom,
         message: 'La distance de course est requise quand l\'objectif principal est une course',
         path: ['race_distance'],
+      });
+    }
+    if (data.race_distance === 'autre' && (!data.race_distance_other || data.race_distance_other.trim() === '')) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Veuillez décrire votre objectif de course',
+        path: ['race_distance_other'],
       });
     }
 
@@ -156,6 +168,17 @@ export const profileSchema = z.object({
         code: z.ZodIssueCode.custom,
         message: 'Veuillez préciser le lieu d\'entraînement quand "autre" est sélectionné',
         path: ['training_location_other'],
+      });
+    }
+  }
+
+  // Conditional validation: running_experience_weeks required if period is "1_4_semaines"
+  if (data.running_experience_period === '1_4_semaines') {
+    if (!data.running_experience_weeks) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Veuillez préciser le nombre de semaines',
+        path: ['running_experience_weeks'],
       });
     }
   }
@@ -224,6 +247,9 @@ export function isQuestionnaireComplete(data: Partial<ProfileFormData>): boolean
     if (!data.race_distance || !data.target_race_date) {
       return false;
     }
+    if (data.race_distance === 'autre' && (!data.race_distance_other || data.race_distance_other.trim() === '')) {
+      return false;
+    }
   }
 
   return true;
@@ -242,9 +268,16 @@ export function cleanConditionalFields(
   // Clear race fields if primary goal is not race-related
   if (cleaned.primary_goal && !['courir_race', 'ameliorer_chrono'].includes(cleaned.primary_goal)) {
     cleaned.race_distance = undefined;
+    cleaned.race_distance_km = undefined;
+    cleaned.race_distance_other = undefined;
     cleaned.target_race_date = undefined;
     cleaned.intermediate_objectives = undefined;
     cleaned.current_race_times = undefined;
+  }
+  // Clear race_distance_km and race_distance_other when race_distance is not "autre"
+  if (cleaned.race_distance && cleaned.race_distance !== 'autre') {
+    cleaned.race_distance_km = undefined;
+    cleaned.race_distance_other = undefined;
   }
 
   // Clear primary_goal_other if primary_goal is not "autre"

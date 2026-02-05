@@ -60,78 +60,62 @@ export const authApi = {
   async register(data: RegisterRequest): Promise<AuthResponse> {
     try {
       console.log('📤 Calling register API with:', { email: data.email, name: data.name });
-      console.log('🌐 API URL:', process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api');
-      
+
       const response = await apiClient.post<AuthResponse>('/auth/register', data);
-      
-      console.log('✅ Register API response received:', { 
-        hasTokens: !!(response.access_token && response.refresh_token),
-        hasUser: !!response.user,
-        responseKeys: Object.keys(response)
-      });
-      
-      // Backend returns { success: true, data: { user, access_token, refresh_token } }
-      // But extractData already extracted the data, so response should be AuthResponse directly
-      // However, if backend wraps it, we need to handle it
-      let authData: AuthResponse;
-      
-      if ('user' in response && 'access_token' in response) {
-        // Direct AuthResponse format
-        authData = response as AuthResponse;
-      } else if ('data' in response && typeof response.data === 'object') {
-        // Wrapped in data field
-        authData = response.data as AuthResponse;
-      } else {
-        console.warn('⚠️ Unexpected response format:', response);
-        throw new Error('Unexpected response format from server');
+
+      // extractData in client.ts unwraps { success: true, data: {...} } → {...}
+      // So response should already be { user, access_token, refresh_token, ... }
+      // But handle fallback if wrapper was returned instead
+      let authData: any = response;
+
+      if (!authData?.access_token && authData?.data) {
+        // extractData didn't unwrap — use inner data
+        authData = authData.data;
       }
-      
-      // Verify user was created
-      if (!authData.user || !authData.user.id) {
-        console.error('❌ User not created properly:', authData);
-        throw new Error('User registration failed: user data not returned');
+
+      console.log('📥 Register response keys:', Object.keys(authData || {}));
+
+      if (!authData?.access_token || !authData?.refresh_token) {
+        console.error('❌ Missing tokens in response:', JSON.stringify(authData));
+        throw new Error('Registration response missing tokens');
       }
-      
-      // Automatically store tokens after registration
-      if (authData.access_token && authData.refresh_token) {
-        await storeTokens(authData.access_token, authData.refresh_token);
-        console.log('✅ Tokens stored successfully');
-        console.log('✅ User registered with ID:', authData.user.id);
-        return authData;
-      } else {
-        console.warn('⚠️ No tokens in response:', authData);
-        throw new Error('Registration successful but no tokens received');
+
+      if (!authData?.user?.id) {
+        console.error('❌ Missing user in response:', JSON.stringify(authData));
+        throw new Error('Registration response missing user data');
       }
+
+      await storeTokens(authData.access_token, authData.refresh_token);
+      console.log('✅ Tokens stored, user ID:', authData.user.id);
+
+      return authData as AuthResponse;
     } catch (error: any) {
       console.error('❌ Register API error:', {
         message: error.message,
         code: error.code,
         response: error.response?.data,
         status: error.response?.status,
-        url: error.config?.url,
-        baseURL: error.config?.baseURL,
       });
-      
+
       // Enhanced error message for network issues
       if (error.code === 'ECONNREFUSED' || error.code === 'ERR_NETWORK' || error.message?.includes('Network') || error.message?.includes('network')) {
         const enhancedError: any = new Error('Cannot connect to server. Please check:\n1. Backend is running (php artisan serve --host=0.0.0.0 --port=8000)\n2. Correct IP address in .env file\n3. Phone and computer on same WiFi');
         enhancedError.response = error.response;
-        enhancedError.config = error.config;
         throw enhancedError;
       }
-      
+
       // Handle validation errors
       if (error.response?.status === 422) {
         const errors = error.response.data?.errors || {};
         const firstError = Object.values(errors)[0]?.[0] || error.response.data?.message || 'Validation failed';
-        throw new Error(firstError);
+        throw new Error(firstError as string);
       }
-      
+
       // Handle database errors
       if (error.response?.status === 500 && error.response?.data?.message?.includes('Database')) {
         throw new Error('Database error. Please check database connection and run migrations.');
       }
-      
+
       // Handle other errors
       const errorMessage = error.response?.data?.message || error.message || 'Registration failed';
       throw new Error(errorMessage);

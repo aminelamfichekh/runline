@@ -1,16 +1,33 @@
 /**
  * Step 2: Informations personnelles
- * Uses FlatList fake wheel for age (always starts at 18).
+ * Polished UI with shared components and smooth animations
  */
 
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  StyleSheet,
+  Animated,
+  Platform,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuestionnaireForm } from '@/hooks/useQuestionnaireForm';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Haptics from 'expo-haptics';
 import { QUESTIONNAIRE_EMAIL } from '@/lib/storage/keys';
 import { WheelPicker } from '@/components/ui/WheelPicker';
+import { colors } from '@/constants/colors';
+import {
+  QuestionnaireHeader,
+  ContinueButton,
+  questionnaireTokens,
+  getStepProgress,
+} from '@/components/questionnaire';
 
 const MIN_AGE = 18;
 const MAX_AGE = 90;
@@ -20,10 +37,69 @@ const ageOptions = Array.from({ length: MAX_AGE - MIN_AGE + 1 }, (_, i) => MIN_A
   label: String(v),
 }));
 
+interface GenderButtonProps {
+  value: string;
+  icon: string;
+  label: string;
+  isSelected: boolean;
+  onSelect: (value: string) => void;
+}
+
+function GenderButton({ value, icon, label, isSelected, onSelect }: GenderButtonProps) {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.96,
+      useNativeDriver: true,
+      friction: 8,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      friction: 5,
+    }).start();
+  };
+
+  const handlePress = () => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    onSelect(value);
+  };
+
+  return (
+    <Animated.View style={[styles.genderButtonWrapper, { transform: [{ scale: scaleAnim }] }]}>
+      <TouchableOpacity
+        style={[styles.genderOption, isSelected && styles.genderOptionSelected]}
+        activeOpacity={1}
+        onPress={handlePress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+      >
+        <MaterialCommunityIcons
+          name={icon as any}
+          size={20}
+          color={isSelected ? colors.text.primary : colors.text.secondary}
+        />
+        <Text style={[styles.genderText, isSelected && styles.genderTextSelected]}>
+          {label}
+        </Text>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+}
+
 export default function Step2Screen() {
   const router = useRouter();
   const { form } = useQuestionnaireForm();
   const { setValue, watch } = form;
+
+  const primaryGoal = watch('primary_goal') as string | undefined;
+  const { currentStep, totalSteps } = getStepProgress('step2', primaryGoal);
 
   // Reconstruct full name from first_name / last_name if present
   const firstName = watch('first_name') as string | undefined;
@@ -64,6 +140,16 @@ export default function Step2Screen() {
   const initialAgeNum = initialAge ? parseInt(initialAge, 10) : DEFAULT_AGE;
   const clampedAge = isNaN(initialAgeNum) ? DEFAULT_AGE : Math.max(MIN_AGE, Math.min(MAX_AGE, initialAgeNum));
   const [age, setAge] = useState(String(clampedAge));
+
+  // Entrance animation
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 350,
+      useNativeDriver: true,
+    }).start();
+  }, []);
 
   const handleContinue = () => {
     // Email maps directly
@@ -108,32 +194,21 @@ export default function Step2Screen() {
 
   return (
     <View style={styles.container}>
-      {/* Background Gradient */}
       <View style={styles.backgroundGradient} />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.topBar}>
-          <TouchableOpacity onPress={() => router.push('/(questionnaire)/step1')} style={styles.backButton}>
-            <MaterialCommunityIcons name="arrow-left" size={24} color="#ffffff" />
-          </TouchableOpacity>
-          <Text style={styles.logo}>RUNLINE</Text>
-          <View style={{ width: 40 }} />
-        </View>
-        <View style={styles.progressContainer}>
-          <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: '22%' }]} />
-          </View>
-        </View>
-      </View>
+      <QuestionnaireHeader
+        currentStep={currentStep}
+        totalSteps={totalSteps}
+        backRoute="/(questionnaire)/step1"
+      />
 
-      {/* Main Content */}
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.mainContent}>
+        <Animated.View style={[styles.mainContent, { opacity: fadeAnim }]}>
           {/* Headline */}
           <View style={styles.headlineContainer}>
             <Text style={styles.headline}>
@@ -151,19 +226,19 @@ export default function Step2Screen() {
                   <MaterialCommunityIcons
                     name="email-outline"
                     size={20}
-                    color="#93adc8"
+                    color={colors.text.secondary}
                   />
                 </View>
                 <TextInput
                   style={styles.inputWithIcon}
                   placeholder="votre@email.com"
-                  placeholderTextColor="#93adc8"
+                  placeholderTextColor={colors.text.secondary}
                   value={email}
                   onChangeText={setEmail}
                   keyboardType="email-address"
                   autoCapitalize="none"
-                  selectionColor="#328ce7"
-                  cursorColor="#328ce7"
+                  selectionColor={colors.accent.blue}
+                  cursorColor={colors.accent.blue}
                   underlineColorAndroid="transparent"
                 />
               </View>
@@ -177,102 +252,62 @@ export default function Step2Screen() {
                   <MaterialCommunityIcons
                     name="account-outline"
                     size={20}
-                    color="#93adc8"
+                    color={colors.text.secondary}
                   />
                 </View>
                 <TextInput
                   style={styles.inputWithIcon}
                   placeholder="Jean Dupont"
-                  placeholderTextColor="#93adc8"
+                  placeholderTextColor={colors.text.secondary}
                   value={name}
                   onChangeText={setName}
-                  selectionColor="#328ce7"
-                  cursorColor="#328ce7"
+                  selectionColor={colors.accent.blue}
+                  cursorColor={colors.accent.blue}
                   underlineColorAndroid="transparent"
                 />
               </View>
             </View>
 
             {/* Gender Toggle */}
-            <View style={[styles.fieldGroup, { paddingTop: 8 }]}>
+            <View style={styles.fieldGroup}>
               <Text style={styles.fieldLabel}>Sexe</Text>
               <View style={styles.genderToggleContainer}>
-                <TouchableOpacity
-                  style={[
-                    styles.genderOption,
-                    sex === 'homme' && styles.genderOptionSelected,
-                  ]}
-                  activeOpacity={0.8}
-                  onPress={() => setSex('homme')}
-                >
-                  <MaterialCommunityIcons
-                    name="gender-male"
-                    size={20}
-                    color={sex === 'homme' ? '#ffffff' : '#93adc8'}
-                  />
-                  <Text
-                    style={[
-                      styles.genderText,
-                      sex === 'homme' && styles.genderTextSelected,
-                    ]}
-                  >
-                    Homme
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.genderOption,
-                    sex === 'femme' && styles.genderOptionSelected,
-                  ]}
-                  activeOpacity={0.8}
-                  onPress={() => setSex('femme')}
-                >
-                  <MaterialCommunityIcons
-                    name="gender-female"
-                    size={20}
-                    color={sex === 'femme' ? '#ffffff' : '#93adc8'}
-                  />
-                  <Text
-                    style={[
-                      styles.genderText,
-                      sex === 'femme' && styles.genderTextSelected,
-                    ]}
-                  >
-                    Femme
-                  </Text>
-                </TouchableOpacity>
+                <GenderButton
+                  value="homme"
+                  icon="gender-male"
+                  label="Homme"
+                  isSelected={sex === 'homme'}
+                  onSelect={setSex}
+                />
+                <GenderButton
+                  value="femme"
+                  icon="gender-female"
+                  label="Femme"
+                  isSelected={sex === 'femme'}
+                  onSelect={setSex}
+                />
               </View>
             </View>
 
-            {/* Age – FlatList fake wheel (default 18) */}
-            <View style={[styles.fieldGroup, { paddingTop: 12 }]}>
-              <Text style={[styles.fieldLabel, { textAlign: 'center' }]}>
-                Votre âge
-              </Text>
+            {/* Age Picker */}
+            <View style={styles.fieldGroup}>
+              <Text style={[styles.fieldLabel, styles.fieldLabelCentered]}>Votre âge</Text>
               <WheelPicker
                 data={ageOptions}
                 onValueChange={(v) => setAge(String(v))}
-                itemHeight={44}
-                wheelHeight={308}
-                fontSize={17}
-                highlightColor="#328ce7"
+                itemHeight={52}
+                wheelHeight={260}
+                fontSize={22}
+                highlightColor={colors.accent.blue}
+                initialIndex={clampedAge - MIN_AGE}
               />
             </View>
           </View>
-        </View>
+        </Animated.View>
       </ScrollView>
 
-      {/* Footer Button */}
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.continueButton}
-          onPress={handleContinue}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.continueButtonText}>Continuer</Text>
-          <MaterialCommunityIcons name="arrow-right" size={20} color="#ffffff" />
-        </TouchableOpacity>
+        <ContinueButton onPress={handleContinue} />
       </View>
     </View>
   );
@@ -281,7 +316,7 @@ export default function Step2Screen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#111921',
+    backgroundColor: colors.primary.dark,
   },
   backgroundGradient: {
     position: 'absolute',
@@ -289,103 +324,44 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(50, 140, 231, 0.08)',
-  },
-  header: {
-    paddingTop: 52,
-    paddingBottom: 12,
-    paddingHorizontal: 24,
-    zIndex: 10,
-  },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'transparent',
-  },
-  logo: {
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 2.4,
-    color: '#ffffff',
-    textAlign: 'center',
-  },
-  progressContainer: {
-    gap: 8,
-  },
-  progressLabels: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-  },
-  progressText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#ffffff',
-  },
-  progressPercent: {
-    fontSize: 12,
-    color: '#93adc8',
-  },
-  progressBar: {
-    height: 6,
-    width: '100%',
-    backgroundColor: '#344d65',
-    borderRadius: 9999,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#328ce7',
-    borderRadius: 9999,
+    backgroundColor: 'rgba(50, 140, 231, 0.05)',
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 120,
+    paddingBottom: 140,
   },
   mainContent: {
-    paddingHorizontal: 24,
-    paddingTop: 8,
+    paddingHorizontal: questionnaireTokens.spacing.xxl,
   },
   headlineContainer: {
-    paddingVertical: 32,
+    paddingTop: questionnaireTokens.spacing.lg,
+    paddingBottom: questionnaireTokens.spacing.xxl,
   },
   headline: {
-    fontSize: 28,
-    fontWeight: '700',
-    lineHeight: 34,
-    color: '#ffffff',
-    marginBottom: 8,
+    ...questionnaireTokens.typography.headline,
+    color: colors.text.primary,
     textAlign: 'left',
   },
   headlineHighlight: {
-    color: '#328ce7',
-  },
-  subheadline: {
-    fontSize: 14,
-    lineHeight: 22,
-    color: '#93adc8',
+    color: colors.accent.blue,
   },
   formContainer: {
-    gap: 18,
+    gap: questionnaireTokens.spacing.xl,
   },
   fieldGroup: {
-    gap: 8,
+    gap: questionnaireTokens.spacing.sm,
   },
   fieldLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#ffffff',
-    marginLeft: 4,
+    ...questionnaireTokens.typography.label,
+    color: colors.text.primary,
+    marginLeft: questionnaireTokens.spacing.xs,
+  },
+  fieldLabelCentered: {
+    textAlign: 'center',
+    marginLeft: 0,
+    marginTop: questionnaireTokens.spacing.md,
   },
   inputWrapper: {
     position: 'relative',
@@ -393,79 +369,65 @@ const styles = StyleSheet.create({
   },
   inputIconContainer: {
     position: 'absolute',
-    left: 12,
+    left: 14,
     top: 0,
     bottom: 0,
     justifyContent: 'center',
+    zIndex: 1,
   },
   inputWithIcon: {
     width: '100%',
-    backgroundColor: '#1a2632',
+    backgroundColor: colors.primary.medium,
     borderWidth: 1,
-    borderColor: '#344d65',
-    borderRadius: 16,
+    borderColor: colors.border.light,
+    borderRadius: questionnaireTokens.borderRadius.md,
     paddingVertical: 14,
-    paddingHorizontal: 44,
-    color: '#ffffff',
+    paddingLeft: 44,
+    paddingRight: 16,
+    color: colors.text.primary,
     fontSize: 15,
   },
   genderToggleContainer: {
     flexDirection: 'row',
-    backgroundColor: '#1a2632',
-    borderRadius: 16,
+    backgroundColor: colors.primary.medium,
+    borderRadius: questionnaireTokens.borderRadius.md,
     borderWidth: 1,
-    borderColor: '#344d65',
+    borderColor: colors.border.light,
     padding: 4,
     gap: 6,
+  },
+  genderButtonWrapper: {
+    flex: 1,
   },
   genderOption: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-    borderRadius: 12,
+    paddingVertical: 12,
+    borderRadius: questionnaireTokens.borderRadius.sm,
     backgroundColor: 'transparent',
     gap: 6,
   },
   genderOptionSelected: {
-    backgroundColor: '#328ce7',
+    backgroundColor: colors.accent.blue,
   },
   genderText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#93adc8',
+    color: colors.text.secondary,
   },
   genderTextSelected: {
-    color: '#ffffff',
+    color: colors.text.primary,
   },
   footer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    padding: 24,
-    paddingBottom: 40,
-  },
-  continueButton: {
-    width: '100%',
-    backgroundColor: '#328ce7',
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    shadowColor: '#328ce7',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  continueButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#ffffff',
+    paddingHorizontal: questionnaireTokens.spacing.xxl,
+    paddingTop: questionnaireTokens.spacing.lg,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 32,
+    backgroundColor: colors.primary.dark,
   },
 });

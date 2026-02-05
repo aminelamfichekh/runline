@@ -1,14 +1,20 @@
 /**
  * Step 5: Volume Hebdomadaire
- * Uses FlatList fake wheels for weekly volume.
+ * Polished UI with shared components and smooth animations
  */
 
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, ScrollView, StyleSheet, Animated, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuestionnaireForm } from '@/hooks/useQuestionnaireForm';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { WheelPicker } from '@/components/ui/WheelPicker';
+import { colors } from '@/constants/colors';
+import {
+  QuestionnaireHeader,
+  ContinueButton,
+  questionnaireTokens,
+  getStepProgress,
+} from '@/components/questionnaire';
 
 const generateVolumeOptions = () => {
   const options: { value: number; label: string }[] = [];
@@ -19,27 +25,51 @@ const generateVolumeOptions = () => {
 };
 
 const volumeOptions = generateVolumeOptions();
+const DEFAULT_VOLUME_INDEX = 4; // 20km
 
 export default function Step5Screen() {
   const router = useRouter();
   const { form } = useQuestionnaireForm();
   const { setValue, watch } = form;
 
+  const primaryGoal = watch('primary_goal') as string | undefined;
+  const { currentStep, totalSteps } = getStepProgress('step5', primaryGoal);
+
+  // Get saved values from form state
+  const savedLastWeekVolume = watch('last_week_volume') as number | undefined;
+  const savedTypicalVolume = watch('typical_volume') as number | undefined;
   const watchedCurrentVolume = watch('current_weekly_volume_km') as number | undefined;
-  const [lastWeekVolume, setLastWeekVolume] = useState(20);
-  const [typicalVolume, setTypicalVolume] = useState(
-    typeof watchedCurrentVolume === 'number' ? watchedCurrentVolume : 30
-  );
+
+  // Initialize state from saved values or defaults
+  const initialLastWeek = typeof savedLastWeekVolume === 'number' ? savedLastWeekVolume : 20;
+  const initialTypical = typeof savedTypicalVolume === 'number'
+    ? savedTypicalVolume
+    : (typeof watchedCurrentVolume === 'number' ? watchedCurrentVolume : 30);
+
+  const [lastWeekVolume, setLastWeekVolume] = useState(initialLastWeek);
+  const [typicalVolume, setTypicalVolume] = useState(initialTypical);
+
+  // Calculate initial indices based on saved values
+  const lastWeekInitialIndex = volumeOptions.findIndex(o => o.value === initialLastWeek);
+  const typicalInitialIndex = volumeOptions.findIndex(o => o.value === initialTypical);
+
+  // Entrance animation
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 350,
+      useNativeDriver: true,
+    }).start();
+  }, []);
 
   const handleContinue = () => {
-    // Optional additional fields for personalization
     setValue('last_week_volume', lastWeekVolume);
     setValue('typical_volume', typicalVolume);
 
-    // Map "typical" volume to backend current_weekly_volume_km
     let backendVolume = typicalVolume;
     if (backendVolume > 100) {
-      backendVolume = 100; // schema caps at 100
+      backendVolume = 100;
     }
     setValue('current_weekly_volume_km', backendVolume);
     router.push('/(questionnaire)/step6');
@@ -47,87 +77,63 @@ export default function Step5Screen() {
 
   return (
     <View style={styles.container}>
-      {/* Background Gradient */}
       <View style={styles.backgroundGradient} />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.topBar}>
-          <TouchableOpacity onPress={() => router.push('/(questionnaire)/step4')} style={styles.backButton}>
-            <MaterialCommunityIcons name="arrow-left" size={24} color="#ffffff" />
-          </TouchableOpacity>
-          <Text style={styles.logo}>RUNLINE</Text>
-          <View style={{ width: 40 }} />
-        </View>
-        <View style={styles.progressContainer}>
-          <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: '56%' }]} />
+      <QuestionnaireHeader
+        currentStep={currentStep}
+        totalSteps={totalSteps}
+        backRoute="/(questionnaire)/step4"
+      />
+
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <Animated.View style={[styles.mainContent, { opacity: fadeAnim }]}>
+          <View style={styles.headlineContainer}>
+            <Text style={styles.headline}>
+              Votre <Text style={styles.headlineHighlight}>volume hebdomadaire</Text>
+            </Text>
+            <Text style={styles.subheadline}>
+              Cela nous aide à adapter l'intensité de votre programme.
+            </Text>
           </View>
-        </View>
-      </View>
 
-      {/* Main Content */}
-      <View style={styles.mainContentWrapper}>
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.mainContent}>
-            {/* Headline */}
-            <View style={styles.headlineContainer}>
-              <Text style={styles.headline}>
-                Votre <Text style={styles.headlineHighlight}>volume hebdomadaire</Text>
-              </Text>
-              <Text style={styles.subheadline}>
-                Cela nous aide à adapter l'intensité de votre programme.
-              </Text>
-            </View>
-
-            {/* First Question – FlatList fake wheel */}
-            <View style={styles.questionSection}>
-              <Text style={styles.questionLabel}>
-                Combien de kilomètres as-tu fait la semaine dernière ?
-              </Text>
-              <WheelPicker
-                data={volumeOptions}
-                selectedValue={lastWeekVolume}
-                onValueChange={setLastWeekVolume}
-                itemHeight={44}
-                wheelHeight={308}
-                fontSize={17}
-                highlightColor="#328ce7"
-              />
-            </View>
-
-            {/* Second Question – FlatList fake wheel */}
-            <View style={styles.questionSection}>
-              <Text style={styles.questionLabel}>
-                Quel est ton volume hebdomadaire classique ?
-              </Text>
-              <WheelPicker
-                data={volumeOptions}
-                onValueChange={setTypicalVolume}
-                itemHeight={44}
-                wheelHeight={308}
-                fontSize={17}
-                highlightColor="#328ce7"
-              />
-            </View>
+          <View style={styles.questionSection}>
+            <Text style={styles.questionLabel}>
+              Combien de kilomètres avez-vous fait la semaine dernière ?
+            </Text>
+            <WheelPicker
+              data={volumeOptions}
+              onValueChange={setLastWeekVolume}
+              itemHeight={48}
+              wheelHeight={264}
+              fontSize={18}
+              highlightColor={colors.accent.blue}
+              initialIndex={lastWeekInitialIndex >= 0 ? lastWeekInitialIndex : DEFAULT_VOLUME_INDEX}
+            />
           </View>
-        </ScrollView>
-      </View>
 
-      {/* Footer Button */}
+          <View style={styles.questionSection}>
+            <Text style={styles.questionLabel}>
+              Quel est votre volume hebdomadaire classique ?
+            </Text>
+            <WheelPicker
+              data={volumeOptions}
+              onValueChange={setTypicalVolume}
+              itemHeight={48}
+              wheelHeight={264}
+              fontSize={18}
+              highlightColor={colors.accent.blue}
+              initialIndex={typicalInitialIndex >= 0 ? typicalInitialIndex : DEFAULT_VOLUME_INDEX + 2}
+            />
+          </View>
+        </Animated.View>
+      </ScrollView>
+
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.continueButton}
-          onPress={handleContinue}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.continueButtonText}>Continuer</Text>
-          <MaterialCommunityIcons name="arrow-right" size={20} color="#ffffff" />
-        </TouchableOpacity>
+        <ContinueButton onPress={handleContinue} />
       </View>
     </View>
   );
@@ -136,7 +142,7 @@ export default function Step5Screen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#111921',
+    backgroundColor: colors.primary.dark,
   },
   backgroundGradient: {
     position: 'absolute',
@@ -144,104 +150,41 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(50, 140, 231, 0.08)',
-  },
-  header: {
-    paddingTop: 60,
-    paddingBottom: 16,
-    paddingHorizontal: 24,
-    zIndex: 10,
-  },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#1a2632',
-  },
-  logo: {
-    fontSize: 14,
-    fontWeight: '700',
-    letterSpacing: 2.4,
-    color: '#93adc8',
-    textAlign: 'center',
-  },
-  progressContainer: {
-    gap: 8,
-  },
-  progressLabels: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-  },
-  progressText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#ffffff',
-  },
-  progressPercent: {
-    fontSize: 12,
-    color: '#93adc8',
-  },
-  progressBar: {
-    height: 6,
-    width: '100%',
-    backgroundColor: '#344d65',
-    borderRadius: 9999,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#328ce7',
-    borderRadius: 9999,
+    backgroundColor: 'rgba(50, 140, 231, 0.05)',
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 120,
-  },
-  mainContentWrapper: {
-    flex: 1,
+    paddingBottom: 140,
   },
   mainContent: {
-    paddingHorizontal: 24,
-    paddingTop: 8,
+    paddingHorizontal: questionnaireTokens.spacing.xxl,
   },
   headlineContainer: {
-    paddingVertical: 24,
-    marginBottom: 16,
+    paddingTop: questionnaireTokens.spacing.lg,
+    paddingBottom: questionnaireTokens.spacing.xxl,
   },
   headline: {
-    fontSize: 30,
-    fontWeight: '700',
-    lineHeight: 40,
-    color: '#ffffff',
-    marginBottom: 8,
+    ...questionnaireTokens.typography.headline,
+    color: colors.text.primary,
+    marginBottom: questionnaireTokens.spacing.sm,
   },
   headlineHighlight: {
-    color: '#328ce7',
+    color: colors.accent.blue,
   },
   subheadline: {
-    fontSize: 14,
-    lineHeight: 22,
-    color: '#93adc8',
+    ...questionnaireTokens.typography.subheadline,
+    color: colors.text.secondary,
   },
   questionSection: {
-    marginBottom: 32,
+    marginBottom: questionnaireTokens.spacing.xxxl,
   },
   questionLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ffffff',
-    marginBottom: 16,
+    color: colors.text.primary,
+    marginBottom: questionnaireTokens.spacing.lg,
     textAlign: 'center',
   },
   footer: {
@@ -249,28 +192,9 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    padding: 24,
-    paddingBottom: 40,
-  },
-  continueButton: {
-    width: '100%',
-    backgroundColor: '#328ce7',
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    shadowColor: '#328ce7',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  continueButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#ffffff',
+    paddingHorizontal: questionnaireTokens.spacing.xxl,
+    paddingTop: questionnaireTokens.spacing.lg,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 32,
+    backgroundColor: colors.primary.dark,
   },
 });

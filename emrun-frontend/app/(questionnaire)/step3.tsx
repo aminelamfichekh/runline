@@ -1,42 +1,71 @@
 /**
  * Step 3: Poids / Taille
- * Uses unified WheelPicker for weight and height.
+ * Polished UI with shared components and smooth animations
  */
 
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  Animated,
+  Platform,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuestionnaireForm } from '@/hooks/useQuestionnaireForm';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { WheelPicker } from '@/components/ui/WheelPicker';
+import { colors } from '@/constants/colors';
+import {
+  QuestionnaireHeader,
+  ContinueButton,
+  questionnaireTokens,
+  getStepProgress,
+} from '@/components/questionnaire';
 
 const weightOptions = Array.from({ length: 151 }, (_, i) => 30 + i).map((v) => ({
   value: v,
-  label: `${v} kg`,
+  label: `${v}`,
 }));
 const heightOptions = Array.from({ length: 121 }, (_, i) => 130 + i).map((v) => ({
   value: v,
-  label: `${v} cm`,
+  label: `${v}`,
 }));
+
+const DEFAULT_WEIGHT = 70;
+const DEFAULT_HEIGHT = 170;
 
 export default function Step3Screen() {
   const router = useRouter();
   const { form } = useQuestionnaireForm();
   const { setValue, watch } = form;
 
+  const primaryGoal = watch('primary_goal') as string | undefined;
+  const { currentStep, totalSteps } = getStepProgress('step3', primaryGoal);
+
   const watchedWeightKg = watch('weight_kg') as number | undefined;
   const watchedLegacyWeight = watch('weight') as number | undefined;
   const watchedHeightMeters = watch('height_cm') as number | undefined;
   const watchedLegacyHeight = watch('height') as number | undefined;
 
-  const initialWeight = watchedWeightKg ?? watchedLegacyWeight ?? 70;
+  const initialWeight = watchedWeightKg ?? watchedLegacyWeight ?? DEFAULT_WEIGHT;
   const initialHeightCm =
     (typeof watchedHeightMeters === 'number' && watchedHeightMeters > 0
       ? Math.round(watchedHeightMeters * 100)
-      : undefined) ?? watchedLegacyHeight ?? 170;
+      : undefined) ?? watchedLegacyHeight ?? DEFAULT_HEIGHT;
 
   const [selectedWeight, setSelectedWeight] = useState(initialWeight);
   const [selectedHeight, setSelectedHeight] = useState(initialHeightCm);
+
+  // Entrance animation
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 350,
+      useNativeDriver: true,
+    }).start();
+  }, []);
 
   const handleContinue = () => {
     // Map to backend physical fields
@@ -45,11 +74,10 @@ export default function Step3Screen() {
     setValue('height_cm', selectedHeight / 100);
 
     // Conditional routing based on primary_goal from step1
-    const primaryGoal = watch('primary_goal') as string | undefined;
     if (primaryGoal === 'reprendre') {
       router.push('/(questionnaire)/step3a'); // Reprendre - pause + records
     } else if (primaryGoal === 'courir_race' || primaryGoal === 'ameliorer_chrono') {
-      router.push('/(questionnaire)/step3b'); // Préparer course - objectives + records
+      router.push('/(questionnaire)/step3b-goal'); // Préparer course - d'abord détails objectif (distance + date)
     } else {
       router.push('/(questionnaire)/step4'); // Normal flow
     }
@@ -57,82 +85,62 @@ export default function Step3Screen() {
 
   return (
     <View style={styles.container}>
-      {/* Background Gradient */}
       <View style={styles.backgroundGradient} />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.topBar}>
-          <TouchableOpacity onPress={() => router.push('/(questionnaire)/step2')} style={styles.backButton}>
-            <MaterialCommunityIcons name="arrow-left" size={24} color="#ffffff" />
-          </TouchableOpacity>
-          <Text style={styles.logo}>RUNLINE</Text>
-          <View style={{ width: 40 }} />
-        </View>
-        <View style={styles.progressContainer}>
-          <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: '33%' }]} />
-          </View>
-        </View>
-      </View>
+      <QuestionnaireHeader
+        currentStep={currentStep}
+        totalSteps={totalSteps}
+        backRoute="/(questionnaire)/step2"
+      />
 
-      {/* Main Content */}
-      <View style={styles.mainContentWrapper}>
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.mainContent}>
-          {/* Question */}
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <Animated.View style={[styles.mainContent, { opacity: fadeAnim }]}>
+          {/* Headline */}
           <View style={styles.headlineContainer}>
             <Text style={styles.headline}>
               Votre <Text style={styles.headlineHighlight}>morphologie</Text>
             </Text>
             <Text style={styles.subheadline}>
-              Ces informations nous aident à personnaliser votre plan d&apos;entraînement.
+              Ces informations nous aident à personnaliser votre plan d'entraînement.
             </Text>
           </View>
 
-          {/* FlatList fake wheels – Poids & Taille */}
+          {/* Weight & Height Pickers */}
           <View style={styles.pickerRow}>
-            <View style={styles.pickerHalf}>
-              <Text style={styles.pickerTriggerLabel}>Poids (kg)</Text>
+            <View style={styles.pickerColumn}>
+              <Text style={styles.pickerLabel}>POIDS (KG)</Text>
               <WheelPicker
                 data={weightOptions}
                 onValueChange={setSelectedWeight}
-                itemHeight={40}
-                wheelHeight={200}
-                fontSize={15}
-                highlightColor="#328ce7"
+                itemHeight={52}
+                wheelHeight={260}
+                fontSize={22}
+                highlightColor={colors.accent.blue}
+                initialIndex={initialWeight - 30}
               />
             </View>
-            <View style={styles.pickerHalf}>
-              <Text style={styles.pickerTriggerLabel}>Taille (cm)</Text>
+            <View style={styles.pickerColumn}>
+              <Text style={styles.pickerLabel}>TAILLE (CM)</Text>
               <WheelPicker
                 data={heightOptions}
                 onValueChange={setSelectedHeight}
-                itemHeight={40}
-                wheelHeight={200}
-                fontSize={15}
-                highlightColor="#328ce7"
+                itemHeight={52}
+                wheelHeight={260}
+                fontSize={22}
+                highlightColor={colors.accent.blue}
+                initialIndex={initialHeightCm - 130}
               />
             </View>
           </View>
-          </View>
-        </ScrollView>
-      </View>
+        </Animated.View>
+      </ScrollView>
 
-      {/* Footer Button */}
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.continueButton}
-          onPress={handleContinue}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.continueButtonText}>Continuer</Text>
-          <MaterialCommunityIcons name="arrow-right" size={20} color="#ffffff" />
-        </TouchableOpacity>
+        <ContinueButton onPress={handleContinue} />
       </View>
     </View>
   );
@@ -141,7 +149,7 @@ export default function Step3Screen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#111921',
+    backgroundColor: colors.primary.dark,
   },
   backgroundGradient: {
     position: 'absolute',
@@ -149,143 +157,60 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(50, 140, 231, 0.08)',
-  },
-  header: {
-    paddingTop: 60,
-    paddingBottom: 16,
-    paddingHorizontal: 24,
-    zIndex: 10,
-  },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#1a2632',
-  },
-  logo: {
-    fontSize: 14,
-    fontWeight: '700',
-    letterSpacing: 2.4,
-    color: '#93adc8',
-    textAlign: 'center',
-  },
-  progressContainer: {
-    gap: 8,
-  },
-  progressLabels: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-  },
-  progressText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#ffffff',
-  },
-  progressPercent: {
-    fontSize: 12,
-    color: '#93adc8',
-  },
-  progressBar: {
-    height: 6,
-    width: '100%',
-    backgroundColor: '#344d65',
-    borderRadius: 9999,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#328ce7',
-    borderRadius: 9999,
+    backgroundColor: 'rgba(50, 140, 231, 0.05)',
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 120,
-  },
-  mainContentWrapper: {
-    flex: 1,
+    paddingBottom: 140,
   },
   mainContent: {
-    paddingHorizontal: 24,
-    paddingTop: 8,
+    paddingHorizontal: questionnaireTokens.spacing.xxl,
   },
   headlineContainer: {
-    paddingVertical: 24,
-    marginBottom: 16,
+    paddingTop: questionnaireTokens.spacing.lg,
+    paddingBottom: questionnaireTokens.spacing.xxxl,
     alignItems: 'center',
   },
   headline: {
-    fontSize: 30,
-    fontWeight: '700',
-    lineHeight: 40,
-    color: '#ffffff',
-    marginBottom: 8,
+    ...questionnaireTokens.typography.headline,
+    color: colors.text.primary,
     textAlign: 'center',
+    marginBottom: questionnaireTokens.spacing.sm,
   },
   headlineHighlight: {
-    color: '#328ce7',
+    color: colors.accent.blue,
   },
   subheadline: {
-    fontSize: 14,
-    lineHeight: 22,
-    color: '#93adc8',
+    ...questionnaireTokens.typography.subheadline,
+    color: colors.text.secondary,
     textAlign: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: questionnaireTokens.spacing.lg,
   },
   pickerRow: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 8,
+    gap: questionnaireTokens.spacing.lg,
   },
-  pickerHalf: {
+  pickerColumn: {
     flex: 1,
-    gap: 8,
   },
-  pickerTriggerLabel: {
-    fontSize: 12,
-    fontWeight: '700',
+  pickerLabel: {
+    fontSize: 11,
+    fontWeight: '600',
     letterSpacing: 1,
-    textTransform: 'uppercase' as any,
-    color: '#587a9a',
+    color: colors.text.tertiary,
+    textAlign: 'center',
+    marginBottom: questionnaireTokens.spacing.md,
   },
   footer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    padding: 24,
-    paddingBottom: 40,
-  },
-  continueButton: {
-    width: '100%',
-    backgroundColor: '#328ce7',
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    shadowColor: '#328ce7',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  continueButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#ffffff',
+    paddingHorizontal: questionnaireTokens.spacing.xxl,
+    paddingTop: questionnaireTokens.spacing.lg,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 32,
+    backgroundColor: colors.primary.dark,
   },
 });

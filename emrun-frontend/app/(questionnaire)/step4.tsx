@@ -1,22 +1,148 @@
 /**
- * Step 4: Nombre de sorties actuelles par semaine
- * Converted from HTML design with radio selection
+ * Step 4: Fréquence de course
+ * Polished UI with shared components and smooth animations
  */
 
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  Animated,
+  Platform,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuestionnaireForm } from '@/hooks/useQuestionnaireForm';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
+import { colors } from '@/constants/colors';
+import {
+  QuestionnaireHeader,
+  ContinueButton,
+  questionnaireTokens,
+  getStepProgress,
+} from '@/components/questionnaire';
 
 type FrequencyOption = 'none' | 'little' | 'much' | 'passionate' | 'crazy';
+
+interface FrequencyCardProps {
+  value: FrequencyOption;
+  icon: string;
+  title: string;
+  subtitle: string;
+  isSelected: boolean;
+  onSelect: (value: FrequencyOption) => void;
+  index: number;
+}
+
+function FrequencyCard({
+  value,
+  icon,
+  title,
+  subtitle,
+  isSelected,
+  onSelect,
+  index,
+}: FrequencyCardProps) {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 300,
+      delay: index * 50,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.98,
+      useNativeDriver: true,
+      friction: 8,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      friction: 5,
+    }).start();
+  };
+
+  const handlePress = () => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    onSelect(value);
+  };
+
+  return (
+    <Animated.View
+      style={{
+        opacity: fadeAnim,
+        transform: [
+          { scale: scaleAnim },
+          {
+            translateY: fadeAnim.interpolate({
+              inputRange: [0, 1],
+              outputRange: [15, 0],
+            }),
+          },
+        ],
+      }}
+    >
+      <TouchableOpacity
+        onPress={handlePress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        activeOpacity={1}
+        style={[styles.optionCard, isSelected && styles.optionCardSelected]}
+      >
+        <View style={styles.optionContent}>
+          <View style={styles.optionLeft}>
+            <View
+              style={[
+                styles.optionIconContainer,
+                isSelected && styles.optionIconContainerSelected,
+              ]}
+            >
+              <MaterialCommunityIcons
+                name={icon as any}
+                size={22}
+                color={isSelected ? colors.accent.blue : colors.text.secondary}
+              />
+            </View>
+            <View style={styles.textContainer}>
+              <Text style={[styles.optionTitle, isSelected && styles.optionTitleSelected]}>
+                {title}
+              </Text>
+              <Text style={styles.optionSubtitle}>{subtitle}</Text>
+            </View>
+          </View>
+          <View style={[styles.checkCircle, isSelected && styles.checkCircleSelected]}>
+            {isSelected && (
+              <MaterialCommunityIcons name="check" size={14} color={colors.text.primary} />
+            )}
+          </View>
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+}
 
 export default function Step4Screen() {
   const router = useRouter();
   const { form } = useQuestionnaireForm();
   const { setValue, watch } = form;
 
-  // Map existing backend value to local frequency option if present
+  const primaryGoal = watch('primary_goal') as string | undefined;
+  const { currentStep, totalSteps } = getStepProgress('step4', primaryGoal);
+
   const currentRunsPerWeek = watch('current_runs_per_week') as
     | '0'
     | '1_2'
@@ -47,7 +173,6 @@ export default function Step4Screen() {
   );
 
   const handleContinue = () => {
-    // Map UI choice to backend current_runs_per_week enum
     let backendValue: '0' | '1_2' | '3_4' | '5_6' | '7_plus' | undefined;
     switch (selectedFrequency) {
       case 'none':
@@ -75,97 +200,35 @@ export default function Step4Screen() {
     router.push('/(questionnaire)/step5');
   };
 
-  const renderOption = (
-    value: FrequencyOption,
-    icon: string,
-    title: string,
-    subtitle: string
-  ) => {
-    const isSelected = selectedFrequency === value;
-
-    return (
-      <TouchableOpacity
-        key={value}
-        onPress={() => setSelectedFrequency(value)}
-        activeOpacity={0.7}
-        style={[
-          styles.optionCard,
-          isSelected && styles.optionCardSelected
-        ]}
-      >
-        <View style={styles.optionContent}>
-          {/* Left: icon + texts */}
-          <View style={styles.optionLeft}>
-            <View
-              style={[
-                styles.optionIconContainer,
-                isSelected && styles.optionIconContainerSelected,
-              ]}
-            >
-              <MaterialCommunityIcons
-                name={icon as any}
-                size={22}
-                color={isSelected ? '#328ce7' : '#93adc8'}
-              />
-            </View>
-            <View style={styles.textContainer}>
-              <Text
-                style={[
-                  styles.optionTitle,
-                  isSelected && styles.optionTitleSelected,
-                ]}
-              >
-                {title}
-              </Text>
-              <Text style={styles.optionSubtitle}>{subtitle}</Text>
-            </View>
-          </View>
-
-          {/* Right: circular check indicator */}
-          <View
-            style={[
-              styles.checkCircle,
-              isSelected && styles.checkCircleSelected,
-            ]}
-          >
-            {isSelected && (
-              <MaterialCommunityIcons name="check" size={14} color="#ffffff" />
-            )}
-          </View>
-        </View>
-      </TouchableOpacity>
-    );
-  };
+  const options: Array<{
+    value: FrequencyOption;
+    icon: string;
+    title: string;
+    subtitle: string;
+  }> = [
+    { value: 'little', icon: 'emoticon-happy-outline', title: 'Un peu', subtitle: '1-2 fois par semaine' },
+    { value: 'much', icon: 'run-fast', title: 'Beaucoup', subtitle: '3-4 fois par semaine' },
+    { value: 'passionate', icon: 'speedometer', title: 'Passionnément', subtitle: '5-6 fois par semaine' },
+    { value: 'crazy', icon: 'fire', title: 'À la folie', subtitle: '7+ fois par semaine' },
+    { value: 'none', icon: 'close-circle-outline', title: 'Pas du tout', subtitle: '0 - Je débute' },
+  ];
 
   return (
     <View style={styles.container}>
-      {/* Background Gradient */}
       <View style={styles.backgroundGradient} />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.topBar}>
-          <TouchableOpacity onPress={() => router.push('/(questionnaire)/step3')} style={styles.backButton}>
-            <MaterialCommunityIcons name="arrow-left" size={24} color="#ffffff" />
-          </TouchableOpacity>
-          <Text style={styles.logo}>RUNLINE</Text>
-          <View style={{ width: 40 }} />
-        </View>
-        <View style={styles.progressContainer}>
-          <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: '44%' }]} />
-          </View>
-        </View>
-      </View>
+      <QuestionnaireHeader
+        currentStep={currentStep}
+        totalSteps={totalSteps}
+        backRoute="/(questionnaire)/step3"
+      />
 
-      {/* Main Content */}
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.mainContent}>
-          {/* Headline */}
           <View style={styles.headlineContainer}>
             <Text style={styles.headline}>
               Votre <Text style={styles.headlineHighlight}>fréquence</Text> de course
@@ -175,28 +238,25 @@ export default function Step4Screen() {
             </Text>
           </View>
 
-          {/* Options */}
           <View style={styles.optionsContainer}>
-            {renderOption('little', 'emoji-people', 'Un peu', '1-2 fois par semaine')}
-            {renderOption('much', 'run-fast', 'Beaucoup', '3-4 fois par semaine')}
-            {renderOption('passionate', 'speedometer', 'Passionnément', '5-6 fois par semaine')}
-            {renderOption('crazy', 'fire', 'A la folie', '7+ fois par semaine')}
-            {renderOption('none', 'block-helper', 'Pas du tout', '0 - Je débute')}
+            {options.map((option, index) => (
+              <FrequencyCard
+                key={option.value}
+                value={option.value}
+                icon={option.icon}
+                title={option.title}
+                subtitle={option.subtitle}
+                isSelected={selectedFrequency === option.value}
+                onSelect={setSelectedFrequency}
+                index={index}
+              />
+            ))}
           </View>
         </View>
       </ScrollView>
 
-      {/* Footer Button */}
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.continueButton}
-          onPress={handleContinue}
-          disabled={!selectedFrequency}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.continueButtonText}>Continuer</Text>
-          <MaterialCommunityIcons name="arrow-right" size={20} color="#ffffff" />
-        </TouchableOpacity>
+        <ContinueButton onPress={handleContinue} disabled={!selectedFrequency} />
       </View>
     </View>
   );
@@ -205,7 +265,7 @@ export default function Step4Screen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#111921',
+    backgroundColor: colors.primary.dark,
   },
   backgroundGradient: {
     position: 'absolute',
@@ -213,110 +273,47 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(50, 140, 231, 0.08)',
-  },
-  header: {
-    paddingTop: 60,
-    paddingBottom: 16,
-    paddingHorizontal: 24,
-    zIndex: 10,
-  },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#1a2632',
-  },
-  logo: {
-    fontSize: 14,
-    fontWeight: '700',
-    letterSpacing: 2.4,
-    color: '#93adc8',
-    textAlign: 'center',
-  },
-  progressContainer: {
-    gap: 8,
-  },
-  progressLabels: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-  },
-  progressText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#ffffff',
-  },
-  progressPercent: {
-    fontSize: 12,
-    color: '#93adc8',
-  },
-  progressBar: {
-    height: 6,
-    width: '100%',
-    backgroundColor: '#344d65',
-    borderRadius: 9999,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#328ce7',
-    borderRadius: 9999,
+    backgroundColor: 'rgba(50, 140, 231, 0.05)',
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 120,
+    paddingBottom: 140,
   },
   mainContent: {
-    paddingHorizontal: 24,
-    paddingTop: 8,
+    paddingHorizontal: questionnaireTokens.spacing.xxl,
   },
   headlineContainer: {
-    paddingVertical: 24,
+    paddingTop: questionnaireTokens.spacing.lg,
+    paddingBottom: questionnaireTokens.spacing.xxl,
   },
   headline: {
-    fontSize: 30,
-    fontWeight: '700',
-    lineHeight: 40,
-    color: '#ffffff',
-    marginBottom: 8,
+    ...questionnaireTokens.typography.headline,
+    color: colors.text.primary,
+    marginBottom: questionnaireTokens.spacing.sm,
   },
   headlineHighlight: {
-    color: '#328ce7',
+    color: colors.accent.blue,
   },
   subheadline: {
-    fontSize: 14,
-    lineHeight: 22,
-    color: '#93adc8',
+    ...questionnaireTokens.typography.subheadline,
+    color: colors.text.secondary,
   },
   optionsContainer: {
-    gap: 12,
+    gap: questionnaireTokens.spacing.md,
   },
   optionCard: {
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#344d65',
-    backgroundColor: 'rgba(26, 35, 45, 0.8)',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
+    borderRadius: questionnaireTokens.borderRadius.lg,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(26, 38, 50, 0.5)',
+    paddingVertical: questionnaireTokens.spacing.lg,
+    paddingHorizontal: questionnaireTokens.spacing.lg,
   },
   optionCardSelected: {
-    borderColor: '#328ce7',
-    backgroundColor: 'rgba(50, 140, 231, 0.08)',
-    shadowColor: '#328ce7',
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
+    borderColor: colors.accent.blue,
+    borderWidth: 1.5,
   },
   optionContent: {
     flexDirection: 'row',
@@ -326,14 +323,14 @@ const styles = StyleSheet.create({
   optionLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: questionnaireTokens.spacing.md,
     flex: 1,
   },
   optionIconContainer: {
     width: 40,
     height: 40,
     borderRadius: 10,
-    backgroundColor: '#111a22',
+    backgroundColor: colors.primary.dark,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -346,56 +343,37 @@ const styles = StyleSheet.create({
   optionTitle: {
     fontSize: 15,
     fontWeight: '500',
-    color: '#ffffff',
+    color: colors.text.primary,
   },
   optionTitleSelected: {
-    color: '#328ce7',
+    color: colors.accent.blue,
   },
   optionSubtitle: {
     fontSize: 12,
-    color: '#93adc8',
+    color: colors.text.secondary,
     marginTop: 2,
   },
   checkCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#5a7690',
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   checkCircleSelected: {
-    borderColor: '#328ce7',
-    backgroundColor: '#328ce7',
+    borderColor: colors.accent.blue,
+    backgroundColor: colors.accent.blue,
   },
   footer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    padding: 24,
-    paddingBottom: 40,
-  },
-  continueButton: {
-    width: '100%',
-    backgroundColor: '#328ce7',
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    shadowColor: '#328ce7',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  continueButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#ffffff',
+    paddingHorizontal: questionnaireTokens.spacing.xxl,
+    paddingTop: questionnaireTokens.spacing.lg,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 32,
+    backgroundColor: colors.primary.dark,
   },
 });

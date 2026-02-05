@@ -1,5 +1,5 @@
 import { Stack } from 'expo-router';
-import { SafeAreaView, StyleSheet, View, ActivityIndicator, Text } from 'react-native';
+import { SafeAreaView, StyleSheet, View, ActivityIndicator, Text, Platform } from 'react-native';
 import { useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QuestionnaireProvider } from '@/contexts/QuestionnaireContext';
@@ -12,6 +12,21 @@ import {
   QUESTIONNAIRE_SESSION_UUID,
   QUESTIONNAIRE_DRAFT,
 } from '@/lib/storage/keys';
+
+// Smooth transition configuration for native feel
+const screenOptions = {
+  headerShown: false,
+  contentStyle: { backgroundColor: colors.primary.dark },
+  // Smooth slide animation
+  animation: 'slide_from_right' as const,
+  animationDuration: 280,
+  // iOS-specific smooth transitions
+  ...(Platform.OS === 'ios' && {
+    gestureEnabled: true,
+    gestureDirection: 'horizontal' as const,
+    fullScreenGestureEnabled: true,
+  }),
+};
 
 export default function QuestionnaireLayout() {
   const [isLoading, setIsLoading] = useState(true);
@@ -94,15 +109,13 @@ export default function QuestionnaireLayout() {
   return (
     <QuestionnaireProvider initialData={initialData} sessionUuid={sessionUuid}>
       <SafeAreaView style={styles.container}>
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: styles.content,
-          }}
-        >
+        <Stack screenOptions={screenOptions}>
           <Stack.Screen name="step1" />
           <Stack.Screen name="step2" />
           <Stack.Screen name="step3" />
+          <Stack.Screen name="step3a" />
+          <Stack.Screen name="step3b" />
+          <Stack.Screen name="step3b-goal" />
           <Stack.Screen name="step4" />
           <Stack.Screen name="step4a" />
           <Stack.Screen name="step5" />
@@ -120,9 +133,6 @@ export default function QuestionnaireLayout() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.primary.dark,
-  },
-  content: {
     backgroundColor: colors.primary.dark,
   },
   loadingContainer: {

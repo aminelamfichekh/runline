@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from '@/components/ui/Button';
@@ -12,6 +12,7 @@ import { authApi } from '@/lib/api/auth';
 import { profileApi } from '@/lib/api/profile';
 import type { User } from '@/lib/api/auth';
 import { colors } from '@/constants/colors';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -168,6 +169,33 @@ export default function HomeScreen() {
           </>
         )}
       </View>
+
+      {/* Dev-only reset button */}
+      {__DEV__ && (
+        <TouchableOpacity
+          style={styles.devResetButton}
+          onPress={() => {
+            Alert.alert(
+              'Réinitialiser',
+              'Supprimer toutes les données locales (questionnaire, tokens, cache) ?',
+              [
+                { text: 'Annuler', style: 'cancel' },
+                {
+                  text: 'Réinitialiser',
+                  style: 'destructive',
+                  onPress: async () => {
+                    await AsyncStorage.clear();
+                    Alert.alert('Fait', 'Données locales supprimées. Redémarrez l\'app.');
+                  },
+                },
+              ]
+            );
+          }}
+          activeOpacity={0.6}
+        >
+          <Text style={styles.devResetText}>Réinitialiser les données locales (dev)</Text>
+        </TouchableOpacity>
+      )}
     </ScrollView>
   );
 }
@@ -314,5 +342,14 @@ const styles = StyleSheet.create({
   },
   secondaryButton: {
     marginTop: 0,
+  },
+  devResetButton: {
+    marginTop: 40,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  devResetText: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.3)',
   },
 });

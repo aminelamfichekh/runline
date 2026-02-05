@@ -1,28 +1,60 @@
 /**
- * Preview Screen
- * Shows personalized plan preview based on questionnaire answers
+ * Aperçu du plan personnalisé
+ * Résumé clair du plan d'entraînement basé sur les réponses au questionnaire.
  */
 
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useTranslation } from 'react-i18next';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useQuestionnaireForm } from '@/hooks/useQuestionnaireForm';
-import { Button } from '@/components/ui/Button';
 import { colors } from '@/constants/colors';
+
+const JOURS_FR: Record<string, string> = {
+  monday: 'Lundi',
+  tuesday: 'Mardi',
+  wednesday: 'Mercredi',
+  thursday: 'Jeudi',
+  friday: 'Vendredi',
+  saturday: 'Samedi',
+  sunday: 'Dimanche',
+};
+
+const TYPE_SESSION = [
+  { type: 'Endurance', desc: 'Course à allure modérée pour développer votre endurance de base.', icon: 'run' },
+  { type: 'Tempo', desc: 'Allure soutenue pour améliorer votre seuil et la résistance.', icon: 'speedometer' },
+  { type: 'VMA', desc: 'Séances de vitesse pour progresser sur le court et moyen terme.', icon: 'lightning-bolt' },
+  { type: 'Récup', desc: 'Sortie légère ou repos actif pour bien récupérer.', icon: 'heart-pulse' },
+];
+
+function getPlanDescription(goal: string | undefined): string {
+  switch (goal) {
+    case 'me_lancer':
+      return 'Un programme progressif pour vous lancer en douceur et prendre de bonnes habitudes.';
+    case 'reprendre':
+      return 'Une reprise en sécurité, adaptée à votre pause, pour retrouver le plaisir de courir.';
+    case 'courir_race':
+    case 'ameliorer_chrono':
+      return 'Un plan structuré pour préparer votre objectif course et performer le jour J.';
+    case 'entretenir':
+    case 'ameliorer_condition':
+      return 'Un plan équilibré pour entretenir votre forme et votre santé.';
+    default:
+      return 'Un plan sur mesure, adapté à votre profil et à vos disponibilités.';
+  }
+}
 
 export default function PreviewScreen() {
   const router = useRouter();
-  const { t } = useTranslation();
   const { form } = useQuestionnaireForm();
-
   const values = form.getValues();
 
-  // Calculate workouts per week based on available days
-  const workoutsPerWeek = values.available_days?.length || 3;
+  const goal = values.primary_goal as string | undefined;
+  const availableDays = values.available_days ?? ['monday', 'wednesday', 'friday'];
+  const nbSeances = availableDays.length;
+  const planDescription = getPlanDescription(goal);
 
   const handleViewPricing = () => {
-    // Navigate to pricing screen
     router.push('/(subscription)/pricing');
   };
 
@@ -32,10 +64,11 @@ export default function PreviewScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
+      <View style={styles.backgroundGradient} />
+
       <View style={styles.header}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <Text style={styles.backButtonText}>←</Text>
+          <MaterialCommunityIcons name="arrow-left" size={24} color="#ffffff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Aperçu</Text>
         <View style={styles.placeholder} />
@@ -47,102 +80,102 @@ export default function PreviewScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.content}>
-          <Text style={styles.title}>{t('onboarding.preview.title')}</Text>
+          <Text style={styles.title}>Votre plan personnalisé</Text>
           <Text style={styles.subtitle}>
-            {t('onboarding.preview.description')}
+            {planDescription}
           </Text>
 
-          {/* Plan Overview Card */}
           <View style={styles.planCard}>
-            <Text style={styles.planCardTitle}>Votre plan personnalisé</Text>
+            <View style={styles.planCardHeader}>
+              <MaterialCommunityIcons name="calendar-check" size={24} color={colors.accent.blue} />
+              <Text style={styles.planCardTitle}>Résumé du plan</Text>
+            </View>
             <View style={styles.planStats}>
               <View style={styles.statItem}>
-                <Text style={styles.statValue}>{workoutsPerWeek}</Text>
-                <Text style={styles.statLabel}>séances / semaine</Text>
+                <Text style={styles.statValue}>{nbSeances}</Text>
+                <Text style={styles.statLabel}>séances par semaine</Text>
               </View>
               <View style={styles.statItem}>
                 <Text style={styles.statValue}>4</Text>
-                <Text style={styles.statLabel}>semaines / mois</Text>
+                <Text style={styles.statLabel}>semaines par mois</Text>
               </View>
               <View style={styles.statItem}>
                 <Text style={styles.statValue}>100%</Text>
-                <Text style={styles.statLabel}>personnalisé</Text>
+                <Text style={styles.statLabel}>adapté à vous</Text>
               </View>
             </View>
           </View>
 
-          {/* Week Structure */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{t('onboarding.preview.weekStructure')}</Text>
-            <Text style={styles.sectionDescription}>
-              Basé sur vos {workoutsPerWeek} jours disponibles
-            </Text>
+          <Text style={styles.sectionTitle}>Structure de la semaine</Text>
+          <Text style={styles.sectionDescription}>
+            Basé sur vos {nbSeances} jour{nbSeances > 1 ? 's' : ''} disponible{nbSeances > 1 ? 's' : ''} pour courir.
+          </Text>
 
-            {values.available_days?.slice(0, 3).map((day, index) => (
-              <View key={day} style={styles.dayCard}>
+          {availableDays.slice(0, 5).map((dayKey, index) => {
+            const session = TYPE_SESSION[index % TYPE_SESSION.length];
+            const dayName = JOURS_FR[dayKey] ?? dayKey;
+            return (
+              <View key={dayKey} style={styles.dayCard}>
                 <View style={styles.dayHeader}>
-                  <Text style={styles.dayName}>{day}</Text>
+                  <Text style={styles.dayName}>{dayName}</Text>
                   <View style={styles.dayBadge}>
-                    <Text style={styles.dayBadgeText}>
-                      {index === 0 ? 'Endurance' : index === 1 ? 'Tempo' : 'Intervalles'}
-                    </Text>
+                    <Text style={styles.dayBadgeText}>{session.type}</Text>
                   </View>
                 </View>
-                <Text style={styles.dayDescription}>
-                  {index === 0
-                    ? 'Course longue à allure modérée pour développer l\'endurance'
-                    : index === 1
-                    ? 'Course à allure soutenue pour améliorer le seuil'
-                    : 'Séances de vitesse pour améliorer la VMA'}
-                </Text>
+                <Text style={styles.dayDescription}>{session.desc}</Text>
               </View>
-            ))}
+            );
+          })}
 
-            {workoutsPerWeek > 3 && (
-              <Text style={styles.moreWorkouts}>
-                + {workoutsPerWeek - 3} autres séances adaptées à votre niveau
+          {nbSeances > 5 && (
+            <Text style={styles.moreWorkouts}>
+              + {nbSeances - 5} autre{nbSeances - 5 > 1 ? 's' : ''} séance{nbSeances - 5 > 1 ? 's' : ''} selon votre plan
+            </Text>
+          )}
+
+          <Text style={styles.sectionTitle}>Ce qui est inclus</Text>
+          <View style={styles.featureList}>
+            <View style={styles.featureItem}>
+              <View style={styles.featureIconWrap}>
+                <MaterialCommunityIcons name="robot" size={18} color={colors.accent.blue} />
+              </View>
+              <Text style={styles.featureText}>
+                Plan généré et adapté à votre objectif et à votre niveau
               </Text>
-            )}
-          </View>
-
-          {/* What's Included */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Ce qui est inclus</Text>
-            <View style={styles.featureList}>
-              <View style={styles.featureItem}>
-                <Text style={styles.featureIcon}>✓</Text>
-                <Text style={styles.featureText}>
-                  Plan généré par IA adapté à votre objectif
-                </Text>
+            </View>
+            <View style={styles.featureItem}>
+              <View style={styles.featureIconWrap}>
+                <MaterialCommunityIcons name="calendar-refresh" size={18} color={colors.accent.blue} />
               </View>
-              <View style={styles.featureItem}>
-                <Text style={styles.featureIcon}>✓</Text>
-                <Text style={styles.featureText}>
-                  Mise à jour automatique chaque mois
-                </Text>
+              <Text style={styles.featureText}>
+                Mise à jour du plan chaque mois
+              </Text>
+            </View>
+            <View style={styles.featureItem}>
+              <View style={styles.featureIconWrap}>
+                <MaterialCommunityIcons name="chart-line" size={18} color={colors.accent.blue} />
               </View>
-              <View style={styles.featureItem}>
-                <Text style={styles.featureIcon}>✓</Text>
-                <Text style={styles.featureText}>
-                  Séances détaillées avec allures et durées
-                </Text>
+              <Text style={styles.featureText}>
+                Séances détaillées avec allures, durées et conseils
+              </Text>
+            </View>
+            <View style={styles.featureItem}>
+              <View style={styles.featureIconWrap}>
+                <MaterialCommunityIcons name="trending-up" size={18} color={colors.accent.blue} />
               </View>
-              <View style={styles.featureItem}>
-                <Text style={styles.featureIcon}>✓</Text>
-                <Text style={styles.featureText}>
-                  Progression adaptée à votre niveau
-                </Text>
-              </View>
+              <Text style={styles.featureText}>
+                Progression pensée pour éviter la surcharge et les blessures
+              </Text>
             </View>
           </View>
         </View>
       </ScrollView>
 
       <View style={styles.footer}>
-        <Button
-          title={t('onboarding.preview.viewPricing')}
-          onPress={handleViewPricing}
-        />
+        <TouchableOpacity style={styles.ctaButton} onPress={handleViewPricing} activeOpacity={0.85}>
+          <Text style={styles.ctaButtonText}>Voir les tarifs</Text>
+          <MaterialCommunityIcons name="arrow-right" size={20} color="#ffffff" />
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -151,16 +184,24 @@ export default function PreviewScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.primary.dark,
+    backgroundColor: '#111921',
+  },
+  backgroundGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(50, 140, 231, 0.06)',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
-    backgroundColor: colors.primary.dark,
+    paddingTop: 56,
+    paddingBottom: 16,
+    zIndex: 10,
   },
   backButton: {
     width: 40,
@@ -168,17 +209,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 20,
-    backgroundColor: colors.primary.medium,
-  },
-  backButtonText: {
-    color: colors.text.primary,
-    fontSize: 24,
-    fontWeight: '300',
+    backgroundColor: '#1a2632',
   },
   headerTitle: {
     fontSize: 17,
     fontWeight: '600',
-    color: colors.text.primary,
+    color: '#ffffff',
   },
   placeholder: {
     width: 40,
@@ -187,39 +223,43 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 20,
+    paddingBottom: 24,
   },
   content: {
     paddingHorizontal: 24,
     paddingTop: 8,
   },
   title: {
-    fontSize: 36,
-    fontWeight: '800',
-    color: colors.text.primary,
-    marginBottom: 8,
-    letterSpacing: -0.5,
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#ffffff',
+    marginBottom: 10,
+    letterSpacing: -0.3,
   },
   subtitle: {
-    fontSize: 17,
-    color: colors.text.secondary,
-    marginBottom: 32,
-    fontWeight: '400',
+    fontSize: 16,
+    color: '#93adc8',
+    marginBottom: 28,
     lineHeight: 24,
   },
   planCard: {
-    backgroundColor: colors.background.card,
+    backgroundColor: '#1a2632',
     borderRadius: 16,
-    padding: 24,
-    marginBottom: 32,
+    padding: 20,
+    marginBottom: 28,
     borderWidth: 1,
-    borderColor: colors.border.medium,
+    borderColor: '#344d65',
+  },
+  planCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 18,
   },
   planCardTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
-    color: colors.text.primary,
-    marginBottom: 20,
+    color: '#ffffff',
   },
   planStats: {
     flexDirection: 'row',
@@ -229,37 +269,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statValue: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '800',
-    color: colors.accent.blue,
+    color: '#328ce7',
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 12,
-    color: colors.text.secondary,
+    color: '#93adc8',
     textAlign: 'center',
   },
-  section: {
-    marginBottom: 32,
-  },
   sectionTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '700',
-    color: colors.text.primary,
-    marginBottom: 8,
+    color: '#ffffff',
+    marginBottom: 6,
   },
   sectionDescription: {
-    fontSize: 15,
-    color: colors.text.secondary,
-    marginBottom: 16,
+    fontSize: 14,
+    color: '#93adc8',
+    marginBottom: 14,
   },
   dayCard: {
-    backgroundColor: colors.background.card,
-    borderRadius: 12,
+    backgroundColor: '#1a2632',
+    borderRadius: 14,
     padding: 16,
-    marginBottom: 12,
+    marginBottom: 10,
     borderWidth: 1,
-    borderColor: colors.border.medium,
+    borderColor: '#344d65',
   },
   dayHeader: {
     flexDirection: 'row',
@@ -270,55 +307,79 @@ const styles = StyleSheet.create({
   dayName: {
     fontSize: 16,
     fontWeight: '700',
-    color: colors.text.primary,
+    color: '#ffffff',
   },
   dayBadge: {
-    backgroundColor: colors.accent.blue,
-    paddingHorizontal: 12,
+    backgroundColor: 'rgba(50, 140, 231, 0.25)',
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 10,
   },
   dayBadgeText: {
     fontSize: 12,
     fontWeight: '600',
-    color: colors.text.primary,
+    color: '#328ce7',
   },
   dayDescription: {
     fontSize: 14,
-    color: colors.text.secondary,
+    color: '#93adc8',
     lineHeight: 20,
   },
   moreWorkouts: {
     fontSize: 14,
-    color: colors.text.secondary,
+    color: '#93adc8',
     textAlign: 'center',
     marginTop: 8,
     fontStyle: 'italic',
   },
   featureList: {
-    gap: 16,
+    gap: 14,
+    marginTop: 8,
   },
   featureItem: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
-  featureIcon: {
-    fontSize: 20,
-    color: colors.accent.blue,
-    marginRight: 12,
-    fontWeight: '700',
+  featureIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(50, 140, 231, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
   },
   featureText: {
     flex: 1,
     fontSize: 15,
-    color: colors.text.primary,
+    color: '#ffffff',
     lineHeight: 22,
   },
   footer: {
     padding: 24,
     paddingBottom: 40,
     borderTopWidth: 1,
-    borderTopColor: colors.primary.medium,
-    backgroundColor: colors.primary.dark,
+    borderTopColor: '#1a2632',
+    backgroundColor: '#111921',
+  },
+  ctaButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#328ce7',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    shadowColor: '#328ce7',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  ctaButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#ffffff',
   },
 });

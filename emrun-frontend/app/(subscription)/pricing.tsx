@@ -50,7 +50,7 @@ export default function PricingScreen() {
 
         <View style={styles.priceCard}>
           <View style={styles.priceRow}>
-            <Text style={styles.price}>9,99 €</Text>
+            <Text style={styles.price}>19,99 $</Text>
             <Text style={styles.period}>{t('subscription.pricing.period')}</Text>
           </View>
           <Text style={styles.priceDescription}>

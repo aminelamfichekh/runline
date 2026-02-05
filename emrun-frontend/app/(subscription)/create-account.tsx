@@ -86,7 +86,7 @@ export default function CreateAccountAfterPricingScreen() {
 
       await authApi.register(payload);
 
-      // After account is created, go to subscription checkout (payment)
+      // After account is created, go to checkout (has skip button for test mode)
       router.replace('/(subscription)/checkout');
     } catch (error: any) {
       let message = "Échec de la création du compte. Veuillez réessayer.";
@@ -178,12 +178,19 @@ export default function CreateAccountAfterPricingScreen() {
             name="name"
           />
 
-          <View style={styles.readonlyField}>
-            <Text style={styles.readonlyLabel}>Email</Text>
-            <Text style={styles.readonlyValue}>
-              {watch('email') || 'Récupération de votre email...'}
-            </Text>
-          </View>
+          <TextInputField
+            label="Email"
+            value={watch('email') || ''}
+            onChangeText={(text) => setValue('email', text, { shouldValidate: true })}
+            error={errors.email?.message}
+            required
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
+            placeholder="votre@email.com"
+            control={control}
+            name="email"
+          />
 
           <TextInputField
             label="Mot de passe"
@@ -220,8 +227,7 @@ export default function CreateAccountAfterPricingScreen() {
         <View style={styles.infoBox}>
           <Text style={styles.infoIcon}>i</Text>
           <Text style={styles.infoText}>
-            Vos informations de profil et de paiement sont déjà enregistrées en toute
-            sécurité.
+            Vos réponses au questionnaire ont été sauvegardées et seront liées à votre compte.
           </Text>
         </View>
 
@@ -328,24 +334,6 @@ const styles = StyleSheet.create({
   },
   form: {
     gap: 12,
-  },
-  readonlyField: {
-    marginTop: 4,
-  },
-  readonlyLabel: {
-    fontSize: 13,
-    color: colors.text.secondary,
-    marginBottom: 4,
-  },
-  readonlyValue: {
-    fontSize: 15,
-    color: colors.text.primary,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
   },
   infoBox: {
     marginTop: 24,

@@ -8,7 +8,7 @@ import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { useStripe } from '@stripe/stripe-react-native';
+import { StripeProvider, useStripe } from '@stripe/stripe-react-native';
 import { paymentService } from '@/src/services/payment.service';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
@@ -18,7 +18,20 @@ const BORDER = '#344d65';
 const ACCENT = '#328ce7';
 const TEXT_SECONDARY = '#93adc8';
 
-export default function CheckoutContent() {
+const STRIPE_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || '';
+
+export default function CheckoutContentWrapper() {
+  return (
+    <StripeProvider
+      publishableKey={STRIPE_PUBLISHABLE_KEY}
+      merchantIdentifier="merchant.com.runline.app"
+    >
+      <CheckoutContent />
+    </StripeProvider>
+  );
+}
+
+function CheckoutContent() {
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const [loading, setLoading] = useState(false);
   const [initializing, setInitializing] = useState(true);
@@ -33,8 +46,9 @@ export default function CheckoutContent() {
     try {
       setInitializing(true);
 
+      const priceId = process.env.EXPO_PUBLIC_STRIPE_PRICE_ID || 'price_monthly';
       const { clientSecret, ephemeralKey, customerId } =
-        await paymentService.createSubscription('price_monthly');
+        await paymentService.createSubscription(priceId);
 
       const { error } = await initPaymentSheet({
         merchantDisplayName: 'RUNLINE',
@@ -123,7 +137,7 @@ export default function CheckoutContent() {
         <View style={styles.summaryCard}>
           <Text style={styles.summaryLabel}>{t('subscription.checkout.total')}</Text>
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryAmount}>9,99 €</Text>
+            <Text style={styles.summaryAmount}>19,99 $</Text>
             <Text style={styles.summaryPeriod}>{t('subscription.pricing.period')}</Text>
           </View>
           <Text style={styles.summaryNote}>{t('subscription.checkout.chargeToday')}</Text>
@@ -146,6 +160,16 @@ export default function CheckoutContent() {
         </TouchableOpacity>
 
         <Text style={styles.securityText}>{t('subscription.checkout.stripePowered')}</Text>
+
+        {__DEV__ && (
+          <TouchableOpacity
+            style={styles.skipButton}
+            onPress={() => router.replace('/(subscription)/success')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.skipButtonText}>Passer (test)</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -293,5 +317,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: TEXT_SECONDARY,
     textAlign: 'center',
+  },
+  skipButton: {
+    marginTop: 24,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderRadius: 10,
+  },
+  skipButtonText: {
+    fontSize: 14,
+    color: TEXT_SECONDARY,
   },
 });

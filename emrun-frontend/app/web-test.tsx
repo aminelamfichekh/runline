@@ -22,7 +22,7 @@ export default function WebTestScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a0a0a',
+    backgroundColor: '#111921',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,

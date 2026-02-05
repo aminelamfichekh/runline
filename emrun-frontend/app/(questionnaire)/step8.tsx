@@ -1,13 +1,37 @@
 /**
  * Step 8: Lieux d'Entraînement
- * Training locations checkboxes
+ * Polished UI with shared components and smooth animations
  */
 
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  StyleSheet,
+  Animated,
+  Platform,
+  LayoutAnimation,
+  UIManager,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuestionnaireForm } from '@/hooks/useQuestionnaireForm';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
+import { colors } from '@/constants/colors';
+import {
+  QuestionnaireHeader,
+  ContinueButton,
+  questionnaireTokens,
+  getStepProgress,
+} from '@/components/questionnaire';
+
+// Enable LayoutAnimation on Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 type LocationValue = 'route' | 'chemins' | 'piste' | 'tapis' | 'autre';
 
@@ -23,23 +47,138 @@ const LOCATIONS: LocationOption[] = [
   { value: 'chemins', icon: 'terrain', title: 'Chemins', subtitle: 'Sentiers, nature' },
   { value: 'piste', icon: 'run', title: 'Piste', subtitle: "Piste d'athlétisme" },
   { value: 'tapis', icon: 'dumbbell', title: 'Tapis', subtitle: 'Tapis de course' },
-  { value: 'autre', icon: 'dots-horizontal', title: 'Autre', subtitle: 'Autre lieu' },
+  { value: 'autre', icon: 'map-marker-plus', title: 'Autre', subtitle: 'Précisez le lieu' },
 ];
+
+interface LocationCardProps {
+  location: LocationOption;
+  isSelected: boolean;
+  onToggle: (value: LocationValue) => void;
+  index: number;
+}
+
+function LocationCard({ location, isSelected, onToggle, index }: LocationCardProps) {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 300,
+      delay: index * 50,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.98,
+      useNativeDriver: true,
+      friction: 8,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      friction: 5,
+    }).start();
+  };
+
+  const handlePress = () => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    onToggle(location.value);
+  };
+
+  return (
+    <Animated.View
+      style={{
+        opacity: fadeAnim,
+        transform: [
+          { scale: scaleAnim },
+          {
+            translateY: fadeAnim.interpolate({
+              inputRange: [0, 1],
+              outputRange: [15, 0],
+            }),
+          },
+        ],
+      }}
+    >
+      <TouchableOpacity
+        onPress={handlePress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        activeOpacity={1}
+        style={[styles.locationCard, isSelected && styles.locationCardSelected]}
+      >
+        <View style={[styles.iconContainer, isSelected && styles.iconContainerSelected]}>
+          <MaterialCommunityIcons
+            name={location.icon as any}
+            size={22}
+            color={isSelected ? colors.accent.blue : colors.text.secondary}
+          />
+        </View>
+        <View style={styles.textContainer}>
+          <Text style={[styles.locationTitle, isSelected && styles.locationTitleSelected]}>
+            {location.title}
+          </Text>
+          <Text style={styles.locationSubtitle}>{location.subtitle}</Text>
+        </View>
+        <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+          {isSelected && (
+            <MaterialCommunityIcons name="check" size={14} color={colors.text.primary} />
+          )}
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+}
 
 export default function Step8Screen() {
   const router = useRouter();
   const { form } = useQuestionnaireForm();
   const { setValue, watch } = form;
+  const scrollViewRef = useRef<ScrollView>(null);
+
+  const primaryGoal = watch('primary_goal') as string | undefined;
+  const { currentStep, totalSteps } = getStepProgress('step8', primaryGoal);
 
   const [selectedLocations, setSelectedLocations] = useState<LocationValue[]>(
     (watch('training_locations') as LocationValue[]) || []
   );
 
+  const savedOtherLocation = watch('other_training_location') as string | undefined;
+  const [otherLocationText, setOtherLocationText] = useState(savedOtherLocation || '');
+
+  // Entrance animation
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 350,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
   const toggleLocation = (location: LocationValue) => {
-    setSelectedLocations(prev => {
-      if (prev.includes(location)) {
-        return prev.filter(l => l !== location);
+    // Animate layout change smoothly
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+
+    setSelectedLocations((prev) => {
+      const isRemoving = prev.includes(location);
+      if (isRemoving) {
+        return prev.filter((l) => l !== location);
       } else {
+        // If selecting "autre", scroll down to show the input
+        if (location === 'autre') {
+          setTimeout(() => {
+            scrollViewRef.current?.scrollToEnd({ animated: true });
+          }, 100);
+        }
         return [...prev, location];
       }
     });
@@ -47,67 +186,34 @@ export default function Step8Screen() {
 
   const handleContinue = () => {
     setValue('training_locations', selectedLocations);
+    if (selectedLocations.includes('autre') && otherLocationText.trim()) {
+      setValue('other_training_location', otherLocationText.trim());
+    } else {
+      setValue('other_training_location', undefined);
+    }
     router.push('/(questionnaire)/step9');
   };
 
-  const renderLocationCard = (location: LocationOption) => {
-    const isSelected = selectedLocations.includes(location.value);
-
-    return (
-      <TouchableOpacity
-        key={location.value}
-        onPress={() => toggleLocation(location.value)}
-        activeOpacity={0.7}
-        style={[
-          styles.locationCard,
-          isSelected && styles.locationCardSelected
-        ]}
-      >
-        <View style={styles.iconContainer}>
-          <MaterialCommunityIcons name={location.icon as any} size={24} color="#328ce7" />
-        </View>
-        <View style={styles.textContainer}>
-          <Text style={styles.locationTitle}>{location.title}</Text>
-          <Text style={styles.locationSubtitle}>{location.subtitle}</Text>
-        </View>
-        <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
-          {isSelected && (
-            <MaterialCommunityIcons name="check" size={16} color="#ffffff" />
-          )}
-        </View>
-      </TouchableOpacity>
-    );
-  };
+  const showOtherInput = selectedLocations.includes('autre');
 
   return (
     <View style={styles.container}>
-      {/* Background Gradient */}
       <View style={styles.backgroundGradient} />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.topBar}>
-          <TouchableOpacity onPress={() => router.push('/(questionnaire)/step7')} style={styles.backButton}>
-            <MaterialCommunityIcons name="arrow-left" size={24} color="#ffffff" />
-          </TouchableOpacity>
-          <Text style={styles.logo}>RUNLINE</Text>
-          <View style={{ width: 40 }} />
-        </View>
-        <View style={styles.progressContainer}>
-          <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: '89%' }]} />
-          </View>
-        </View>
-      </View>
+      <QuestionnaireHeader
+        currentStep={currentStep}
+        totalSteps={totalSteps}
+        backRoute="/(questionnaire)/step7"
+      />
 
-      {/* Main Content */}
       <ScrollView
+        ref={scrollViewRef}
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.mainContent}>
-          {/* Headline */}
+        <Animated.View style={[styles.mainContent, { opacity: fadeAnim }]}>
           <View style={styles.headlineContainer}>
             <Text style={styles.headline}>
               Vos <Text style={styles.headlineHighlight}>lieux de pratique</Text>
@@ -117,23 +223,39 @@ export default function Step8Screen() {
             </Text>
           </View>
 
-          {/* Location Options */}
           <View style={styles.locationsContainer}>
-            {LOCATIONS.map(renderLocationCard)}
+            {LOCATIONS.map((location, index) => (
+              <LocationCard
+                key={location.value}
+                location={location}
+                isSelected={selectedLocations.includes(location.value)}
+                onToggle={toggleLocation}
+                index={index}
+              />
+            ))}
           </View>
-        </View>
+
+          {/* Other location text input */}
+          {showOtherInput && (
+            <View style={styles.otherInputContainer}>
+              <Text style={styles.otherInputLabel}>Précisez le lieu</Text>
+              <TextInput
+                style={styles.otherInput}
+                placeholder="Ex: Plage, forêt, montagne..."
+                placeholderTextColor={colors.text.tertiary}
+                value={otherLocationText}
+                onChangeText={setOtherLocationText}
+                selectionColor={colors.accent.blue}
+                cursorColor={colors.accent.blue}
+                underlineColorAndroid="transparent"
+              />
+            </View>
+          )}
+        </Animated.View>
       </ScrollView>
 
-      {/* Footer Button */}
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.continueButton}
-          onPress={handleContinue}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.continueButtonText}>Continuer</Text>
-          <MaterialCommunityIcons name="arrow-right" size={20} color="#ffffff" />
-        </TouchableOpacity>
+        <ContinueButton onPress={handleContinue} />
       </View>
     </View>
   );
@@ -142,7 +264,7 @@ export default function Step8Screen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#111921',
+    backgroundColor: colors.primary.dark,
   },
   backgroundGradient: {
     position: 'absolute',
@@ -150,116 +272,61 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(50, 140, 231, 0.08)',
-  },
-  header: {
-    paddingTop: 60,
-    paddingBottom: 16,
-    paddingHorizontal: 24,
-    zIndex: 10,
-  },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#1a2632',
-  },
-  logo: {
-    fontSize: 14,
-    fontWeight: '700',
-    letterSpacing: 2.4,
-    color: '#93adc8',
-    textAlign: 'center',
-  },
-  progressContainer: {
-    gap: 8,
-  },
-  progressLabels: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-  },
-  progressText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#ffffff',
-  },
-  progressPercent: {
-    fontSize: 12,
-    color: '#93adc8',
-  },
-  progressBar: {
-    height: 6,
-    width: '100%',
-    backgroundColor: '#344d65',
-    borderRadius: 9999,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#328ce7',
-    borderRadius: 9999,
+    backgroundColor: 'rgba(50, 140, 231, 0.05)',
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 120,
+    paddingBottom: 140,
   },
   mainContent: {
-    paddingHorizontal: 24,
-    paddingTop: 8,
+    paddingHorizontal: questionnaireTokens.spacing.xxl,
   },
   headlineContainer: {
-    paddingVertical: 24,
+    paddingTop: questionnaireTokens.spacing.lg,
+    paddingBottom: questionnaireTokens.spacing.xxl,
   },
   headline: {
-    fontSize: 30,
-    fontWeight: '700',
-    lineHeight: 40,
-    color: '#ffffff',
-    marginBottom: 8,
+    ...questionnaireTokens.typography.headline,
+    color: colors.text.primary,
+    marginBottom: questionnaireTokens.spacing.sm,
   },
   headlineHighlight: {
-    color: '#328ce7',
+    color: colors.accent.blue,
   },
   subheadline: {
-    fontSize: 14,
-    lineHeight: 22,
-    color: '#93adc8',
+    ...questionnaireTokens.typography.subheadline,
+    color: colors.text.secondary,
   },
   locationsContainer: {
-    gap: 12,
+    gap: questionnaireTokens.spacing.md,
   },
   locationCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#344d65',
-    backgroundColor: '#1a2632',
+    borderRadius: questionnaireTokens.borderRadius.lg,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(26, 38, 50, 0.5)',
+    paddingVertical: questionnaireTokens.spacing.lg,
+    paddingHorizontal: questionnaireTokens.spacing.lg,
   },
   locationCardSelected: {
-    borderColor: '#328ce7',
-    backgroundColor: 'rgba(50, 140, 231, 0.05)',
+    borderColor: colors.accent.blue,
+    borderWidth: 1.5,
   },
   iconContainer: {
     width: 40,
     height: 40,
-    borderRadius: 8,
-    backgroundColor: '#243442',
+    borderRadius: 10,
+    backgroundColor: colors.primary.dark,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: questionnaireTokens.spacing.md,
+  },
+  iconContainerSelected: {
+    backgroundColor: 'rgba(50, 140, 231, 0.2)',
   },
   textContainer: {
     flex: 1,
@@ -267,57 +334,58 @@ const styles = StyleSheet.create({
   locationTitle: {
     fontSize: 15,
     fontWeight: '500',
-    color: '#ffffff',
+    color: colors.text.primary,
+  },
+  locationTitleSelected: {
+    color: colors.accent.blue,
   },
   locationSubtitle: {
     fontSize: 12,
-    color: '#93adc8',
+    color: colors.text.secondary,
     marginTop: 2,
   },
   checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
+    width: 22,
+    height: 22,
+    borderRadius: 6,
     borderWidth: 2,
-    borderColor: '#5a7690',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   checkboxSelected: {
-    borderColor: '#328ce7',
-    backgroundColor: '#328ce7',
-    shadowColor: '#328ce7',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
+    borderColor: colors.accent.blue,
+    backgroundColor: colors.accent.blue,
+  },
+  otherInputContainer: {
+    marginTop: questionnaireTokens.spacing.lg,
+    gap: questionnaireTokens.spacing.sm,
+  },
+  otherInputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text.primary,
+    marginLeft: questionnaireTokens.spacing.xs,
+  },
+  otherInput: {
+    width: '100%',
+    backgroundColor: 'rgba(26, 38, 50, 0.5)',
+    color: colors.text.primary,
+    fontSize: 15,
+    borderRadius: questionnaireTokens.borderRadius.md,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    paddingVertical: questionnaireTokens.spacing.lg,
+    paddingHorizontal: questionnaireTokens.spacing.lg,
   },
   footer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    padding: 24,
-    paddingBottom: 40,
-  },
-  continueButton: {
-    width: '100%',
-    backgroundColor: '#328ce7',
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    shadowColor: '#328ce7',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  continueButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#ffffff',
+    paddingHorizontal: questionnaireTokens.spacing.xxl,
+    paddingTop: questionnaireTokens.spacing.lg,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 32,
+    backgroundColor: colors.primary.dark,
   },
 });

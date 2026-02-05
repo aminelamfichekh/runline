@@ -132,7 +132,7 @@ export default function TestConnectionScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#111921',
   },
   header: {
     flexDirection: 'row',
@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#1a1a1a',
+    borderBottomColor: '#1a2632',
   },
   backButton: {
     paddingVertical: 8,
@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: 24,
     padding: 16,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#1a2632',
     borderRadius: 8,
   },
   sectionTitle: {
@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
   },
   resultContainer: {
     padding: 16,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#1a2632',
     borderRadius: 8,
     marginBottom: 24,
   },
@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
   },
   instructionsContainer: {
     padding: 16,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#1a2632',
     borderRadius: 8,
   },
   instructionsTitle: {

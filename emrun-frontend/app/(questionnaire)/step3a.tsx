@@ -1,14 +1,28 @@
 /**
  * Step 3a: Reprendre la course - Pause duration + records (CONDITIONAL)
- * Uses FlatList fake wheel for pause duration.
+ * Polished UI with shared components and correct progress tracking
  */
 
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  TextInput,
+  StyleSheet,
+  Animated,
+  Platform,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuestionnaireForm } from '@/hooks/useQuestionnaireForm';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { WheelPicker } from '@/components/ui/WheelPicker';
+import { colors } from '@/constants/colors';
+import {
+  QuestionnaireHeader,
+  ContinueButton,
+  questionnaireTokens,
+  getStepProgress,
+} from '@/components/questionnaire';
 
 const generatePauseOptions = () => {
   const options: { value: string; label: string }[] = [];
@@ -26,15 +40,36 @@ const generatePauseOptions = () => {
 };
 
 const pauseOptions = generatePauseOptions();
-const defaultPause = pauseOptions[8]?.value ?? '2m';
+const defaultPauseIndex = 8; // Default to "2 mois"
 
 export default function Step3aScreen() {
   const router = useRouter();
   const { form } = useQuestionnaireForm();
   const { setValue, watch } = form;
 
-  const [selectedPauseDuration, setSelectedPauseDuration] = useState(watch('pause_duration') || defaultPause);
+  const primaryGoal = watch('primary_goal') as string | undefined;
+  // Use 'reprendre' path for correct progress calculation
+  const { currentStep, totalSteps } = getStepProgress('step3a', 'reprendre');
+
+  const existingPause = watch('pause_duration') as string | undefined;
+  const initialPauseIndex = existingPause
+    ? pauseOptions.findIndex((o) => o.value === existingPause)
+    : defaultPauseIndex;
+
+  const [selectedPauseDuration, setSelectedPauseDuration] = useState(
+    existingPause || (pauseOptions[defaultPauseIndex]?.value ?? '2m')
+  );
   const [records, setRecords] = useState(watch('records') || '');
+
+  // Entrance animation
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 350,
+      useNativeDriver: true,
+    }).start();
+  }, []);
 
   const handleContinue = () => {
     setValue('pause_duration', selectedPauseDuration);
@@ -44,91 +79,73 @@ export default function Step3aScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Background Gradient */}
       <View style={styles.backgroundGradient} />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.topBar}>
-          <TouchableOpacity onPress={() => router.push('/(questionnaire)/step3')} style={styles.backButton}>
-            <MaterialCommunityIcons name="arrow-left" size={24} color="#ffffff" />
-          </TouchableOpacity>
-          <Text style={styles.logo}>RUNLINE</Text>
-          <View style={{ width: 40 }} />
-        </View>
-        <View style={styles.progressContainer}>
-          <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: '15%' }]} />
+      <QuestionnaireHeader
+        currentStep={currentStep}
+        totalSteps={totalSteps}
+        backRoute="/(questionnaire)/step3"
+      />
+
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Animated.View style={[styles.mainContent, { opacity: fadeAnim }]}>
+          {/* Headline */}
+          <View style={styles.headlineContainer}>
+            <Text style={styles.headline}>
+              Depuis combien de temps{'\n'}
+              <Text style={styles.headlineHighlight}>avez-vous arrêté</Text> ?
+            </Text>
+            <Text style={styles.subheadline}>
+              Cela nous aide à adapter votre reprise en douceur.
+            </Text>
           </View>
-        </View>
-      </View>
 
-      {/* Main Content */}
-      <View style={styles.mainContentWrapper}>
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.mainContent}>
-            {/* Question */}
-            <View style={styles.headlineContainer}>
-              <Text style={styles.headline}>
-                Depuis combien de temps as-tu{'\n'}
-                <Text style={styles.headlineHighlight}>arrêté la course</Text> ?
-              </Text>
-              <Text style={styles.subheadline}>
-                Cela nous aide à adapter votre reprise en douceur.
-              </Text>
-            </View>
-
-            {/* FlatList fake wheel – pause duration */}
-            <View style={styles.pickerTriggerWrap}>
-              <WheelPicker
-                data={pauseOptions}
-                onValueChange={setSelectedPauseDuration}
-                itemHeight={44}
-                wheelHeight={308}
-                fontSize={17}
-                highlightColor="#328ce7"
-              />
-            </View>
-
-            {/* Optional Records */}
-            <View style={styles.recordsSection}>
-              <Text style={styles.recordsLabel}>
-                Record(s) personnel(s) <Text style={styles.recordsOptional}>(Optionnel)</Text>
-              </Text>
-              <Text style={styles.recordsSubtitle}>
-                Ex: 5km en 25min, 10km en 55min, Semi en 2h...
-              </Text>
-              <TextInput
-                style={styles.textInput}
-                placeholder="Vos meilleurs temps..."
-                placeholderTextColor="#5a7690"
-                value={records}
-                onChangeText={setRecords}
-                multiline
-                numberOfLines={3}
-                selectionColor="#328ce7"
-                cursorColor="#328ce7"
-                underlineColorAndroid="transparent"
-              />
-            </View>
+          {/* Pause Duration Picker */}
+          <View style={styles.pickerSection}>
+            <WheelPicker
+              data={pauseOptions}
+              onValueChange={setSelectedPauseDuration}
+              itemHeight={52}
+              wheelHeight={260}
+              fontSize={20}
+              highlightColor={colors.accent.blue}
+              initialIndex={Math.max(0, initialPauseIndex)}
+            />
           </View>
-        </ScrollView>
-      </View>
 
-      {/* Footer Button */}
+          {/* Records Input */}
+          <View style={styles.recordsSection}>
+            <Text style={styles.recordsLabel}>
+              Record(s) personnel(s){' '}
+              <Text style={styles.recordsOptional}>(Optionnel)</Text>
+            </Text>
+            <Text style={styles.recordsSubtitle}>
+              Ex: 5km en 25min, 10km en 55min, Semi en 2h...
+            </Text>
+            <TextInput
+              style={styles.textInput}
+              placeholder="Vos meilleurs temps..."
+              placeholderTextColor={colors.text.tertiary}
+              value={records}
+              onChangeText={setRecords}
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
+              selectionColor={colors.accent.blue}
+              cursorColor={colors.accent.blue}
+              underlineColorAndroid="transparent"
+            />
+          </View>
+        </Animated.View>
+      </ScrollView>
+
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.continueButton}
-          onPress={handleContinue}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.continueButtonText}>Continuer</Text>
-          <MaterialCommunityIcons name="arrow-right" size={20} color="#ffffff" />
-        </TouchableOpacity>
+        <ContinueButton onPress={handleContinue} />
       </View>
     </View>
   );
@@ -137,7 +154,7 @@ export default function Step3aScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#111921',
+    backgroundColor: colors.primary.dark,
   },
   backgroundGradient: {
     position: 'absolute',
@@ -145,127 +162,66 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(50, 140, 231, 0.08)',
-  },
-  header: {
-    paddingTop: 60,
-    paddingBottom: 16,
-    paddingHorizontal: 24,
-    zIndex: 10,
-  },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#1a2632',
-  },
-  logo: {
-    fontSize: 14,
-    fontWeight: '700',
-    letterSpacing: 2.4,
-    color: '#93adc8',
-    textAlign: 'center',
-  },
-  progressContainer: {
-    gap: 8,
-  },
-  progressLabels: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-  },
-  progressText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#ffffff',
-  },
-  progressPercent: {
-    fontSize: 12,
-    color: '#93adc8',
-  },
-  progressBar: {
-    height: 6,
-    width: '100%',
-    backgroundColor: '#344d65',
-    borderRadius: 9999,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#328ce7',
-    borderRadius: 9999,
+    backgroundColor: 'rgba(50, 140, 231, 0.05)',
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 120,
-  },
-  mainContentWrapper: {
-    flex: 1,
+    paddingBottom: 140,
   },
   mainContent: {
-    paddingHorizontal: 24,
-    paddingTop: 8,
+    paddingHorizontal: questionnaireTokens.spacing.xxl,
   },
   headlineContainer: {
-    paddingVertical: 24,
-    marginBottom: 16,
+    paddingTop: questionnaireTokens.spacing.lg,
+    paddingBottom: questionnaireTokens.spacing.xxl,
+    alignItems: 'center',
   },
   headline: {
-    fontSize: 30,
-    fontWeight: '700',
-    lineHeight: 40,
-    color: '#ffffff',
-    marginBottom: 8,
+    ...questionnaireTokens.typography.headline,
+    color: colors.text.primary,
+    textAlign: 'center',
+    marginBottom: questionnaireTokens.spacing.sm,
   },
   headlineHighlight: {
-    color: '#328ce7',
+    color: colors.accent.blue,
   },
   subheadline: {
-    fontSize: 14,
-    lineHeight: 22,
-    color: '#93adc8',
+    ...questionnaireTokens.typography.subheadline,
+    color: colors.text.secondary,
+    textAlign: 'center',
   },
-  pickerTriggerWrap: {
-    marginBottom: 32,
+  pickerSection: {
+    marginBottom: questionnaireTokens.spacing.xxxl,
   },
   recordsSection: {
-    gap: 12,
+    gap: questionnaireTokens.spacing.sm,
   },
   recordsLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ffffff',
+    color: colors.text.primary,
   },
   recordsOptional: {
     fontSize: 14,
     fontWeight: '400',
-    color: '#93adc8',
+    color: colors.text.secondary,
   },
   recordsSubtitle: {
     fontSize: 14,
-    color: '#93adc8',
-    marginTop: -8,
+    color: colors.text.secondary,
   },
   textInput: {
     width: '100%',
-    backgroundColor: '#1a2632',
-    color: '#ffffff',
-    fontSize: 14,
-    borderRadius: 12,
+    backgroundColor: colors.primary.medium,
+    color: colors.text.primary,
+    fontSize: 15,
+    borderRadius: questionnaireTokens.borderRadius.md,
     borderWidth: 1,
-    borderColor: '#344d65',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
+    borderColor: colors.border.light,
+    paddingVertical: questionnaireTokens.spacing.lg,
+    paddingHorizontal: questionnaireTokens.spacing.lg,
     minHeight: 100,
     textAlignVertical: 'top',
   },
@@ -274,28 +230,9 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    padding: 24,
-    paddingBottom: 40,
-  },
-  continueButton: {
-    width: '100%',
-    backgroundColor: '#328ce7',
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    shadowColor: '#328ce7',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  continueButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#ffffff',
+    paddingHorizontal: questionnaireTokens.spacing.xxl,
+    paddingTop: questionnaireTokens.spacing.lg,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 32,
+    backgroundColor: colors.primary.dark,
   },
 });

@@ -3,7 +3,7 @@
  * Allows sharing form state across all questionnaire screens
  */
 
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 import { useForm, UseFormReturn } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { profileSchema, cleanConditionalFields, isQuestionnaireComplete } from '@/lib/validation/profileSchema';
@@ -11,6 +11,8 @@ import type { ProfileFormData } from '@/lib/validation/profileSchema';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QUESTIONNAIRE_DRAFT } from '@/lib/storage/keys';
 import { questionnaireApi } from '@/lib/api/questionnaireApi';
+
+const AUTOSAVE_DEBOUNCE_MS = 800;
 
 interface QuestionnaireContextType {
   form: UseFormReturn<ProfileFormData>;
@@ -49,9 +51,12 @@ export function QuestionnaireProvider({ children, initialData, sessionUuid }: Qu
     },
   });
 
-  // Autosave to local storage (and server session if available) on value changes
+  // Debounced autosave to local storage (and server session if available)
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingValuesRef = useRef<Partial<ProfileFormData> | null>(null);
+
   React.useEffect(() => {
-    const subscription = form.watch(async (values) => {
+    const performAutosave = async (values: Partial<ProfileFormData>) => {
       try {
         // Save local draft
         await AsyncStorage.setItem(QUESTIONNAIRE_DRAFT, JSON.stringify(values));
@@ -68,10 +73,36 @@ export function QuestionnaireProvider({ children, initialData, sessionUuid }: Qu
       } catch (e) {
         // Ignore autosave errors; user can still complete
       }
+    };
+
+    const subscription = form.watch((values) => {
+      // Store latest values
+      pendingValuesRef.current = values;
+
+      // Clear existing timer
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current);
+      }
+
+      // Schedule debounced save
+      autosaveTimerRef.current = setTimeout(() => {
+        if (pendingValuesRef.current) {
+          performAutosave(pendingValuesRef.current);
+          pendingValuesRef.current = null;
+        }
+      }, AUTOSAVE_DEBOUNCE_MS);
     });
 
     return () => {
       subscription.unsubscribe();
+      // Clear timer on unmount
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current);
+      }
+      // Save any pending changes immediately on unmount
+      if (pendingValuesRef.current) {
+        performAutosave(pendingValuesRef.current);
+      }
     };
   }, [form, sessionUuid]);
 
@@ -148,9 +179,10 @@ export function QuestionnaireProvider({ children, initialData, sessionUuid }: Qu
         case 6: // Running Experience (step5.tsx)
           if (!values.running_experience_period) return false;
           // Check conditional fields
+          if (values.running_experience_period === '1_4_semaines' && !values.running_experience_weeks) return false;
           if (values.running_experience_period === '1_11_mois' && !values.running_experience_months) return false;
           if (values.running_experience_period === '1_10_ans' && !values.running_experience_years) return false;
-          return !errors.running_experience_period && !errors.running_experience_months && !errors.running_experience_years;
+          return !errors.running_experience_period && !errors.running_experience_weeks && !errors.running_experience_months && !errors.running_experience_years;
 
         case 7: // Problem to Solve (step6.tsx)
           if (!values.problem_to_solve) return true; // Optional

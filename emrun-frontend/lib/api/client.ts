@@ -154,7 +154,7 @@ class ApiClient {
     
     // If response has success field, extract data
     if (responseData && typeof responseData === 'object' && 'success' in responseData) {
-      if (responseData.success && responseData.data) {
+      if (responseData.success && 'data' in responseData) {
         return responseData.data as T;
       }
       // If success is false, throw error with message

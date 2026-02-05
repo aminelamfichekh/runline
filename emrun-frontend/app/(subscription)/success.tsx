@@ -1,7 +1,15 @@
+import { useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  QUESTIONNAIRE_SESSION_UUID,
+  QUESTIONNAIRE_PENDING_ATTACH,
+  QUESTIONNAIRE_DRAFT,
+  QUESTIONNAIRE_EMAIL,
+} from '@/lib/storage/keys';
 
 const SUBSCRIPTION_BG = '#111921';
 const CARD_BG = '#1a2632';
@@ -13,8 +21,25 @@ export default function SuccessScreen() {
   const router = useRouter();
   const { t } = useTranslation();
 
+  // Clear all temporary questionnaire/signup data on success
+  useEffect(() => {
+    const clearTemporaryData = async () => {
+      try {
+        await AsyncStorage.multiRemove([
+          QUESTIONNAIRE_SESSION_UUID,
+          QUESTIONNAIRE_PENDING_ATTACH,
+          QUESTIONNAIRE_DRAFT,
+          QUESTIONNAIRE_EMAIL,
+        ]);
+      } catch {
+        // Non-critical: stale data will be ignored on next session
+      }
+    };
+    clearTemporaryData();
+  }, []);
+
   const handleContinue = () => {
-    router.replace('/(tabs)');
+    router.replace('/(tabs)/home');
   };
 
   return (

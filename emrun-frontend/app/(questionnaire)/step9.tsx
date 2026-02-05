@@ -1,18 +1,35 @@
 /**
  * Step 9: Blessures et Contraintes
- * Optional text areas for injuries and constraints
+ * Polished UI with shared components and smooth animations
  */
 
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  TextInput,
+  StyleSheet,
+  Animated,
+  Platform,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuestionnaireForm } from '@/hooks/useQuestionnaireForm';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { colors } from '@/constants/colors';
+import {
+  QuestionnaireHeader,
+  ContinueButton,
+  questionnaireTokens,
+  getStepProgress,
+} from '@/components/questionnaire';
 
 export default function Step9Screen() {
   const router = useRouter();
   const { form } = useQuestionnaireForm();
   const { setValue, watch } = form;
+
+  const primaryGoal = watch('primary_goal') as string | undefined;
+  const { currentStep, totalSteps } = getStepProgress('step9', primaryGoal);
 
   const watchedInjuries = watch('injuries') as string[] | undefined;
   const watchedConstraints = watch('personal_constraints') as string | undefined;
@@ -21,6 +38,16 @@ export default function Step9Screen() {
     watchedInjuries && watchedInjuries.length > 0 ? watchedInjuries.join('\n') : ''
   );
   const [constraints, setConstraints] = useState(watchedConstraints || '');
+
+  // Entrance animation
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 350,
+      useNativeDriver: true,
+    }).start();
+  }, []);
 
   const handleContinue = () => {
     // Map multi-line injuries text to string[] for backend
@@ -45,33 +72,21 @@ export default function Step9Screen() {
 
   return (
     <View style={styles.container}>
-      {/* Background Gradient */}
       <View style={styles.backgroundGradient} />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.topBar}>
-          <TouchableOpacity onPress={() => router.push('/(questionnaire)/step8')} style={styles.backButton}>
-            <MaterialCommunityIcons name="arrow-left" size={24} color="#ffffff" />
-          </TouchableOpacity>
-          <Text style={styles.logo}>RUNLINE</Text>
-          <View style={{ width: 40 }} />
-        </View>
-        <View style={styles.progressContainer}>
-          <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: '100%' }]} />
-          </View>
-        </View>
-      </View>
+      <QuestionnaireHeader
+        currentStep={currentStep}
+        totalSteps={totalSteps}
+        backRoute="/(questionnaire)/step8"
+      />
 
-      {/* Main Content */}
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.mainContent}>
-          {/* Headline */}
+        <Animated.View style={[styles.mainContent, { opacity: fadeAnim }]}>
           <View style={styles.headlineContainer}>
             <Text style={styles.headline}>
               Informations{'\n'}
@@ -91,12 +106,15 @@ export default function Step9Screen() {
             <TextInput
               style={styles.textInput}
               placeholder="Ex: Tendinite d'Achille, douleur au genou..."
-              placeholderTextColor="#5a7690"
+              placeholderTextColor={colors.text.tertiary}
               value={injuries}
               onChangeText={setInjuries}
               multiline
               numberOfLines={4}
               textAlignVertical="top"
+              selectionColor={colors.accent.blue}
+              cursorColor={colors.accent.blue}
+              underlineColorAndroid="transparent"
             />
           </View>
 
@@ -106,36 +124,26 @@ export default function Step9Screen() {
               Contraintes personnelles / professionnelles{' '}
               <Text style={styles.inputOptional}>(Optionnel)</Text>
             </Text>
-            <Text style={styles.inputSubtitle}>
-              Ex : travail de nuit, garde d'enfants…
-            </Text>
+            <Text style={styles.inputSubtitle}>Ex : travail de nuit, garde d'enfants…</Text>
             <TextInput
               style={styles.textInput}
               placeholder="Partagez vos contraintes pour un plan adapté..."
-              placeholderTextColor="#5a7690"
+              placeholderTextColor={colors.text.tertiary}
               value={constraints}
               onChangeText={setConstraints}
               multiline
               numberOfLines={4}
               textAlignVertical="top"
-              selectionColor="#328ce7"
-              cursorColor="#328ce7"
+              selectionColor={colors.accent.blue}
+              cursorColor={colors.accent.blue}
               underlineColorAndroid="transparent"
             />
           </View>
-        </View>
+        </Animated.View>
       </ScrollView>
 
-      {/* Footer Button */}
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.continueButton}
-          onPress={handleContinue}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.continueButtonText}>Terminer</Text>
-          <MaterialCommunityIcons name="check" size={20} color="#ffffff" />
-        </TouchableOpacity>
+        <ContinueButton onPress={handleContinue} label="Terminer" icon="check" />
       </View>
     </View>
   );
@@ -144,7 +152,7 @@ export default function Step9Screen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#111921',
+    backgroundColor: colors.primary.dark,
   },
   backgroundGradient: {
     position: 'absolute',
@@ -152,151 +160,72 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(50, 140, 231, 0.08)',
-  },
-  header: {
-    paddingTop: 60,
-    paddingBottom: 16,
-    paddingHorizontal: 24,
-    zIndex: 10,
-  },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#1a2632',
-  },
-  logo: {
-    fontSize: 14,
-    fontWeight: '700',
-    letterSpacing: 2.4,
-    color: '#93adc8',
-    textAlign: 'center',
-  },
-  progressContainer: {
-    gap: 8,
-  },
-  progressLabels: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-  },
-  progressText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#ffffff',
-  },
-  progressPercent: {
-    fontSize: 12,
-    color: '#93adc8',
-  },
-  progressBar: {
-    height: 6,
-    width: '100%',
-    backgroundColor: '#344d65',
-    borderRadius: 9999,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#328ce7',
-    borderRadius: 9999,
+    backgroundColor: 'rgba(50, 140, 231, 0.05)',
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 120,
+    paddingBottom: 140,
   },
   mainContent: {
-    paddingHorizontal: 24,
-    paddingTop: 8,
+    paddingHorizontal: questionnaireTokens.spacing.xxl,
   },
   headlineContainer: {
-    paddingVertical: 24,
-    marginBottom: 16,
+    paddingTop: questionnaireTokens.spacing.lg,
+    paddingBottom: questionnaireTokens.spacing.xxl,
   },
   headline: {
-    fontSize: 30,
-    fontWeight: '700',
-    lineHeight: 40,
-    color: '#ffffff',
-    marginBottom: 8,
+    ...questionnaireTokens.typography.headline,
+    color: colors.text.primary,
+    marginBottom: questionnaireTokens.spacing.sm,
   },
   headlineHighlight: {
-    color: '#328ce7',
+    color: colors.accent.blue,
   },
   subheadline: {
-    fontSize: 14,
-    lineHeight: 22,
-    color: '#93adc8',
+    ...questionnaireTokens.typography.subheadline,
+    color: colors.text.secondary,
   },
   inputSection: {
-    marginBottom: 24,
-    gap: 8,
+    marginBottom: questionnaireTokens.spacing.xxl,
+    gap: questionnaireTokens.spacing.sm,
   },
   inputLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ffffff',
+    color: colors.text.primary,
   },
   inputOptional: {
     fontSize: 14,
     fontWeight: '400',
-    color: '#93adc8',
+    color: colors.text.secondary,
   },
   inputSubtitle: {
     fontSize: 14,
-    color: '#93adc8',
-    marginTop: -4,
+    color: colors.text.secondary,
   },
   textInput: {
     width: '100%',
-    backgroundColor: '#1a2632',
-    color: '#ffffff',
-    fontSize: 14,
-    borderRadius: 12,
+    backgroundColor: colors.primary.medium,
+    color: colors.text.primary,
+    fontSize: 15,
+    borderRadius: questionnaireTokens.borderRadius.md,
     borderWidth: 1,
-    borderColor: '#344d65',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    minHeight: 120,
+    borderColor: colors.border.light,
+    paddingVertical: questionnaireTokens.spacing.lg,
+    paddingHorizontal: questionnaireTokens.spacing.lg,
+    minHeight: 100,
+    textAlignVertical: 'top',
   },
   footer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    padding: 24,
-    paddingBottom: 40,
-  },
-  continueButton: {
-    width: '100%',
-    backgroundColor: '#328ce7',
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    shadowColor: '#328ce7',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  continueButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#ffffff',
+    paddingHorizontal: questionnaireTokens.spacing.xxl,
+    paddingTop: questionnaireTokens.spacing.lg,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 32,
+    backgroundColor: colors.primary.dark,
   },
 });

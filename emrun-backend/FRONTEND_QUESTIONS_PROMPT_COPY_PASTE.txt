@@ -1,0 +1,230 @@
+🎯 ADAPTER LE FRONTEND POUR UTILISER LES QUESTIONS DYNAMIQUES DEPUIS L'API
+
+Le backend a maintenant une table `questions` qui stocke toutes les questions dynamiquement. Il faut adapter le frontend pour récupérer les questions depuis l'API au lieu de les avoir en dur dans `lib/questionnaire/questions.ts`.
+
+MODIFICATIONS REQUISES:
+
+1. AJOUTER LES NOUVEAUX ENDPOINTS DANS `lib/api/questionnaireApi.ts`
+
+Ajouter ces types et fonctions à l'objet `questionnaireApi`:
+
+```typescript
+// Types pour les questions de l'API
+export interface Question {
+  id: number;
+  key: string;
+  section: string | null;
+  order: number;
+  type: 'text' | 'number' | 'date' | 'email' | 'enum' | 'multi_select' | 'textarea' | 'multi_text' | 'multi_object';
+  label: string;
+  description: string | null;
+  required: boolean;
+  active: boolean;
+  options?: Array<{ value: string; label: string }>;
+  validation_rules?: Record<string, any>;
+  conditional_logic?: { depends_on: string; values: string[] };
+  other_field_key?: string | null;
+  metadata?: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserQuestionnaireResponse {
+  id: number;
+  user_id: number;
+  question_id: number;
+  value: string | null;
+  value_json: any[] | null;
+  answered_at: string;
+  updated_at: string | null;
+  question: Question;
+}
+
+// Nouvelles fonctions à ajouter dans questionnaireApi:
+async getQuestions(): Promise<Question[]> {
+  const data = await apiClient.get<Question[]>('/questions');
+  return data;
+},
+
+async getQuestionsBySection(section: string): Promise<Question[]> {
+  const data = await apiClient.get<Question[]>(`/questions?section=${section}`);
+  return data;
+},
+
+async getQuestionByKey(key: string): Promise<Question> {
+  const data = await apiClient.get<Question>(`/questions/key/${key}`);
+  return data;
+},
+
+async getUserResponses(): Promise<UserQuestionnaireResponse[]> {
+  const data = await apiClient.get<UserQuestionnaireResponse[]>('/questionnaire/responses');
+  return data;
+},
+
+async getUserResponsesWithQuestions(): Promise<Array<{
+  question: Question;
+  response: UserQuestionnaireResponse | null;
+  value: any;
+  answered_at: string | null;
+}>> {
+  const data = await apiClient.get('/questionnaire/responses/with-questions');
+  return data;
+},
+
+async updateResponse(questionKey: string, value: any): Promise<UserQuestionnaireResponse> {
+  const data = await apiClient.put<UserQuestionnaireResponse>(
+    `/questionnaire/responses/${questionKey}`,
+    { value }
+  );
+  return data;
+},
+```
+
+2. CRÉER UN HOOK `hooks/useQuestions.ts` (ou `lib/services/QuestionService.ts`)
+
+```typescript
+import { useState, useEffect } from 'react';
+import { questionnaireApi, Question } from '@/lib/api/questionnaireApi';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const QUESTIONS_CACHE_KEY = '@emrun:questions_cache';
+const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 heures
+
+export function useQuestions() {
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    loadQuestions();
+  }, []);
+
+  const loadQuestions = async () => {
+    try {
+      setLoading(true);
+      const cached = await AsyncStorage.getItem(QUESTIONS_CACHE_KEY);
+      if (cached) {
+        const { data, timestamp } = JSON.parse(cached);
+        if (Date.now() - timestamp < CACHE_DURATION) {
+          setQuestions(data);
+          setLoading(false);
+          refreshQuestions(); // Mettre à jour en arrière-plan
+          return;
+        }
+      }
+      await refreshQuestions();
+    } catch (err) {
+      setError(err as Error);
+      setLoading(false);
+    }
+  };
+
+  const refreshQuestions = async () => {
+    try {
+      const data = await questionnaireApi.getQuestions();
+      const sorted = data.sort((a, b) => {
+        if (a.order !== b.order) return a.order - b.order;
+        return a.id - b.id;
+      });
+      setQuestions(sorted);
+      await AsyncStorage.setItem(QUESTIONS_CACHE_KEY, JSON.stringify({
+        data: sorted,
+        timestamp: Date.now(),
+      }));
+      setLoading(false);
+    } catch (err) {
+      setError(err as Error);
+      setLoading(false);
+      throw err;
+    }
+  };
+
+  const getQuestionByKey = (key: string): Question | undefined => {
+    return questions.find(q => q.key === key);
+  };
+
+  const getQuestionsBySection = (section: string): Question[] => {
+    return questions.filter(q => q.section === section);
+  };
+
+  const getVisibleQuestions = (currentAnswers: Record<string, any>): Question[] => {
+    return questions.filter(question => {
+      if (!question.active) return false;
+      if (question.conditional_logic) {
+        const dependsOn = question.conditional_logic.depends_on;
+        const requiredValues = question.conditional_logic.values;
+        const dependentValue = currentAnswers[dependsOn];
+        if (!requiredValues.includes(dependentValue)) return false;
+      }
+      return true;
+    });
+  };
+
+  const getNextQuestion = (currentKey: string, currentAnswers: Record<string, any>): Question | null => {
+    const visible = getVisibleQuestions(currentAnswers);
+    const currentIndex = visible.findIndex(q => q.key === currentKey);
+    if (currentIndex < 0 || currentIndex >= visible.length - 1) return null;
+    return visible[currentIndex + 1];
+  };
+
+  const getPreviousQuestion = (currentKey: string, currentAnswers: Record<string, any>): Question | null => {
+    const visible = getVisibleQuestions(currentAnswers);
+    const currentIndex = visible.findIndex(q => q.key === currentKey);
+    if (currentIndex <= 0) return null;
+    return visible[currentIndex - 1];
+  };
+
+  return {
+    questions,
+    loading,
+    error,
+    refreshQuestions,
+    getQuestionByKey,
+    getQuestionsBySection,
+    getVisibleQuestions,
+    getNextQuestion,
+    getPreviousQuestion,
+  };
+}
+```
+
+3. ADAPTER `lib/questionnaire/questions.ts`
+
+Transformer ce fichier pour qu'il devienne un wrapper/utilitaire qui fonctionne avec les questions de l'API. Les fonctions existantes (`getQuestionByKey`, `getVisibleQuestions`, etc.) doivent accepter un paramètre `questions: Question[]` et utiliser les questions de l'API au lieu du tableau statique `QUESTIONS`.
+
+4. ADAPTER LES ÉCRANS DE QUESTIONS
+
+Dans les écrans (ex: `app/(questionnaire)/question-email.tsx`), utiliser le hook `useQuestions()`:
+
+```typescript
+import { useQuestions } from '@/hooks/useQuestions';
+
+export default function QuestionEmailScreen() {
+  const { questions, loading, getQuestionByKey } = useQuestions();
+  const question = getQuestionByKey('email');
+  
+  if (loading) return <LoadingScreen />;
+  if (!question) return <ErrorScreen message="Question not found" />;
+  
+  // Utiliser question.label, question.description, question.options, etc.
+}
+```
+
+5. CRÉER UN ÉCRAN POUR VOIR/MODIFIER LES RÉPONSES
+
+Créer `app/(questionnaire)/my-responses.tsx` pour permettre aux utilisateurs de voir et modifier leurs réponses via l'API.
+
+IMPORTANT:
+- Mettre en cache les questions (24h) pour éviter trop d'appels API
+- Gérer les états de chargement et les erreurs
+- Adapter le mapping des types: le backend utilise 'enum' et 'multi_select', le frontend utilise 'radio' et 'checkbox' - créer un mapping
+- Les questions du backend ont `label` et `description`, le frontend utilise `title` et `subtitle` - adapter le mapping
+
+ENDPOINTS BACKEND ATTENDUS:
+- GET /api/questions
+- GET /api/questions?section={section}
+- GET /api/questions/key/{key}
+- GET /api/questionnaire/responses (authentifié)
+- GET /api/questionnaire/responses/with-questions (authentifié)
+- PUT /api/questionnaire/responses/{questionKey} (authentifié)
+
