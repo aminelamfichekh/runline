@@ -49,10 +49,12 @@ Plans:
   5. User can view plan history for all previous months
   6. Monthly regeneration runs automatically every first Monday using user history
   7. Failed plan generation retries automatically (3 attempts)
-**Plans**: TBD (1-3 plans)
+**Plans**: 3 plans
 
 Plans:
-- [ ] TBD
+- [ ] 02-01-PLAN.md — Backend OpenAI structured outputs, webhook trigger, and monthly cron
+- [ ] 02-02-PLAN.md — Expo Push notifications (replace Firebase) with frontend token registration
+- [ ] 02-03-PLAN.md — Frontend API wiring for plan display with loading states
 
 ### Phase 3: User Retention
 **Goal**: Users stay engaged with dashboard home page, manage their profile, and access required legal pages
@@ -78,7 +80,7 @@ Plans:
   1. iOS app submitted to App Store and approved for production
   2. Android app submitted to Google Play and approved for production
   3. Backend deployed to production environment with OpenAI and Stripe production keys
-  4. Push notifications working via Firebase in production
+  4. Push notifications working via Expo Push in production
   5. Cron job for monthly regeneration running reliably in production
 **Plans**: TBD (1-2 plans)
 
@@ -88,11 +90,11 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. User Acquisition | 3/3 | Complete | 2026-01-26 |
-| 2. AI Plan Delivery | 0/TBD | Not started | - |
+| 2. AI Plan Delivery | 0/3 | Ready | - |
 | 3. User Retention | 0/TBD | Not started | - |
 | 4. Production Launch | 0/TBD | Not started | - |
