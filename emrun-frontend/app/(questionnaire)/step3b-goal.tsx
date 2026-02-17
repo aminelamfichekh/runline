@@ -121,7 +121,7 @@ function DistanceCard({ value, icon, label, isSelected, onSelect, index }: Dista
 
 export default function Step3bGoalScreen() {
   const router = useRouter();
-  const { form } = useQuestionnaireForm();
+  const { form, saveNow } = useQuestionnaireForm();
   const { setValue, watch } = form;
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -163,7 +163,7 @@ export default function Step3bGoalScreen() {
     }).start();
   }, []);
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (distancePreset === 'autre') {
       setValue('race_distance', 'autre');
       setValue('race_distance_other', autreDescription);
@@ -176,6 +176,8 @@ export default function Step3bGoalScreen() {
     if (raceDate) {
       setValue('target_race_date', format(raceDate, 'yyyy-MM-dd'));
     }
+    // Save data immediately before navigation to ensure it's persisted
+    await saveNow();
     router.push('/(questionnaire)/step3b');
   };
 
@@ -399,7 +401,11 @@ export default function Step3bGoalScreen() {
       )}
 
       <View style={styles.footer}>
-        <ContinueButton onPress={handleContinue} label="Suivant" />
+        <ContinueButton
+          onPress={handleContinue}
+          label="Suivant"
+          disabled={distancePreset === 'autre' && !autreDescription.trim()}
+        />
       </View>
     </View>
   );

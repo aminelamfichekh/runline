@@ -93,8 +93,42 @@ class QuestionnairePayloadService
     }
 
     /**
+     * Normalise les valeurs du payload (conversion d'unités, types, etc.).
+     *
+     * @param array $payload
+     * @return array
+     */
+    public function normalizePayload(array $payload): array
+    {
+        // Convertir height_cm de mètres en centimètres si nécessaire
+        // (anciennes données peuvent avoir été stockées en mètres, ex: 1.7 au lieu de 170)
+        if (isset($payload['height_cm']) && is_numeric($payload['height_cm'])) {
+            $height = (float) $payload['height_cm'];
+            if ($height < 10) {
+                // Valeur < 10 signifie probablement des mètres, convertir en cm
+                $payload['height_cm'] = (int) round($height * 100);
+            } else {
+                // Déjà en centimètres, s'assurer que c'est un entier
+                $payload['height_cm'] = (int) round($height);
+            }
+        }
+
+        // S'assurer que weight_kg est un entier
+        if (isset($payload['weight_kg']) && is_numeric($payload['weight_kg'])) {
+            $payload['weight_kg'] = (int) $payload['weight_kg'];
+        }
+
+        // S'assurer que current_weekly_volume_km est un entier
+        if (isset($payload['current_weekly_volume_km']) && is_numeric($payload['current_weekly_volume_km'])) {
+            $payload['current_weekly_volume_km'] = (int) $payload['current_weekly_volume_km'];
+        }
+
+        return $payload;
+    }
+
+    /**
      * Prépare le payload pour l'attach (extrait du payload et nettoie).
-     * 
+     *
      * @param array $sessionPayload
      * @return array
      */
@@ -103,13 +137,16 @@ class QuestionnairePayloadService
         // Retirer l'email du payload (il est dans users, pas dans user_profiles)
         $prepared = $sessionPayload;
         unset($prepared['email']);
-        
+
+        // Normaliser les valeurs (conversion mètres→cm, types, etc.)
+        $prepared = $this->normalizePayload($prepared);
+
         // Nettoyer les champs dépendants
         $prepared = $this->cleanDependentFields($prepared);
-        
+
         // S'assurer que questionnaire_completed est true
         $prepared['questionnaire_completed'] = true;
-        
+
         return $prepared;
     }
 }

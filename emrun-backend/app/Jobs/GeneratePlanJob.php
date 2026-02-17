@@ -12,9 +12,9 @@ use OpenAI\Factory as OpenAIFactory;
 
 /**
  * GeneratePlanJob
- * 
+ *
  * Asynchronous job to generate a training plan using OpenAI.
- * This job handles the heavy lifting of calling OpenAI API and processing the response.
+ * Uses structured outputs (json_schema) for guaranteed valid JSON.
  */
 class GeneratePlanJob implements ShouldQueue
 {
@@ -55,6 +55,12 @@ class GeneratePlanJob implements ShouldQueue
             // Update plan status to generating
             $this->plan->update(['status' => 'generating']);
 
+            Log::info('Starting plan generation', [
+                'plan_id' => $this->plan->id,
+                'user_id' => $this->plan->user_id,
+                'type' => $this->type,
+            ]);
+
             // Build the prompt
             $prompt = $planGeneratorService->buildPrompt($this->plan, $this->type);
 
@@ -73,37 +79,59 @@ class GeneratePlanJob implements ShouldQueue
                 ->withOrganization(config('services.openai.organization'))
                 ->make();
 
-            // Call OpenAI API
+            // Get JSON schema for structured output
+            $jsonSchema = $planGeneratorService->getJsonSchema();
+
+            // Call OpenAI API with structured output
             $response = $client->chat()->create([
-                'model' => 'gpt-4',
+                'model' => 'gpt-4o-2024-08-06', // Model that supports structured outputs
                 'messages' => [
                     [
                         'role' => 'system',
-                        'content' => 'You are an expert running coach. Generate detailed, personalized training plans in JSON format. Always respond with valid JSON.',
+                        'content' => 'Tu es un expert en coaching running pour athlètes amateurs. Tu génères des plans d\'entraînement personnalisés en JSON. Réponds UNIQUEMENT avec un objet JSON valide.',
                     ],
                     [
                         'role' => 'user',
                         'content' => $prompt,
                     ],
                 ],
+                'response_format' => [
+                    'type' => 'json_schema',
+                    'json_schema' => [
+                        'name' => 'training_plan',
+                        'strict' => true,
+                        'schema' => $jsonSchema,
+                    ],
+                ],
                 'temperature' => 0.7,
-                'max_tokens' => 4000,
+                'max_tokens' => 8000, // Increased for longer plans
             ]);
 
             // Extract the response
             $content = $response->choices[0]->message->content;
             $tokensUsed = $response->usage->totalTokens ?? null;
 
-            // Parse JSON content
+            Log::info('OpenAI response received', [
+                'plan_id' => $this->plan->id,
+                'tokens_used' => $tokensUsed,
+                'content_length' => strlen($content),
+            ]);
+
+            // Parse JSON content - should always be valid with structured outputs
             $planContent = json_decode($content, true);
-            
-            // If JSON parsing fails, store as text
+
             if (json_last_error() !== JSON_ERROR_NONE) {
-                Log::warning('OpenAI response is not valid JSON, storing as text', [
+                Log::error('JSON parsing failed despite structured output', [
                     'plan_id' => $this->plan->id,
-                    'content' => $content,
+                    'json_error' => json_last_error_msg(),
+                    'content' => substr($content, 0, 500),
                 ]);
-                $planContent = ['raw_content' => $content];
+                throw new \Exception('Failed to parse OpenAI response as JSON: ' . json_last_error_msg());
+            }
+
+            // Validate the structure
+            if (!isset($planContent['weeks']) || !is_array($planContent['weeks'])) {
+                throw new \Exception('Invalid plan structure: missing weeks array');
             }
 
             // Update plan with generated content
@@ -122,6 +150,7 @@ class GeneratePlanJob implements ShouldQueue
                 'user_id' => $this->plan->user_id,
                 'type' => $this->type,
                 'tokens_used' => $tokensUsed,
+                'weeks_count' => count($planContent['weeks']),
             ]);
 
         } catch (\Exception $e) {
@@ -165,4 +194,3 @@ class GeneratePlanJob implements ShouldQueue
         ]);
     }
 }
-

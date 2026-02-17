@@ -29,7 +29,7 @@ const DEFAULT_VOLUME_INDEX = 4; // 20km
 
 export default function Step5Screen() {
   const router = useRouter();
-  const { form } = useQuestionnaireForm();
+  const { form, saveNow } = useQuestionnaireForm();
   const { setValue, watch } = form;
 
   const primaryGoal = watch('primary_goal') as string | undefined;
@@ -63,7 +63,7 @@ export default function Step5Screen() {
     }).start();
   }, []);
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     setValue('last_week_volume', lastWeekVolume);
     setValue('typical_volume', typicalVolume);
 
@@ -72,6 +72,9 @@ export default function Step5Screen() {
       backendVolume = 100;
     }
     setValue('current_weekly_volume_km', backendVolume);
+
+    // Save data immediately before navigation to ensure it's persisted
+    await saveNow();
     router.push('/(questionnaire)/step6');
   };
 

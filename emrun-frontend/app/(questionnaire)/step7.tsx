@@ -110,7 +110,7 @@ function DayCard({ day, isSelected, onToggle, index }: DayCardProps) {
 
 export default function Step7Screen() {
   const router = useRouter();
-  const { form } = useQuestionnaireForm();
+  const { form, saveNow } = useQuestionnaireForm();
   const { setValue, watch } = form;
 
   const primaryGoal = watch('primary_goal') as string | undefined;
@@ -130,8 +130,10 @@ export default function Step7Screen() {
     });
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     setValue('available_days', selectedDays);
+    // Save data immediately before navigation to ensure it's persisted
+    await saveNow();
     router.push('/(questionnaire)/step8');
   };
 
@@ -175,7 +177,13 @@ export default function Step7Screen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <ContinueButton onPress={handleContinue} />
+        {selectedDays.length === 0 && (
+          <Text style={styles.validationMessage}>Sélectionnez au moins 1 jour</Text>
+        )}
+        <ContinueButton
+          onPress={handleContinue}
+          disabled={selectedDays.length === 0}
+        />
       </View>
     </View>
   );
@@ -267,5 +275,11 @@ const styles = StyleSheet.create({
     paddingTop: questionnaireTokens.spacing.lg,
     paddingBottom: Platform.OS === 'ios' ? 40 : 32,
     backgroundColor: colors.primary.dark,
+  },
+  validationMessage: {
+    fontSize: 14,
+    color: '#f87171',
+    textAlign: 'center',
+    marginBottom: questionnaireTokens.spacing.sm,
   },
 });

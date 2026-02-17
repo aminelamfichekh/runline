@@ -152,7 +152,7 @@ function OptionCard({
 
 export default function Step1Screen() {
   const router = useRouter();
-  const { form, handleFieldChange } = useQuestionnaireForm();
+  const { form, handleFieldChange, saveNow } = useQuestionnaireForm();
   const { setValue, watch } = form;
 
   const primaryGoal = watch('primary_goal') as string | undefined;
@@ -205,10 +205,12 @@ export default function Step1Screen() {
     }
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (selectedGoal === 'other') {
       setValue('primary_goal_other', otherText);
     }
+    // Save data immediately before navigation to ensure it's persisted
+    await saveNow();
     router.push('/(questionnaire)/step2');
   };
 
@@ -265,7 +267,7 @@ export default function Step1Screen() {
       <View style={styles.footer}>
         <ContinueButton
           onPress={handleContinue}
-          disabled={!selectedGoal}
+          disabled={!selectedGoal || (selectedGoal === 'other' && !otherText.trim())}
         />
       </View>
     </View>

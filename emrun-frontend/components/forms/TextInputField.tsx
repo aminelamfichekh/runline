@@ -23,7 +23,7 @@ export const TextInputField: React.FC<TextInputFieldProps> = ({
       </Text>
       <TextInput
         style={[styles.input, error && styles.inputError]}
-        placeholderTextColor="#666"
+        placeholderTextColor="#8899aa"
         selectionColor="#328ce7"
         cursorColor="#328ce7"
         underlineColorAndroid="transparent"

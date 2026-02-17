@@ -20,38 +20,25 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarStyle: {
-          backgroundColor: '#111921',
-          borderTopColor: '#1a2632',
-          borderTopWidth: 1,
-        },
-        tabBarActiveTintColor: '#fff',
-        tabBarInactiveTintColor: '#666',
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '600',
-        },
+        tabBarStyle: { display: 'none' }, // Hidden - using custom bottom nav in screens
       }}
     >
       <Tabs.Screen
         name="home"
         options={{
-          title: 'Home',
-          tabBarIcon: () => null,
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: 'Profile',
-          tabBarIcon: () => null,
+          title: 'Accueil',
         }}
       />
       <Tabs.Screen
         name="plans"
         options={{
           title: 'Plans',
-          tabBarIcon: () => null,
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profil',
         }}
       />
     </Tabs>

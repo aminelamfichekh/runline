@@ -137,7 +137,7 @@ function FrequencyCard({
 
 export default function Step4Screen() {
   const router = useRouter();
-  const { form } = useQuestionnaireForm();
+  const { form, saveNow } = useQuestionnaireForm();
   const { setValue, watch } = form;
 
   const primaryGoal = watch('primary_goal') as string | undefined;
@@ -172,7 +172,7 @@ export default function Step4Screen() {
     mapBackendToFrequency(currentRunsPerWeek)
   );
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     let backendValue: '0' | '1_2' | '3_4' | '5_6' | '7_plus' | undefined;
     switch (selectedFrequency) {
       case 'none':
@@ -197,6 +197,9 @@ export default function Step4Screen() {
     if (backendValue) {
       setValue('current_runs_per_week', backendValue);
     }
+
+    // Save data immediately before navigation to ensure it's persisted
+    await saveNow();
     router.push('/(questionnaire)/step5');
   };
 

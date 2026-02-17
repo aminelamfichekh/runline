@@ -1,19 +1,26 @@
 /**
- * Profile Screen
- * Complete profile with questionnaire review, edit, and password change
+ * Profile Screen - Summary View
+ * Shows user profile summary with navigation to sub-pages
  */
 
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+  StatusBar,
+  Image,
+} from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Button } from '@/components/ui/Button';
-import { TextInputField } from '@/components/forms/TextInputField';
 import { authApi } from '@/lib/api/auth';
 import { profileApi } from '@/lib/api/profile';
 import { useNotification } from '@/contexts/NotificationContext';
 import type { UserProfileResponse } from '@/types/profile';
-import { format } from 'date-fns';
 import { colors } from '@/constants/colors';
 
 export default function ProfileScreen() {
@@ -21,13 +28,7 @@ export default function ProfileScreen() {
   const { showNotification } = useNotification();
   const [profile, setProfile] = useState<UserProfileResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [passwordData, setPasswordData] = useState({
-    current_password: '',
-    password: '',
-    password_confirmation: '',
-  });
-  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [userName, setUserName] = useState('');
 
   // Load profile on mount and when screen comes into focus
   useFocusEffect(
@@ -39,72 +40,35 @@ export default function ProfileScreen() {
   const loadProfile = async () => {
     try {
       setIsLoading(true);
+
+      // Load user info for name - extract first name only
+      const userResponse = await authApi.getCurrentUser();
+      const fullName = userResponse.user?.name || '';
+      const firstName = fullName.split(' ')[0] || 'Utilisateur';
+      setUserName(firstName);
+
       const response = await profileApi.getProfile();
-      console.log('📥 Profile loaded:', {
-        hasProfile: !!response.profile,
-        questionnaire_completed: response.questionnaire_completed,
-        profileKeys: response.profile ? Object.keys(response.profile) : [],
-      });
-      
-      // Always set profile data, even if questionnaire_completed is false
-      // This allows users to see and edit their partial data
+      console.log('📊 Profile Response:', JSON.stringify(response, null, 2));
       setProfile(response);
     } catch (error: any) {
-      console.error('❌ Profile load error:', error);
+      console.error('Profile load error:', error);
+      console.error('Error details:', error.message, error.response?.data);
       if (error.response?.status === 404) {
-        // No profile - that's ok, show empty state
         setProfile(null);
-      } else {
-        showNotification('Failed to load profile', 'error');
       }
     } finally {
       setIsLoading(false);
     }
   };
 
-
-  const handleChangePassword = async () => {
-    if (!passwordData.current_password || !passwordData.password || !passwordData.password_confirmation) {
-      showNotification('Please fill all password fields', 'error');
-      return;
-    }
-
-    if (passwordData.password !== passwordData.password_confirmation) {
-      showNotification('Passwords do not match', 'error');
-      return;
-    }
-
-    if (passwordData.password.length < 8) {
-      showNotification('Password must be at least 8 characters', 'error');
-      return;
-    }
-
-    try {
-      setIsChangingPassword(true);
-      await authApi.changePassword(passwordData);
-      showNotification('Password changed successfully', 'success');
-      setShowPasswordModal(false);
-      setPasswordData({
-        current_password: '',
-        password: '',
-        password_confirmation: '',
-      });
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to change password';
-      showNotification(errorMessage, 'error');
-    } finally {
-      setIsChangingPassword(false);
-    }
-  };
-
   const handleLogout = async () => {
     Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
+      'Déconnexion',
+      'Êtes-vous sûr de vouloir vous déconnecter ?',
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: 'Annuler', style: 'cancel' },
         {
-          text: 'Logout',
+          text: 'Déconnexion',
           style: 'destructive',
           onPress: async () => {
             try {
@@ -119,327 +83,219 @@ export default function ProfileScreen() {
     );
   };
 
+  const calculateAge = (birthDate: string | null) => {
+    if (!birthDate) return null;
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  const getGoalLabel = (goal: string | null) => {
+    if (!goal) return 'Non défini';
+    const goals: Record<string, string> = {
+      'me_lancer': 'Commencer',
+      'reprendre': 'Reprendre',
+      'entretenir': 'Entretenir',
+      'ameliorer_condition': 'Condition',
+      'courir_race': 'Course',
+      'ameliorer_chrono': 'Chrono',
+      'autre': 'Autre',
+    };
+    return goals[goal] || goal.replace(/_/g, ' ');
+  };
+
   if (isLoading) {
     return (
-      <View style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.accent.blue} />
-          <Text style={styles.loadingText}>Loading profile...</Text>
-        </View>
+      <View style={styles.loadingContainer}>
+        <StatusBar barStyle="light-content" />
+        <ActivityIndicator size="large" color={colors.accent.blue} />
+        <Text style={styles.loadingText}>Chargement...</Text>
       </View>
     );
   }
 
-  // Show empty state only if truly no profile exists
-  if (!profile || !profile.profile) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.emptyContainer}>
-          <Ionicons name="person-outline" size={64} color={colors.text.tertiary} />
-          <Text style={styles.emptyTitle}>No Profile Found</Text>
-          <Text style={styles.emptyText}>
-            Complete the questionnaire to create your profile.
-          </Text>
-          <Button
-            title="Start Questionnaire"
-            onPress={() => router.push('/(questionnaire)/step1')}
-            style={styles.emptyButton}
-          />
-        </View>
-      </View>
-    );
-  }
-
-  const { profile: profileData, questionnaire_completed } = profile;
+  const profileData = profile?.profile;
+  const age = profileData?.birth_date ? calculateAge(profileData.birth_date) : null;
 
   return (
-    <>
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
+
+      {/* Glow Effects */}
+      <View style={styles.glowTop} />
+      <View style={styles.glowTopRight} />
+
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.push('/(tabs)/home')}
+        >
+          <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
+        </TouchableOpacity>
+        <Text style={styles.brandName}>RUNLINE</Text>
+        <View style={styles.headerSpacer} />
+      </View>
+
       <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.content}
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.title}>My Profile</Text>
-            <Text style={styles.subtitle}>Review and manage your information</Text>
+        {/* Avatar Section */}
+        <View style={styles.avatarSection}>
+          <View style={styles.avatarGradientBorder}>
+            <View style={styles.avatarContainer}>
+              <View style={styles.avatarPlaceholder}>
+                <Ionicons name="person" size={48} color={colors.accent.blue} />
+              </View>
+            </View>
           </View>
-          <View
-            style={[
-              styles.badge,
-              questionnaire_completed ? styles.badgeCompleted : styles.badgeIncomplete,
-            ]}
-          >
-            <Ionicons
-              name={questionnaire_completed ? 'checkmark-circle' : 'time-outline'}
-              size={16}
-              color={questionnaire_completed ? colors.status.success : colors.status.warning}
-              style={styles.badgeIcon}
-            />
-            <Text
-              style={[
-                styles.badgeText,
-                questionnaire_completed ? styles.badgeTextCompleted : styles.badgeTextIncomplete,
-              ]}
-            >
-              {questionnaire_completed ? 'Completed' : 'Incomplete'}
-            </Text>
+          <Text style={styles.userName}>{userName}</Text>
+          <View style={styles.premiumBadge}>
+            <Text style={styles.premiumBadgeText}>Athlète Premium</Text>
           </View>
         </View>
 
-        {/* Quick Actions */}
-        <View style={styles.quickActions}>
-          <TouchableOpacity
-            style={styles.quickActionButton}
-            onPress={() => router.push('/(questionnaire)/step1')}
-          >
-            <Ionicons name="create-outline" size={24} color={colors.accent.blue} />
-            <Text style={styles.quickActionText}>Edit Profile</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.quickActionButton}
-            onPress={() => setShowPasswordModal(true)}
-          >
-            <Ionicons name="lock-closed-outline" size={24} color={colors.accent.cyan} />
-            <Text style={styles.quickActionText}>Change Password</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Questionnaire Overview */}
+        {/* My Information Section */}
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="document-text-outline" size={24} color={colors.accent.blue} />
-            <Text style={styles.sectionTitle}>Questionnaire Overview</Text>
+          <Text style={styles.sectionTitle}>Mes informations</Text>
+          <View style={styles.glassPanel}>
+            <View style={styles.panelGlow} />
+
+            <View style={styles.infoGrid}>
+              <View style={styles.infoItem}>
+                <View style={styles.infoLabel}>
+                  <Ionicons name="calendar" size={16} color={colors.accent.blue} />
+                  <Text style={styles.infoLabelText}>AGE</Text>
+                </View>
+                <Text style={styles.infoValue}>
+                  {age || '--'} <Text style={styles.infoUnit}>ans</Text>
+                </Text>
+              </View>
+
+              <View style={styles.infoItem}>
+                <View style={styles.infoLabel}>
+                  <Ionicons name="resize-outline" size={16} color={colors.accent.blue} />
+                  <Text style={styles.infoLabelText}>TAILLE</Text>
+                </View>
+                <Text style={styles.infoValue}>
+                  {profileData?.height_cm
+                    ? (profileData.height_cm < 10
+                        ? profileData.height_cm.toFixed(2)
+                        : (profileData.height_cm / 100).toFixed(2))
+                    : '--'} <Text style={styles.infoUnit}>m</Text>
+                </Text>
+              </View>
+
+              <View style={styles.infoItem}>
+                <View style={styles.infoLabel}>
+                  <Ionicons name="fitness" size={16} color={colors.accent.blue} />
+                  <Text style={styles.infoLabelText}>POIDS</Text>
+                </View>
+                <Text style={styles.infoValue}>
+                  {profileData?.weight_kg || '--'} <Text style={styles.infoUnit}>kg</Text>
+                </Text>
+              </View>
+
+              <View style={styles.infoItem}>
+                <View style={styles.infoLabel}>
+                  <Ionicons name="flag" size={16} color={colors.accent.blue} />
+                  <Text style={styles.infoLabelText}>OBJECTIF</Text>
+                </View>
+                <Text style={styles.infoValueSmall}>
+                  {getGoalLabel(profileData?.primary_goal || null)}
+                </Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.moreInfoButton}
+              onPress={() => router.push('/(profile)/info')}
+              activeOpacity={0.9}
+            >
+              <Text style={styles.moreInfoButtonText}>Plus d'infos</Text>
+            </TouchableOpacity>
           </View>
-
-          {/* Basic Information */}
-          <View style={styles.subsection}>
-            <Text style={styles.subsectionTitle}>Basic Information</Text>
-            <View style={styles.sectionContent}>
-              <ProfileRow
-                icon="person"
-                label="Name"
-                value={`${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || 'Not set'}
-              />
-              <ProfileRow
-                icon="calendar"
-                label="Date of Birth"
-                value={profileData.birth_date ? format(new Date(profileData.birth_date), 'MMM dd, yyyy') : 'Not set'}
-              />
-              <ProfileRow
-                icon="people"
-                label="Gender"
-                value={profileData.gender ? profileData.gender.charAt(0).toUpperCase() + profileData.gender.slice(1) : 'Not set'}
-              />
-              <ProfileRow
-                icon="resize"
-                label="Height"
-                value={profileData.height_cm ? `${(profileData.height_cm / 100).toFixed(2)}m` : 'Not set'}
-              />
-              <ProfileRow
-                icon="barbell"
-                label="Weight"
-                value={profileData.weight_kg ? `${profileData.weight_kg}kg` : 'Not set'}
-              />
-            </View>
-          </View>
-
-          {/* Primary Goal */}
-          {profileData.primary_goal && (
-            <View style={styles.subsection}>
-              <Text style={styles.subsectionTitle}>Primary Goal</Text>
-              <View style={styles.sectionContent}>
-                <ProfileRow
-                  icon="flag"
-                  label="Goal"
-                  value={profileData.primary_goal.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                />
-                {profileData.primary_goal_other && (
-                  <ProfileRow icon="chatbubble" label="Details" value={profileData.primary_goal_other} />
-                )}
-              </View>
-            </View>
-          )}
-
-          {/* Running Status */}
-          <View style={styles.subsection}>
-            <Text style={styles.subsectionTitle}>Running Status</Text>
-            <View style={styles.sectionContent}>
-              <ProfileRow
-                icon="speedometer"
-                label="Weekly Volume"
-                value={profileData.current_weekly_volume_km ? `${profileData.current_weekly_volume_km}km` : 'Not set'}
-              />
-              <ProfileRow
-                icon="repeat"
-                label="Runs Per Week"
-                value={profileData.current_runs_per_week ? profileData.current_runs_per_week.replace(/_/g, ' ') : 'Not set'}
-              />
-              {profileData.available_days && profileData.available_days.length > 0 && (
-                <ProfileRow
-                  icon="calendar-outline"
-                  label="Available Days"
-                  value={profileData.available_days
-                    .map((day) => day.charAt(0).toUpperCase() + day.slice(1))
-                    .join(', ')}
-                />
-              )}
-            </View>
-          </View>
-
-          {/* Experience */}
-          {profileData.running_experience_period && (
-            <View style={styles.subsection}>
-              <Text style={styles.subsectionTitle}>Experience</Text>
-              <View style={styles.sectionContent}>
-                <ProfileRow
-                  icon="trophy"
-                  label="Experience Period"
-                  value={profileData.running_experience_period.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                />
-              </View>
-            </View>
-          )}
-
-          {/* Problem to Solve */}
-          {profileData.problem_to_solve && (
-            <View style={styles.subsection}>
-              <Text style={styles.subsectionTitle}>Problem to Solve</Text>
-              <View style={styles.sectionContent}>
-                <ProfileRow
-                  icon="help-circle"
-                  label="Problem"
-                  value={profileData.problem_to_solve.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                />
-                {profileData.problem_to_solve_other && (
-                  <ProfileRow icon="chatbubble" label="Details" value={profileData.problem_to_solve_other} />
-                )}
-              </View>
-            </View>
-          )}
-
-          {/* Training Locations */}
-          {profileData.training_locations && profileData.training_locations.length > 0 && (
-            <View style={styles.subsection}>
-              <Text style={styles.subsectionTitle}>Training Locations</Text>
-              <View style={styles.sectionContent}>
-                <ProfileRow
-                  icon="location"
-                  label="Locations"
-                  value={profileData.training_locations
-                    .map((loc) => loc.charAt(0).toUpperCase() + loc.slice(1))
-                    .join(', ')}
-                />
-                {profileData.training_location_other && (
-                  <ProfileRow icon="chatbubble" label="Other" value={profileData.training_location_other} />
-                )}
-              </View>
-            </View>
-          )}
         </View>
 
-        {/* Actions */}
-        <View style={styles.actions}>
-          {questionnaire_completed ? (
-            <>
-              <Button
-                title="Generate Plan"
-                onPress={() => router.push('/(tabs)/plans')}
-                style={styles.actionButton}
-              />
-              <Button
-                title="Edit Profile"
-                variant="secondary"
-                onPress={() => router.push('/(questionnaire)/step1')}
-                style={styles.actionButton}
-              />
-            </>
-          ) : (
-            <Button
-              title="Complete Questionnaire"
-              onPress={() => router.push('/(questionnaire)/step1')}
-              style={styles.actionButton}
-            />
-          )}
-          <Button
-            title="Disconnect"
-            variant="secondary"
+        {/* Account Settings Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Paramètres du compte</Text>
+          <View style={styles.glassPanel}>
+            <TouchableOpacity
+              style={styles.settingsItem}
+              onPress={() => router.push('/(profile)/password')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.settingsItemLeft}>
+                <View style={styles.settingsIcon}>
+                  <Ionicons name="lock-closed" size={18} color={colors.text.secondary} />
+                </View>
+                <Text style={styles.settingsItemText}>Modifier mon mot de passe</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.accent.blue} />
+            </TouchableOpacity>
+
+            <View style={styles.settingsDivider} />
+
+            <TouchableOpacity
+              style={styles.settingsItem}
+              onPress={() => router.push('/(profile)/subscription')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.settingsItemLeft}>
+                <View style={styles.settingsIcon}>
+                  <Ionicons name="card" size={18} color={colors.text.secondary} />
+                </View>
+                <Text style={styles.settingsItemText}>Gérer mon abonnement</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.accent.blue} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Logout Button */}
+          <TouchableOpacity
+            style={styles.logoutButton}
             onPress={handleLogout}
-            style={styles.actionButton}
-          />
+            activeOpacity={0.7}
+          >
+            <Ionicons name="log-out-outline" size={18} color={colors.text.tertiary} />
+            <Text style={styles.logoutText}>Déconnexion</Text>
+          </TouchableOpacity>
         </View>
+
+        {/* Spacer for bottom nav */}
+        <View style={{ height: 120 }} />
       </ScrollView>
 
-      {/* Password Change Modal */}
-      <Modal
-        visible={showPasswordModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowPasswordModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Change Password</Text>
-              <TouchableOpacity onPress={() => setShowPasswordModal(false)}>
-                <Ionicons name="close" size={24} color={colors.text.secondary} />
-              </TouchableOpacity>
-            </View>
+      {/* Bottom Navigation */}
+      <View style={styles.bottomNavContainer}>
+        <View style={styles.bottomNav}>
+          <TouchableOpacity
+            style={styles.navItem}
+            onPress={() => router.push('/(tabs)/home')}
+          >
+            <Ionicons name="home" size={24} color={colors.text.tertiary} />
+          </TouchableOpacity>
 
-            <ScrollView style={styles.modalBody}>
-              <TextInputField
-                label="Current Password"
-                value={passwordData.current_password}
-                onChangeText={(text) => setPasswordData({ ...passwordData, current_password: text })}
-                secureTextEntry
-                placeholder="Enter current password"
-              />
-              <TextInputField
-                label="New Password"
-                value={passwordData.password}
-                onChangeText={(text) => setPasswordData({ ...passwordData, password: text })}
-                secureTextEntry
-                placeholder="Enter new password (min 8 characters)"
-              />
-              <TextInputField
-                label="Confirm New Password"
-                value={passwordData.password_confirmation}
-                onChangeText={(text) => setPasswordData({ ...passwordData, password_confirmation: text })}
-                secureTextEntry
-                placeholder="Confirm new password"
-              />
-            </ScrollView>
+          <TouchableOpacity
+            style={styles.navItem}
+            onPress={() => router.push('/(tabs)/plans')}
+          >
+            <Ionicons name="calendar" size={24} color={colors.text.tertiary} />
+          </TouchableOpacity>
 
-            <View style={styles.modalActions}>
-              <Button
-                title="Cancel"
-                variant="secondary"
-                onPress={() => setShowPasswordModal(false)}
-                style={styles.modalButton}
-              />
-              <Button
-                title="Change Password"
-                onPress={handleChangePassword}
-                loading={isChangingPassword}
-                style={styles.modalButton}
-              />
-            </View>
-          </View>
+          <TouchableOpacity style={styles.navItemActive}>
+            <Ionicons name="person" size={24} color={colors.accent.blue} />
+          </TouchableOpacity>
         </View>
-      </Modal>
-    </>
-  );
-}
-
-function ProfileRow({ icon, label, value }: { icon: string; label: string; value: string }) {
-  return (
-    <View style={styles.row}>
-      <View style={styles.rowLeft}>
-        <Ionicons name={icon as any} size={20} color={colors.accent.blue} style={styles.rowIcon} />
-        <Text style={styles.rowLabel}>{label}</Text>
       </View>
-      <Text style={styles.rowValue}>{value}</Text>
     </View>
   );
 }
@@ -448,11 +304,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.primary.dark,
-  },
-  content: {
-    padding: 24,
-    paddingTop: 60,
-    paddingBottom: 40,
   },
   loadingContainer: {
     flex: 1,
@@ -465,201 +316,292 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.text.secondary,
   },
-  emptyContainer: {
-    flex: 1,
+
+  // Glow Effects
+  glowTop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 500,
+    backgroundColor: 'rgba(50, 140, 231, 0.08)',
+    opacity: 0.5,
+    pointerEvents: 'none',
+  },
+  glowTopRight: {
+    position: 'absolute',
+    top: -100,
+    right: -100,
+    width: 256,
+    height: 256,
+    borderRadius: 128,
+    backgroundColor: 'rgba(50, 140, 231, 0.2)',
+    opacity: 0.3,
+    pointerEvents: 'none',
+  },
+
+  // Header
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 48,
+    paddingBottom: 16,
+    zIndex: 10,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
   },
-  emptyTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: colors.text.primary,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: colors.text.secondary,
-    textAlign: 'center',
-    marginBottom: 32,
-    paddingHorizontal: 40,
-  },
-  emptyButton: {
-    maxWidth: 300,
-  },
-  header: {
-    marginBottom: 24,
-  },
-  title: {
-    fontSize: 36,
-    fontWeight: '800',
-    color: colors.text.primary,
-    letterSpacing: -0.5,
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: colors.text.secondary,
-    marginTop: 4,
-  },
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 16,
-    marginTop: 12,
-    alignSelf: 'flex-start',
-  },
-  badgeCompleted: {
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
-    borderWidth: 1,
-    borderColor: colors.status.success,
-  },
-  badgeIncomplete: {
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
-    borderWidth: 1,
-    borderColor: colors.status.warning,
-  },
-  badgeIcon: {
-    marginRight: 6,
-  },
-  badgeText: {
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  badgeTextCompleted: {
-    color: colors.status.success,
-  },
-  badgeTextIncomplete: {
-    color: colors.status.warning,
-  },
-  quickActions: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 24,
-  },
-  quickActionButton: {
-    flex: 1,
-    backgroundColor: colors.background.card,
-    borderRadius: 16,
-    padding: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border.dark,
-  },
-  quickActionText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.text.primary,
-    marginTop: 8,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: colors.text.primary,
-    marginLeft: 12,
-  },
-  subsection: {
-    marginBottom: 20,
-  },
-  subsectionTitle: {
+  brandName: {
     fontSize: 18,
-    fontWeight: '600',
-    color: colors.text.secondary,
-    marginBottom: 12,
-    marginLeft: 4,
-  },
-  sectionContent: {
-    backgroundColor: colors.background.card,
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: colors.border.dark,
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.dark,
-  },
-  rowLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  rowIcon: {
-    marginRight: 12,
-  },
-  rowLabel: {
-    fontSize: 15,
-    color: colors.text.secondary,
-    fontWeight: '500',
-    flex: 1,
-  },
-  rowValue: {
-    fontSize: 15,
+    fontWeight: '700',
     color: colors.text.primary,
-    fontWeight: '600',
+    letterSpacing: 1,
+  },
+  headerSpacer: {
+    width: 40,
+  },
+
+  // Scroll View
+  scrollView: {
     flex: 1,
-    textAlign: 'right',
+    zIndex: 10,
   },
-  actions: {
-    marginTop: 8,
-    gap: 12,
+  scrollContent: {
+    paddingHorizontal: 24,
   },
-  actionButton: {
-    marginTop: 0,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: colors.background.overlay,
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: colors.background.card,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: '90%',
-    paddingBottom: 40,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+
+  // Avatar Section
+  avatarSection: {
     alignItems: 'center',
-    padding: 24,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.dark,
+    marginTop: 8,
+    marginBottom: 32,
   },
-  modalTitle: {
+  avatarGradientBorder: {
+    padding: 4,
+    borderRadius: 64,
+    backgroundColor: colors.accent.blue,
+    shadowColor: colors.accent.blue,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  avatarContainer: {
+    width: 112,
+    height: 112,
+    borderRadius: 56,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: colors.primary.dark,
+  },
+  avatarPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: colors.background.card,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  userName: {
     fontSize: 24,
     fontWeight: '700',
     color: colors.text.primary,
+    marginTop: 16,
+    textAlign: 'center',
   },
-  modalBody: {
+  premiumBadge: {
+    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 20,
+    backgroundColor: 'rgba(50, 140, 231, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(50, 140, 231, 0.2)',
+  },
+  premiumBadgeText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.accent.blue,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+
+  // Section
+  section: {
+    marginBottom: 32,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text.primary,
+    marginBottom: 16,
+  },
+
+  // Glass Panel
+  glassPanel: {
+    backgroundColor: 'rgba(30, 41, 59, 0.4)',
+    borderRadius: 20,
     padding: 24,
-    maxHeight: 400,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    overflow: 'hidden',
   },
-  modalActions: {
+  panelGlow: {
+    position: 'absolute',
+    top: -50,
+    right: -50,
+    width: 128,
+    height: 128,
+    borderRadius: 64,
+    backgroundColor: 'rgba(50, 140, 231, 0.1)',
+  },
+
+  // Info Grid
+  infoGrid: {
     flexDirection: 'row',
-    gap: 12,
-    padding: 24,
-    paddingTop: 0,
+    flexWrap: 'wrap',
+    marginBottom: 24,
   },
-  modalButton: {
-    flex: 1,
+  infoItem: {
+    width: '50%',
+    marginBottom: 24,
+  },
+  infoLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  infoLabelText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: colors.text.tertiary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  infoValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.text.primary,
+    paddingLeft: 2,
+  },
+  infoValueSmall: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text.primary,
+    paddingLeft: 2,
+  },
+  infoUnit: {
+    fontSize: 14,
+    fontWeight: '400',
+    color: colors.text.tertiary,
+  },
+
+  // More Info Button
+  moreInfoButton: {
+    backgroundColor: colors.accent.blue,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    shadowColor: colors.accent.blue,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  moreInfoButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
+
+  // Settings
+  settingsItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+  },
+  settingsItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  settingsIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  settingsItemText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.text.secondary,
+  },
+  settingsDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+
+  // Logout
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 32,
+    paddingVertical: 12,
+  },
+  logoutText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.text.tertiary,
+  },
+
+  // Bottom Navigation
+  bottomNavContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 24,
+    paddingBottom: 24,
+    paddingTop: 12,
+    backgroundColor: 'transparent',
+    zIndex: 100,
+  },
+  bottomNav: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    backgroundColor: 'rgba(30, 41, 59, 0.9)',
+    borderRadius: 32,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    shadowColor: colors.accent.blue,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.15,
+    shadowRadius: 15,
+    elevation: 8,
+  },
+  navItem: {
+    padding: 8,
+  },
+  navItemActive: {
+    padding: 8,
+    backgroundColor: 'rgba(50, 140, 231, 0.2)',
+    borderRadius: 20,
+    shadowColor: colors.accent.blue,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 15,
   },
 });

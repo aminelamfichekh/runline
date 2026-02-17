@@ -3,8 +3,6 @@
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
-use App\Services\PlanGeneratorService;
-use App\Models\User;
 use Carbon\Carbon;
 
 Artisan::command('inspire', function () {
@@ -13,52 +11,27 @@ Artisan::command('inspire', function () {
 
 /**
  * Schedule monthly plan generation.
- * 
- * This runs every first Monday of the month at 2:00 AM.
+ *
+ * This runs every first Monday of the month at 2:00 AM (Paris time).
  * Generates monthly plans for all active subscribers.
  */
-Schedule::call(function () {
-    $planGeneratorService = app(PlanGeneratorService::class);
-    
-    // Get all users with active subscriptions and completed questionnaires
-    $users = User::whereHas('subscription', function ($query) {
-        $query->where('status', 'active');
-    })->whereHas('profile', function ($query) {
-        $query->where('questionnaire_completed', true);
-    })->get();
+Schedule::command('plans:generate-monthly')
+    ->monthlyOn(1, '02:00')
+    ->when(function () {
+        // Only run on the first Monday of the month
+        $now = Carbon::now('Europe/Paris');
+        $firstOfMonth = $now->copy()->firstOfMonth();
 
-    foreach ($users as $user) {
-        try {
-            $planGeneratorService->generateMonthlyPlan($user);
-            \Log::info('Monthly plan generation scheduled for user', [
-                'user_id' => $user->id,
-            ]);
-        } catch (\Exception $e) {
-            // If plan already exists, that's okay - just log info instead of error
-            if (str_contains($e->getMessage(), 'already exists')) {
-                \Log::info('Monthly plan already exists for user', [
-                    'user_id' => $user->id,
-                ]);
-            } else {
-                \Log::error('Failed to generate monthly plan for user', [
-                    'user_id' => $user->id,
-                    'error' => $e->getMessage(),
-                ]);
-            }
+        // Find the first Monday of the month
+        while ($firstOfMonth->dayOfWeek !== Carbon::MONDAY) {
+            $firstOfMonth->addDay();
         }
-    }
-})->monthlyOn(1, '2:00')->when(function () {
-    // Only run on the first Monday of the month
-    $now = Carbon::now();
-    $firstOfMonth = $now->copy()->firstOfMonth();
-    
-    // Find the first Monday of the month
-    while ($firstOfMonth->dayOfWeek !== Carbon::MONDAY) {
-        $firstOfMonth->addDay();
-    }
-    
-    return $now->isSameDay($firstOfMonth);
-})->timezone('UTC');
+
+        return $now->isSameDay($firstOfMonth);
+    })
+    ->timezone('Europe/Paris')
+    ->withoutOverlapping()
+    ->runInBackground();
 
 /**
  * Schedule daily subscription check.

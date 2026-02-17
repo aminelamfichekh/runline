@@ -147,6 +147,15 @@
       "weeklySchedule": "Calendrier hebdomadaire détaillé",
       "aiPowered": "Propulsé par l'intelligence artificielle"
     },
+    "success": {
+      "title": "Félicitations !",
+      "message": "Votre abonnement RUNLINE est maintenant actif. Vous pouvez accéder à votre plan d'entraînement personnalisé.",
+      "nextSteps": "Prochaines étapes",
+      "step1": "Consultez votre plan d'entraînement personnalisé dans l'onglet Plans",
+      "step2": "Commencez votre première séance dès aujourd'hui",
+      "step3": "Suivez votre progression et ajustez votre profil si nécessaire",
+      "continue": "Commencer l'entraînement"
+    },
     "errors": {
       "initFailed": "Erreur d'initialisation du paiement",
       "paymentFailed": "Paiement échoué",

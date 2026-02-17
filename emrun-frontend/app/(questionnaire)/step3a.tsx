@@ -44,7 +44,7 @@ const defaultPauseIndex = 8; // Default to "2 mois"
 
 export default function Step3aScreen() {
   const router = useRouter();
-  const { form } = useQuestionnaireForm();
+  const { form, saveNow } = useQuestionnaireForm();
   const { setValue, watch } = form;
 
   const primaryGoal = watch('primary_goal') as string | undefined;
@@ -71,9 +71,11 @@ export default function Step3aScreen() {
     }).start();
   }, []);
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     setValue('pause_duration', selectedPauseDuration);
     setValue('records', records);
+    // Save data immediately before navigation to ensure it's persisted
+    await saveNow();
     router.push('/(questionnaire)/step4');
   };
 

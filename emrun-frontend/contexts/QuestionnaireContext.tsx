@@ -25,6 +25,7 @@ interface QuestionnaireContextType {
   isStepValid: (step: number) => boolean;
   isComplete: boolean;
   handleFieldChange: (field: keyof ProfileFormData, value: any) => void;
+  saveNow: () => Promise<void>;
   primaryGoal?: ProfileFormData['primary_goal'];
   problemToSolve?: ProfileFormData['problem_to_solve'];
   trainingLocations?: ProfileFormData['training_locations'];
@@ -54,27 +55,48 @@ export function QuestionnaireProvider({ children, initialData, sessionUuid }: Qu
   // Debounced autosave to local storage (and server session if available)
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingValuesRef = useRef<Partial<ProfileFormData> | null>(null);
+  const sessionUuidRef = useRef(sessionUuid);
+
+  // Keep sessionUuid ref updated
+  React.useEffect(() => {
+    sessionUuidRef.current = sessionUuid;
+  }, [sessionUuid]);
+
+  // Extracted autosave function for reuse
+  const performAutosave = useCallback(async (values: Partial<ProfileFormData>) => {
+    try {
+      // Save local draft
+      await AsyncStorage.setItem(QUESTIONNAIRE_DRAFT, JSON.stringify(values));
+
+      // Also try to persist to server session if we have a session UUID
+      if (sessionUuidRef.current) {
+        try {
+          await questionnaireApi.updateSession(sessionUuidRef.current, values, false);
+        } catch (e) {
+          // Network/server errors are tolerated; local draft is still available
+          console.log('Failed to autosave questionnaire to server session, using local draft only.');
+        }
+      }
+    } catch (e) {
+      // Ignore autosave errors; user can still complete
+    }
+  }, []);
+
+  // Explicit save function - call before navigation to ensure data is saved
+  const saveNow = useCallback(async () => {
+    // Cancel any pending debounced save
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
+    }
+
+    // Get current form values and save immediately
+    const values = form.getValues();
+    await performAutosave(values);
+    pendingValuesRef.current = null;
+  }, [form, performAutosave]);
 
   React.useEffect(() => {
-    const performAutosave = async (values: Partial<ProfileFormData>) => {
-      try {
-        // Save local draft
-        await AsyncStorage.setItem(QUESTIONNAIRE_DRAFT, JSON.stringify(values));
-
-        // Also try to persist to server session if we have a session UUID
-        if (sessionUuid) {
-          try {
-            await questionnaireApi.updateSession(sessionUuid, values, false);
-          } catch (e) {
-            // Network/server errors are tolerated; local draft is still available
-            console.log('Failed to autosave questionnaire to server session, using local draft only.');
-          }
-        }
-      } catch (e) {
-        // Ignore autosave errors; user can still complete
-      }
-    };
-
     const subscription = form.watch((values) => {
       // Store latest values
       pendingValuesRef.current = values;
@@ -104,7 +126,7 @@ export function QuestionnaireProvider({ children, initialData, sessionUuid }: Qu
         performAutosave(pendingValuesRef.current);
       }
     };
-  }, [form, sessionUuid]);
+  }, [form, performAutosave]);
 
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 9; // Updated: added step4a for available_days
@@ -268,6 +290,7 @@ export function QuestionnaireProvider({ children, initialData, sessionUuid }: Qu
         isStepValid,
         isComplete,
         handleFieldChange,
+        saveNow,
         primaryGoal,
         problemToSolve,
         trainingLocations,

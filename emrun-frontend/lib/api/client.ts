@@ -6,10 +6,32 @@
 
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api';
-const TOKEN_KEY = '@emrun:access_token';
-const REFRESH_TOKEN_KEY = '@emrun:refresh_token';
+// Get API URL from environment variable or use default
+const getApiUrl = (): string => {
+  // Try Expo Constants first (works in both dev and production)
+  const envUrl = Constants.expoConfig?.extra?.apiUrl
+    || process.env.EXPO_PUBLIC_API_URL;
+
+  if (envUrl) {
+    return envUrl;
+  }
+
+  // Fallback for development - update this IP to your machine's IP
+  if (__DEV__) {
+    return 'http://192.168.110.241:8000/api';
+  }
+
+  // Production URL (update when deploying)
+  return 'https://api.runline.app/api';
+};
+
+const API_URL = getApiUrl();
+
+// Keys must match lib/utils/auth.ts
+const TOKEN_KEY = 'access_token';
+const REFRESH_TOKEN_KEY = 'refresh_token';
 
 /**
  * API Client class
@@ -24,9 +46,11 @@ class ApiClient {
   }> = [];
 
   constructor() {
-    // Log API URL in development
-    this.logApiUrl();
-    
+    // Log API URL in development only
+    if (__DEV__) {
+      console.log('🔗 API URL:', API_URL);
+    }
+
     this.instance = axios.create({
       baseURL: API_URL,
       timeout: 30000,
@@ -34,8 +58,7 @@ class ApiClient {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
-      // Add validateStatus to not throw on 4xx/5xx
-      validateStatus: (status) => status < 600, // Accept all status codes
+      validateStatus: (status) => status < 600,
     });
 
     // Request interceptor - add JWT token to requests
@@ -47,9 +70,7 @@ class ApiClient {
         }
         return config;
       },
-      (error) => {
-        return Promise.reject(error);
-      }
+      (error) => Promise.reject(error)
     );
 
     // Response interceptor - handle token refresh on 401
@@ -71,9 +92,7 @@ class ApiClient {
                 }
                 return this.instance(originalRequest);
               })
-              .catch((err) => {
-                return Promise.reject(err);
-              });
+              .catch((err) => Promise.reject(err));
           }
 
           originalRequest._retry = true;
@@ -109,7 +128,7 @@ class ApiClient {
             // Retry the original request
             return this.instance(originalRequest);
           } catch (refreshError) {
-            // Refresh failed - clear tokens and redirect to login
+            // Refresh failed - clear tokens
             this.processQueue(refreshError, null);
             await this.clearTokens();
             return Promise.reject(refreshError);
@@ -147,11 +166,10 @@ class ApiClient {
   /**
    * Extract data from backend response
    * Backend returns { success: true, data: {...} } or { success: false, message: '...' }
-   * We extract the data field if success is true, otherwise throw error
    */
   private extractData<T>(response: AxiosResponse<any>): T {
     const responseData = response.data;
-    
+
     // If response has success field, extract data
     if (responseData && typeof responseData === 'object' && 'success' in responseData) {
       if (responseData.success && 'data' in responseData) {
@@ -164,19 +182,9 @@ class ApiClient {
         throw error;
       }
     }
-    
+
     // If no success field, return data as-is (for backward compatibility)
     return responseData as T;
-  }
-
-  /**
-   * Log API URL for debugging
-   */
-  private logApiUrl(): void {
-    if (__DEV__) {
-      console.log('🔗 API URL:', API_URL);
-      console.log('📱 Using API URL from:', process.env.EXPO_PUBLIC_API_URL ? 'EXPO_PUBLIC_API_URL env var' : 'default (localhost)');
-    }
   }
 
   /**
@@ -224,6 +232,13 @@ class ApiClient {
    */
   get axiosInstance(): AxiosInstance {
     return this.instance;
+  }
+
+  /**
+   * Get current API URL (useful for debugging)
+   */
+  static getApiUrl(): string {
+    return API_URL;
   }
 }
 

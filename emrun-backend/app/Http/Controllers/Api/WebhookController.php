@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Services\PaymentService;
 use App\Services\NotificationService;
+use App\Services\PlanGeneratorService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
@@ -21,7 +22,8 @@ class WebhookController extends Controller
 {
     public function __construct(
         protected PaymentService $paymentService,
-        protected NotificationService $notificationService
+        protected NotificationService $notificationService,
+        protected PlanGeneratorService $planGeneratorService
     ) {
         // Disable CSRF protection for webhooks
         $this->middleware(\Illuminate\Routing\Middleware\ValidatePostSize::class);
@@ -68,6 +70,9 @@ class WebhookController extends Controller
                 case 'customer.subscription.created':
                     $subscription = $this->paymentService->handleSubscriptionCreated($event->data->object->toArray());
                     $this->notificationService->notifySubscriptionRenewed($subscription->user);
+
+                    // Trigger initial plan generation after subscription payment
+                    $this->triggerInitialPlanGeneration($subscription->user);
                     break;
 
                 case 'customer.subscription.updated':
@@ -178,6 +183,41 @@ class WebhookController extends Controller
                     'invoice_id' => $invoice['id'],
                 ]);
             }
+        }
+    }
+
+    /**
+     * Trigger initial plan generation after subscription payment.
+     *
+     * Only generates a plan if the user has completed the questionnaire.
+     *
+     * @param \App\Models\User $user
+     * @return void
+     */
+    private function triggerInitialPlanGeneration(\App\Models\User $user): void
+    {
+        try {
+            // Check if user has completed questionnaire
+            if (!$user->profile || !$user->profile->questionnaire_completed) {
+                Log::info('Skipping plan generation - questionnaire not completed', [
+                    'user_id' => $user->id,
+                ]);
+                return;
+            }
+
+            // Generate initial plan (dispatches async job)
+            $plan = $this->planGeneratorService->generateInitialPlan($user);
+
+            Log::info('Initial plan generation triggered after subscription', [
+                'user_id' => $user->id,
+                'plan_id' => $plan->id,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to trigger initial plan generation', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+            // Don't re-throw - we don't want to fail the webhook for plan generation issues
         }
     }
 }

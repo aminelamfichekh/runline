@@ -43,6 +43,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Bypass Subscription Check (Development Only)
+    |--------------------------------------------------------------------------
+    |
+    | When enabled in local environment, subscription checks are bypassed.
+    | This allows testing plan features without Stripe integration.
+    | NEVER enable this in production!
+    |
+    */
+
+    'bypass_subscription' => env('BYPASS_SUBSCRIPTION', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application URL
     |--------------------------------------------------------------------------
     |

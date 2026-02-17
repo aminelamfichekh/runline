@@ -37,6 +37,15 @@ const ageOptions = Array.from({ length: MAX_AGE - MIN_AGE + 1 }, (_, i) => MIN_A
   label: String(v),
 }));
 
+// Email validation regex
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const validateEmail = (email: string): string | null => {
+  if (!email.trim()) return 'L\'email est requis';
+  if (!EMAIL_REGEX.test(email)) return 'Veuillez entrer une adresse email valide';
+  return null;
+};
+
 interface GenderButtonProps {
   value: string;
   icon: string;
@@ -95,7 +104,7 @@ function GenderButton({ value, icon, label, isSelected, onSelect }: GenderButton
 
 export default function Step2Screen() {
   const router = useRouter();
-  const { form } = useQuestionnaireForm();
+  const { form, saveNow } = useQuestionnaireForm();
   const { setValue, watch } = form;
 
   const primaryGoal = watch('primary_goal') as string | undefined;
@@ -109,6 +118,10 @@ export default function Step2Screen() {
 
   const [name, setName] = useState(initialName);
   const [email, setEmail] = useState(watch('email') || '');
+  const [emailError, setEmailError] = useState<string | null>(null);
+
+  // Validate email on every change
+  const isEmailValid = email.trim().length > 0 && EMAIL_REGEX.test(email.trim());
 
   // Map backend gender to local sex value
   const backendGender = watch('gender') as 'male' | 'female' | 'other' | undefined;
@@ -151,7 +164,7 @@ export default function Step2Screen() {
     }).start();
   }, []);
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     // Email maps directly
     setValue('email', email);
 
@@ -189,6 +202,9 @@ export default function Step2Screen() {
       const birthDateStr = `${birthYear}-01-01`;
       setValue('birth_date', birthDateStr);
     }
+
+    // Save data immediately before navigation to ensure it's persisted
+    await saveNow();
     router.push('/(questionnaire)/step3');
   };
 
@@ -220,28 +236,47 @@ export default function Step2Screen() {
           <View style={styles.formContainer}>
             {/* Email Field */}
             <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Email</Text>
+              <Text style={styles.fieldLabel}>Email <Text style={styles.required}>*</Text></Text>
               <View style={styles.inputWrapper}>
                 <View style={styles.inputIconContainer}>
                   <MaterialCommunityIcons
                     name="email-outline"
                     size={20}
-                    color={colors.text.secondary}
+                    color={emailError ? colors.status.error : colors.text.secondary}
                   />
                 </View>
                 <TextInput
-                  style={styles.inputWithIcon}
+                  style={[
+                    styles.inputWithIcon,
+                    emailError && styles.inputError
+                  ]}
                   placeholder="votre@email.com"
-                  placeholderTextColor={colors.text.secondary}
-                  value={email}
-                  onChangeText={setEmail}
                   keyboardType="email-address"
+                  placeholderTextColor="#8899aa"
+                  value={email}
+                  onChangeText={(text) => {
+                    setEmail(text);
+                    // Real-time validation - only show error if user has typed something
+                    if (text.trim().length > 0) {
+                      setEmailError(validateEmail(text));
+                    } else {
+                      setEmailError(null);
+                    }
+                  }}
+                  onBlur={() => {
+                    // Always validate on blur
+                    setEmailError(validateEmail(email));
+                  }}
                   autoCapitalize="none"
+                  autoCorrect={false}
                   selectionColor={colors.accent.blue}
                   cursorColor={colors.accent.blue}
                   underlineColorAndroid="transparent"
                 />
               </View>
+              {emailError && (
+                <Text style={styles.errorText}>{emailError}</Text>
+              )}
             </View>
 
             {/* Name Field */}
@@ -307,7 +342,10 @@ export default function Step2Screen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <ContinueButton onPress={handleContinue} />
+        <ContinueButton
+          onPress={handleContinue}
+          disabled={!isEmailValid || !name.trim() || !sex}
+        />
       </View>
     </View>
   );
@@ -386,6 +424,20 @@ const styles = StyleSheet.create({
     paddingRight: 16,
     color: colors.text.primary,
     fontSize: 15,
+  },
+  inputError: {
+    borderColor: colors.status.error,
+    borderWidth: 1.5,
+  },
+  required: {
+    color: colors.status.error,
+    fontSize: 14,
+  },
+  errorText: {
+    color: colors.status.error,
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: questionnaireTokens.spacing.xs,
   },
   genderToggleContainer: {
     flexDirection: 'row',

@@ -37,7 +37,7 @@ const DEFAULT_HEIGHT = 170;
 
 export default function Step3Screen() {
   const router = useRouter();
-  const { form } = useQuestionnaireForm();
+  const { form, saveNow } = useQuestionnaireForm();
   const { setValue, watch } = form;
 
   const primaryGoal = watch('primary_goal') as string | undefined;
@@ -49,9 +49,11 @@ export default function Step3Screen() {
   const watchedLegacyHeight = watch('height') as number | undefined;
 
   const initialWeight = watchedWeightKg ?? watchedLegacyWeight ?? DEFAULT_WEIGHT;
+  // height_cm is now stored in centimeters (e.g., 170)
+  // Handle legacy data that might be in meters (value < 10)
   const initialHeightCm =
     (typeof watchedHeightMeters === 'number' && watchedHeightMeters > 0
-      ? Math.round(watchedHeightMeters * 100)
+      ? (watchedHeightMeters < 10 ? Math.round(watchedHeightMeters * 100) : Math.round(watchedHeightMeters))
       : undefined) ?? watchedLegacyHeight ?? DEFAULT_HEIGHT;
 
   const [selectedWeight, setSelectedWeight] = useState(initialWeight);
@@ -67,11 +69,14 @@ export default function Step3Screen() {
     }).start();
   }, []);
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     // Map to backend physical fields
     setValue('weight_kg', selectedWeight);
-    // profileSchema.height_cm actually expects meters between 0.5 and 2.5
-    setValue('height_cm', selectedHeight / 100);
+    // height_cm should be in centimeters (e.g., 170 for 1.70m)
+    setValue('height_cm', selectedHeight);
+
+    // Save data immediately before navigation to ensure it's persisted
+    await saveNow();
 
     // Conditional routing based on primary_goal from step1
     if (primaryGoal === 'reprendre') {

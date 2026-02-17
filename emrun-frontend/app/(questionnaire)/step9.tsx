@@ -25,7 +25,7 @@ import {
 
 export default function Step9Screen() {
   const router = useRouter();
-  const { form } = useQuestionnaireForm();
+  const { form, saveNow } = useQuestionnaireForm();
   const { setValue, watch } = form;
 
   const primaryGoal = watch('primary_goal') as string | undefined;
@@ -49,7 +49,7 @@ export default function Step9Screen() {
     }).start();
   }, []);
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     // Map multi-line injuries text to string[] for backend
     const lines = injuries
       .split('\n')
@@ -67,6 +67,9 @@ export default function Step9Screen() {
     } else {
       setValue('personal_constraints', undefined);
     }
+
+    // Save data immediately before navigation to ensure it's persisted
+    await saveNow();
     router.push('/(questionnaire)/preview');
   };
 

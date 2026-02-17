@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('user_questionnaire_responses')) {
+            return; // Table already exists, skip
+        }
+
         Schema::create('user_questionnaire_responses', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
@@ -29,8 +33,6 @@ return new class extends Migration
             
             // Timestamps
             $table->timestamp('answered_at')->useCurrent();
-            $table->timestamp('updated_at')->nullable();
-            
             $table->timestamps();
             
             // Index pour performance
@@ -42,7 +44,7 @@ return new class extends Migration
             
             // Un utilisateur ne peut avoir qu'une seule réponse active par question
             // (mais on garde l'historique avec updated_at)
-            $table->unique(['user_id', 'question_id', 'answered_at']);
+            $table->unique(['user_id', 'question_id', 'answered_at'], 'uqr_user_question_answered_unique');
         });
     }
 

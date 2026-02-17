@@ -35,7 +35,7 @@ const experienceOptions = generateExperienceOptions();
 
 export default function Step6Screen() {
   const router = useRouter();
-  const { form } = useQuestionnaireForm();
+  const { form, saveNow } = useQuestionnaireForm();
   const { setValue, watch } = form;
 
   const primaryGoal = watch('primary_goal') as string | undefined;
@@ -79,7 +79,7 @@ export default function Step6Screen() {
     }).start();
   }, []);
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     // Clear all running experience fields first
     setValue('running_experience_weeks', undefined);
     setValue('running_experience_months', undefined);
@@ -101,6 +101,9 @@ export default function Step6Screen() {
       setValue('running_experience_period', '1_10_ans');
       setValue('running_experience_years', selectedExperience);
     }
+
+    // Save data immediately before navigation to ensure it's persisted
+    await saveNow();
     router.push('/(questionnaire)/step7');
   };
 

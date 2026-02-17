@@ -30,6 +30,12 @@ class EnsureUserHasSubscription
             ], 401);
         }
 
+        // DEV MODE: Bypass subscription check in local environment
+        // Set BYPASS_SUBSCRIPTION=true in .env to enable
+        if (config('app.env') === 'local' && config('app.bypass_subscription', false)) {
+            return $next($request);
+        }
+
         // Check if user has active subscription
         $hasActiveSubscription = $user->subscriptions()
             ->whereIn('status', ['active', 'trialing'])

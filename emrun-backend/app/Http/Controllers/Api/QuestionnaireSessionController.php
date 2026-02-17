@@ -195,6 +195,10 @@ class QuestionnaireSessionController extends Controller
 
             // VALIDATION DE COMPLÉTION : Vérifier que le questionnaire est complet avant attach
             $sessionPayload = $session->payload ?? [];
+
+            // Normaliser le payload (conversion mètres→cm, etc.) AVANT validation
+            $sessionPayload = $this->payloadService->normalizePayload($sessionPayload);
+
             $validator = $this->validatePayloadForAttach($sessionPayload);
 
             if ($validator->fails()) {
@@ -226,6 +230,8 @@ class QuestionnaireSessionController extends Controller
                 $isNowCompleted = $profile->questionnaire_completed;
                 if (!$wasCompleted && $isNowCompleted) {
                     try {
+                        // Refresh user to get updated profile relationship
+                        $user->refresh();
                         $this->planGeneratorService->generateInitialPlan($user);
                     } catch (\Exception $e) {
                         // Logger l'erreur mais ne pas faire échouer l'attach
@@ -287,7 +293,7 @@ class QuestionnaireSessionController extends Controller
             'last_name' => 'required|string|max:255',
             'birth_date' => 'required|date|before:today',
             'gender' => 'required|in:male,female,other',
-            'height_cm' => 'required|numeric|between:0.5,2.5',
+            'height_cm' => 'required|integer|between:50,250',
             'weight_kg' => 'required|integer|between:20,300',
             'primary_goal' => 'required|in:me_lancer,reprendre,entretenir,ameliorer_condition,courir_race,ameliorer_chrono,autre',
             'primary_goal_other' => 'required_if:primary_goal,autre|string|max:500',
@@ -295,7 +301,7 @@ class QuestionnaireSessionController extends Controller
             'current_runs_per_week' => 'required|in:0,1_2,3_4,5_6,7_plus',
             'available_days' => 'required|array|min:1',
             'available_days.*' => 'in:monday,tuesday,wednesday,thursday,friday,saturday,sunday',
-            'running_experience_period' => 'required|in:je_commence,1_11_mois,1_10_ans,plus_10_ans',
+            'running_experience_period' => 'required|in:je_commence,je_reprends,1_4_semaines,1_11_mois,1_10_ans,plus_10_ans',
             'running_experience_months' => 'nullable|string',
             'running_experience_years' => 'nullable|string',
             'training_locations' => 'required|array|min:1',
@@ -351,6 +357,16 @@ class QuestionnaireSessionController extends Controller
                     $validator->errors()->add(
                         'training_location_other',
                         'Veuillez préciser le lieu d\'entraînement lorsque "autre" est sélectionné.'
+                    );
+                }
+            }
+
+            // Validation: running_experience_weeks requis si running_experience_period est "1_4_semaines"
+            if (isset($payload['running_experience_period']) && $payload['running_experience_period'] === '1_4_semaines') {
+                if (empty($payload['running_experience_weeks'])) {
+                    $validator->errors()->add(
+                        'running_experience_weeks',
+                        'Veuillez préciser le nombre de semaines.'
                     );
                 }
             }
@@ -412,7 +428,10 @@ class QuestionnaireSessionController extends Controller
 
         // Récupérer le payload de la session
         $sessionPayload = $session->payload ?? [];
-        
+
+        // Normaliser le payload (conversion mètres→cm, etc.) AVANT validation
+        $sessionPayload = $this->payloadService->normalizePayload($sessionPayload);
+
         // VALIDATION COMPLÈTE du payload
         $validator = $this->validatePayloadForAttach($sessionPayload);
         
@@ -441,6 +460,8 @@ class QuestionnaireSessionController extends Controller
             $isNowCompleted = $profile->questionnaire_completed;
             if (!$wasCompleted && $isNowCompleted) {
                 try {
+                    // Refresh user to get updated profile relationship
+                    $user->refresh();
                     $this->planGeneratorService->generateInitialPlan($user);
                 } catch (\Exception $e) {
                     // Logger l'erreur mais ne pas faire échouer l'attach

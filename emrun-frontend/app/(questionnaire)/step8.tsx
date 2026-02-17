@@ -140,7 +140,7 @@ function LocationCard({ location, isSelected, onToggle, index }: LocationCardPro
 
 export default function Step8Screen() {
   const router = useRouter();
-  const { form } = useQuestionnaireForm();
+  const { form, saveNow } = useQuestionnaireForm();
   const { setValue, watch } = form;
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -184,13 +184,15 @@ export default function Step8Screen() {
     });
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     setValue('training_locations', selectedLocations);
     if (selectedLocations.includes('autre') && otherLocationText.trim()) {
       setValue('other_training_location', otherLocationText.trim());
     } else {
       setValue('other_training_location', undefined);
     }
+    // Save data immediately before navigation to ensure it's persisted
+    await saveNow();
     router.push('/(questionnaire)/step9');
   };
 
@@ -255,7 +257,13 @@ export default function Step8Screen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <ContinueButton onPress={handleContinue} />
+        <ContinueButton
+          onPress={handleContinue}
+          disabled={
+            selectedLocations.length === 0 ||
+            (selectedLocations.includes('autre') && !otherLocationText.trim())
+          }
+        />
       </View>
     </View>
   );

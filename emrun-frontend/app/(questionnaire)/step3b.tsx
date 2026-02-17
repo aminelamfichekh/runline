@@ -25,7 +25,7 @@ import {
 
 export default function Step3bScreen() {
   const router = useRouter();
-  const { form } = useQuestionnaireForm();
+  const { form, saveNow } = useQuestionnaireForm();
   const { setValue, watch } = form;
 
   // Use 'courir_race' path for correct progress calculation
@@ -44,9 +44,11 @@ export default function Step3bScreen() {
     }).start();
   }, []);
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     setValue('objectives', objectives);
     setValue('records', records);
+    // Save data immediately before navigation to ensure it's persisted
+    await saveNow();
     router.push('/(questionnaire)/step4');
   };
 

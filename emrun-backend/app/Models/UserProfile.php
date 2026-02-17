@@ -31,13 +31,16 @@ class UserProfile extends Model
         // Primary Goal
         'primary_goal',
         'primary_goal_other',
-        
+        'pause_duration', // For "reprendre" flow - how long they stopped
+        'records', // Personal records text
+
         // Race Goal Details
         'race_distance',
         'race_distance_km', // 1-50 when race_distance is 'autre' (legacy)
         'race_distance_other', // text description when race_distance is 'autre'
         'target_race_date',
         'intermediate_objectives',
+        'objectives', // Objectives text from step3b
         'current_race_times',
         
         // Current Running Status
