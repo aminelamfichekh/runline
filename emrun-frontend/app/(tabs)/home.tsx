@@ -34,6 +34,7 @@ export default function HomeScreen() {
 
   // Fetch plan directly for fresh data
   const [plan, setPlan] = useState<Plan | null>(null);
+  const [pastPlans, setPastPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -44,8 +45,20 @@ export default function HomeScreen() {
   const fetchPlan = useCallback(async (showLoader = true) => {
     try {
       if (showLoader) setLoading(true);
-      const response = await plansApi.getActivePlan();
-      setPlan(response.plan);
+      const [activeResponse, allResponse] = await Promise.all([
+        plansApi.getActivePlan(),
+        plansApi.getPlans(),
+      ]);
+      setPlan(activeResponse.plan);
+
+      // Past plans: completed plans whose end_date is before today
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const past = (allResponse.plans || []).filter(p => {
+        if (p.status !== 'completed' || !p.end_date) return false;
+        return new Date(p.end_date) < today;
+      }).sort((a, b) => new Date(b.end_date!).getTime() - new Date(a.end_date!).getTime());
+      setPastPlans(past);
     } catch (err) {
       console.error('Failed to fetch plan:', err);
       setPlan(null);
@@ -287,21 +300,47 @@ export default function HomeScreen() {
           })}
 
           {/* History Section */}
-          <View style={styles.historySection}>
-            <Text style={styles.historyLabel}>HISTORIQUE {currentYear - 1}</Text>
-            <TouchableOpacity style={styles.historyCard} activeOpacity={0.7}>
-              <View style={styles.historyLeft}>
-                <View style={styles.checkCircle}>
-                  <Ionicons name="checkmark" size={18} color="#10B981" />
-                </View>
-                <View>
-                  <Text style={styles.historyMonth}>Décembre</Text>
-                  <Text style={styles.historyDetail}>14 séances complétées</Text>
-                </View>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.text.tertiary} />
-            </TouchableOpacity>
-          </View>
+          {pastPlans.length > 0 && (
+            <View style={styles.historySection}>
+              <Text style={styles.historyLabel}>HISTORIQUE</Text>
+              {pastPlans.map((pastPlan) => {
+                const startDate = new Date(pastPlan.start_date!);
+                const endDate = new Date(pastPlan.end_date!);
+                const startMonth = MONTHS[startDate.getMonth()];
+                const endMonth = MONTHS[endDate.getMonth()];
+                const year = endDate.getFullYear();
+                const label = startDate.getMonth() === endDate.getMonth()
+                  ? `${startMonth} ${year}`
+                  : `${startMonth} – ${endMonth} ${year}`;
+
+                const sessionCount = pastPlan.content?.weeks
+                  ? pastPlan.content.weeks
+                      .flatMap(w => w.days)
+                      .filter(d => d.type !== 'repos').length
+                  : 0;
+
+                return (
+                  <TouchableOpacity
+                    key={pastPlan.id}
+                    style={styles.historyCard}
+                    activeOpacity={0.7}
+                    onPress={() => router.push('/(tabs)/plans')}
+                  >
+                    <View style={styles.historyLeft}>
+                      <View style={styles.checkCircle}>
+                        <Ionicons name="checkmark" size={18} color="#10B981" />
+                      </View>
+                      <View>
+                        <Text style={styles.historyMonth}>{label}</Text>
+                        <Text style={styles.historyDetail}>{sessionCount} séances au programme</Text>
+                      </View>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color={colors.text.tertiary} />
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
         </View>
 
         {/* Spacer for bottom nav */}
