@@ -228,21 +228,9 @@ export default function DayDetailScreen() {
           </View>
         </View>
 
-        {/* Spacer for button */}
-        <View style={{ height: 120 }} />
+        {/* Spacer */}
+        <View style={{ height: 40 }} />
       </ScrollView>
-
-      {/* Start Button */}
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={[styles.startButton, { backgroundColor: sessionColor }]}
-          onPress={() => console.log('Start workout')}
-          activeOpacity={0.9}
-        >
-          <Ionicons name="play" size={24} color="#fff" />
-          <Text style={styles.startButtonText}>Démarrer la séance</Text>
-        </TouchableOpacity>
-      </View>
     </View>
   );
 }
@@ -486,32 +474,4 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
   },
 
-  // Button
-  buttonContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingHorizontal: 24,
-    paddingBottom: 32,
-    paddingTop: 48,
-    backgroundColor: 'transparent',
-  },
-  startButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    borderRadius: 16,
-    paddingVertical: 18,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  startButtonText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#fff',
-  },
 });
