@@ -324,7 +324,7 @@ export default function HomeScreen() {
                     key={pastPlan.id}
                     style={styles.historyCard}
                     activeOpacity={0.7}
-                    onPress={() => router.push('/(tabs)/plans')}
+                    onPress={() => router.push(`/(plans)/history/${pastPlan.id}`)}
                   >
                     <View style={styles.historyLeft}>
                       <View style={styles.checkCircle}>
