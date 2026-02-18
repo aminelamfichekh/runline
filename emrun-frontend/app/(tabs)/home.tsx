@@ -303,42 +303,24 @@ export default function HomeScreen() {
           {pastPlans.length > 0 && (
             <View style={styles.historySection}>
               <Text style={styles.historyLabel}>HISTORIQUE</Text>
-              {pastPlans.map((pastPlan) => {
-                const startDate = new Date(pastPlan.start_date!);
-                const endDate = new Date(pastPlan.end_date!);
-                const startMonth = MONTHS[startDate.getMonth()];
-                const endMonth = MONTHS[endDate.getMonth()];
-                const year = endDate.getFullYear();
-                const label = startDate.getMonth() === endDate.getMonth()
-                  ? `${startMonth} ${year}`
-                  : `${startMonth} – ${endMonth} ${year}`;
-
-                const sessionCount = pastPlan.content?.weeks
-                  ? pastPlan.content.weeks
-                      .flatMap(w => w.days)
-                      .filter(d => d.type !== 'repos').length
-                  : 0;
-
-                return (
-                  <TouchableOpacity
-                    key={pastPlan.id}
-                    style={styles.historyCard}
-                    activeOpacity={0.7}
-                    onPress={() => router.push(`/(plans)/history/${pastPlan.id}`)}
-                  >
-                    <View style={styles.historyLeft}>
-                      <View style={styles.checkCircle}>
-                        <Ionicons name="checkmark" size={18} color="#10B981" />
-                      </View>
-                      <View>
-                        <Text style={styles.historyMonth}>{label}</Text>
-                        <Text style={styles.historyDetail}>{sessionCount} séances au programme</Text>
-                      </View>
-                    </View>
-                    <Ionicons name="chevron-forward" size={20} color={colors.text.tertiary} />
-                  </TouchableOpacity>
-                );
-              })}
+              <TouchableOpacity
+                style={styles.historyCard}
+                activeOpacity={0.75}
+                onPress={() => router.push('/(plans)/history')}
+              >
+                <View style={styles.historyLeft}>
+                  <View style={styles.checkCircle}>
+                    <Ionicons name="time" size={18} color="#10B981" />
+                  </View>
+                  <View>
+                    <Text style={styles.historyMonth}>Voir l'historique</Text>
+                    <Text style={styles.historyDetail}>
+                      {pastPlans.length} plan{pastPlans.length > 1 ? 's' : ''} terminé{pastPlans.length > 1 ? 's' : ''}
+                    </Text>
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.text.tertiary} />
+              </TouchableOpacity>
             </View>
           )}
         </View>

@@ -15,6 +15,7 @@ export default function PlansLayout() {
     >
       <Stack.Screen name="week/[weekNumber]" />
       <Stack.Screen name="day/[dayId]" />
+      <Stack.Screen name="history/index" />
       <Stack.Screen name="history/[planId]" />
     </Stack>
   );
