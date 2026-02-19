@@ -311,13 +311,9 @@ export default function WeekDetailScreen() {
                             {day.content.session_type || day.content.description}
                           </Text>
                         </View>
-                        <Text style={styles.workoutDescription}>
-                          {day.content.duration && `${day.content.duration} • `}
-                          {day.content.description}
-                        </Text>
-                        {day.content.corps_de_seance && (
-                          <Text style={styles.workoutDetail} numberOfLines={2}>
-                            {day.content.corps_de_seance}
+                        {day.content.duration && (
+                          <Text style={styles.workoutDescription}>
+                            {day.content.duration}
                           </Text>
                         )}
                       </View>
