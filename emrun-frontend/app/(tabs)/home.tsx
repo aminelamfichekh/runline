@@ -3,7 +3,7 @@
  * Shows monthly training plans with progress
  */
 
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -87,24 +87,6 @@ export default function HomeScreen() {
 
   // Use fetched plan for display
   const activePlan = plan;
-
-  // Calculate progress from plan (memoized for performance)
-  const progress = useMemo(() => {
-    if (!activePlan || !isPlanReady(activePlan)) return 0;
-
-    const today = new Date();
-    const startDate = new Date(activePlan.start_date!);
-    const endDate = new Date(activePlan.end_date!);
-
-    if (today < startDate) return 0;
-    if (today > endDate) return 100;
-
-    const totalDays = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24);
-    const elapsedDays = (today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24);
-
-    return Math.min(100, Math.round((elapsedDays / totalDays) * 100));
-  }, [activePlan]);
-
   const isLoading = authLoading || loading;
 
   if (isLoading) {
@@ -207,17 +189,6 @@ export default function HomeScreen() {
                           <Text style={styles.statusText}>En cours</Text>
                         </View>
                         <Text style={styles.activeMonthName}>{month.name}</Text>
-
-                        {/* Progress Bar */}
-                        <View style={styles.progressSection}>
-                          <View style={styles.progressHeader}>
-                            <Text style={styles.progressLabel}>Progression</Text>
-                            <Text style={styles.progressValue}>{progress}%</Text>
-                          </View>
-                          <View style={styles.progressTrack}>
-                            <View style={[styles.progressFill, { width: `${progress}%` }]} />
-                          </View>
-                        </View>
                       </View>
 
                       <View style={styles.activeCardRight}>
@@ -289,7 +260,7 @@ export default function HomeScreen() {
                   <View style={styles.futureCardLeft}>
                     <Text style={styles.futureMonthName}>{month.name}</Text>
                     <Text style={styles.futureStatus}>Non planifié</Text>
-                    <Text style={styles.futurePlanText}>Généré automatiquement</Text>
+                    <Text style={styles.futurePlanText}></Text>
                   </View>
                   <View style={styles.futureCardRight}>
                     <Ionicons name="time-outline" size={28} color={colors.text.tertiary} />
@@ -518,39 +489,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.text.primary,
     marginTop: 4,
-  },
-  progressSection: {
-    marginTop: 12,
-  },
-  progressHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 6,
-  },
-  progressLabel: {
-    fontSize: 12,
-    color: colors.text.tertiary,
-    fontWeight: '500',
-  },
-  progressValue: {
-    fontSize: 12,
-    color: colors.accent.blue,
-    fontWeight: '600',
-  },
-  progressTrack: {
-    height: 8,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: colors.accent.blue,
-    borderRadius: 4,
-    shadowColor: colors.accent.blue,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
   },
   activeCardRight: {
     width: 100,
