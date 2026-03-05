@@ -40,6 +40,7 @@ class StoreQuestionnaireSessionRequest extends FormRequest
             'payload.race_distance' => 'nullable|in:5km,10km,15km,20km,25km,semi_marathon,marathon,autre',
             'payload.race_distance_km' => 'nullable|integer|min:1|max:50',
             'payload.target_race_date' => 'nullable|date',
+            'payload.goal_time' => 'nullable|string|max:10',
             'payload.intermediate_objectives' => 'nullable|string|max:1000',
             'payload.current_race_times' => 'nullable|array',
             'payload.current_race_times.*.distance' => 'required_with:payload.current_race_times|string',

@@ -326,7 +326,7 @@ export default function Step2Screen() {
 
             {/* Age Picker */}
             <View style={styles.fieldGroup}>
-              <Text style={[styles.fieldLabel, styles.fieldLabelCentered]}>Votre âge</Text>
+              <Text style={[styles.fieldLabel, styles.fieldLabelCentered]}>Âge</Text>
               <WheelPicker
                 data={ageOptions}
                 onValueChange={(v) => setAge(String(v))}

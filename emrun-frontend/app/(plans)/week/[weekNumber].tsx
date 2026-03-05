@@ -18,8 +18,43 @@ import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/constants/colors';
 import { plansApi } from '@/lib/api/plans';
-import type { Plan, PlanWeek, PlanDay, SessionType } from '@/types/plan';
+import type { Plan, PlanWeek, PlanDay, SessionType, DayName } from '@/types/plan';
 import { isPlanReady, SESSION_TYPE_COLORS } from '@/types/plan';
+import { BottomNav } from '@/components/ui/BottomNav';
+
+// All days of the week in order (Monday to Sunday)
+const ALL_DAYS: DayName[] = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+
+/**
+ * Fill in missing days as rest days.
+ * OpenAI sometimes only returns training days, skipping rest days entirely.
+ * This ensures all 7 days of the week are displayed.
+ */
+function fillMissingDays(week: PlanWeek): PlanDay[] {
+  const existingByName = new Map(week.days.map(d => [d.day_name, d]));
+
+  // Parse the week start date to generate dates for missing days
+  const [startDay, startMonth] = week.start_date.split('/').map(Number);
+  const year = new Date().getFullYear();
+  const monday = new Date(year, startMonth - 1, startDay);
+
+  return ALL_DAYS.map((dayName, i) => {
+    const existing = existingByName.get(dayName);
+    if (existing) return existing;
+
+    // Generate the date for this missing day
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    const dateStr = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+    return {
+      day_name: dayName,
+      date: dateStr,
+      type: 'repos' as SessionType,
+      content: { description: 'Repos' },
+    };
+  });
+}
 
 // Month names in French
 const MONTHS = [
@@ -181,7 +216,7 @@ export default function WeekDetailScreen() {
         {/* Title Section */}
         <View style={styles.titleSection}>
           <Text style={styles.title}>
-            Planning de la{'\n'}
+            Plan de la{'\n'}
             <Text style={styles.titleHighlight}>semaine</Text>
           </Text>
 
@@ -201,7 +236,7 @@ export default function WeekDetailScreen() {
 
             <View style={styles.weekInfo}>
               <Text style={styles.weekLabel}>
-                Semaine {weekNum.toString().padStart(2, '0')}
+                Semaine {weekNum}
               </Text>
               <Text style={styles.weekDates}>
                 {currentWeek.start_date} - {currentWeek.end_date}
@@ -224,7 +259,7 @@ export default function WeekDetailScreen() {
 
         {/* Days List */}
         <View style={styles.daysList}>
-          {currentWeek.days.map((day, index) => {
+          {fillMissingDays(currentWeek).map((day, index) => {
             const isRest = day.type === 'repos';
             const isTodayDay = isToday(day.date);
             const isPast = isPastDay(day.date);
@@ -242,7 +277,7 @@ export default function WeekDetailScreen() {
                 disabled={isRest}
                 onPress={() => {
                   if (!isRest) {
-                    router.push(`/(plans)/day/${weekNum}-${index}`);
+                    router.push(`/(plans)/day/${weekNum}-${day.date.replace('/', '-')}`);
                   }
                 }}
               >
@@ -335,30 +370,7 @@ export default function WeekDetailScreen() {
       </ScrollView>
 
       {/* Bottom Navigation */}
-      <View style={styles.bottomNavContainer}>
-        <View style={styles.bottomNav}>
-          <TouchableOpacity
-            style={styles.navItem}
-            onPress={() => router.push('/(tabs)/home')}
-          >
-            <Ionicons name="home" size={24} color={colors.text.tertiary} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.navItemActive}
-            onPress={() => router.push('/(tabs)/plans')}
-          >
-            <Ionicons name="calendar" size={24} color={colors.accent.blue} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.navItem}
-            onPress={() => router.push('/(tabs)/profile')}
-          >
-            <Ionicons name="person" size={24} color={colors.text.tertiary} />
-          </TouchableOpacity>
-        </View>
-      </View>
+      <BottomNav activeTab="plans" />
     </View>
   );
 }
@@ -627,42 +639,4 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
 
-  // Bottom Navigation
-  bottomNavContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingHorizontal: 24,
-    paddingBottom: 24,
-    paddingTop: 12,
-    backgroundColor: 'transparent',
-  },
-  bottomNav: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    backgroundColor: 'rgba(30, 41, 59, 0.9)',
-    borderRadius: 32,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    shadowColor: colors.accent.blue,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.15,
-    shadowRadius: 15,
-    elevation: 8,
-  },
-  navItem: {
-    padding: 8,
-  },
-  navItemActive: {
-    padding: 8,
-    backgroundColor: 'rgba(50, 140, 231, 0.2)',
-    borderRadius: 20,
-    shadowColor: colors.accent.blue,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 15,
-  },
 });

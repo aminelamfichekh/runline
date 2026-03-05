@@ -70,7 +70,7 @@ export default function Step9Screen() {
 
     // Save data immediately before navigation to ensure it's persisted
     await saveNow();
-    router.push('/(questionnaire)/preview');
+    router.push('/(subscription)/pricing');
   };
 
   return (

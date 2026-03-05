@@ -83,12 +83,29 @@ class AuthService
                     ]);
                 }
             } catch (\Illuminate\Validation\ValidationException $e) {
-                // Questionnaire incomplet - logger mais ne pas faire échouer l'inscription
+                // Questionnaire incomplet - créer un profil partiel avec les données disponibles
                 Log::warning('Questionnaire incomplete during signup attach', [
                     'user_id' => $user->id,
                     'session_uuid' => $data['session_uuid'],
                     'errors' => $e->errors(),
                 ]);
+
+                // Save partial profile so user isn't left with nothing
+                try {
+                    $sessionPayload = $session->payload ?? [];
+                    // Remove fields that would fail validation in ProfileService
+                    unset($sessionPayload['email']);
+                    $profileService = app(ProfileService::class);
+                    $profileService->getOrCreateProfile($user);
+
+                    // Link the session to the user so it can be re-attached later
+                    $session->update(['user_id' => $user->id]);
+                } catch (\Exception $innerEx) {
+                    Log::error('Failed to create partial profile during signup', [
+                        'user_id' => $user->id,
+                        'error' => $innerEx->getMessage(),
+                    ]);
+                }
             } catch (\Exception $e) {
                 // Logger l'erreur mais ne pas faire échouer l'inscription
                 Log::error('Failed to attach session during signup', [

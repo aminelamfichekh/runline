@@ -257,6 +257,106 @@ class PaymentService
     }
 
     /**
+     * Get the default payment method for a user's subscription.
+     *
+     * @param User $user
+     * @return array|null
+     */
+    public function getDefaultPaymentMethod(User $user): ?array
+    {
+        $subscription = Subscription::where('user_id', $user->id)
+            ->whereNotNull('stripe_customer_id')
+            ->first();
+
+        if (!$subscription || !$subscription->stripe_customer_id) {
+            return null;
+        }
+
+        try {
+            $customer = \Stripe\Customer::retrieve($subscription->stripe_customer_id, [
+                'expand' => ['invoice_settings.default_payment_method'],
+            ]);
+
+            $pm = $customer->invoice_settings->default_payment_method;
+
+            if (!$pm) {
+                // Fallback: check the subscription's default payment method
+                $stripeSub = Subscription::where('user_id', $user->id)
+                    ->whereIn('status', ['active', 'trialing'])
+                    ->first();
+
+                if ($stripeSub && $stripeSub->stripe_subscription_id) {
+                    $stripeSubscription = StripeSubscription::retrieve($stripeSub->stripe_subscription_id, [
+                        'expand' => ['default_payment_method'],
+                    ]);
+                    $pm = $stripeSubscription->default_payment_method;
+                }
+            }
+
+            if (!$pm) {
+                return null;
+            }
+
+            // If $pm is a string (ID), retrieve the full object
+            if (is_string($pm)) {
+                $pm = \Stripe\PaymentMethod::retrieve($pm);
+            }
+
+            if ($pm->type === 'card') {
+                return [
+                    'id' => $pm->id,
+                    'brand' => $pm->card->brand,
+                    'last4' => $pm->card->last4,
+                    'exp_month' => $pm->card->exp_month,
+                    'exp_year' => $pm->card->exp_year,
+                ];
+            }
+
+            return null;
+        } catch (ApiErrorException $e) {
+            Log::error('Failed to get default payment method', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+            return null;
+        }
+    }
+
+    /**
+     * Create a SetupIntent for updating payment method.
+     *
+     * @param User $user
+     * @return array
+     * @throws ApiErrorException
+     */
+    public function createSetupIntent(User $user): array
+    {
+        $customerId = $this->getOrCreateCustomer($user);
+
+        $stripe = new \Stripe\StripeClient(config('services.stripe.secret'));
+
+        $ephemeralKey = $stripe->ephemeralKeys->create(
+            ['customer' => $customerId],
+            ['stripe_version' => '2023-10-16']
+        );
+
+        $setupIntent = $stripe->setupIntents->create([
+            'customer' => $customerId,
+            'payment_method_types' => ['card'],
+            'usage' => 'off_session',
+            'metadata' => [
+                'user_id' => $user->id,
+            ],
+        ]);
+
+        return [
+            'setupIntentClientSecret' => $setupIntent->client_secret,
+            'ephemeralKey' => $ephemeralKey->secret,
+            'customerId' => $customerId,
+        ];
+    }
+
+    /**
      * Record a payment.
      *
      * @param User $user

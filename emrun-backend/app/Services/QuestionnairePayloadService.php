@@ -66,6 +66,7 @@ class QuestionnairePayloadService
             unset($payload['race_distance_km']);
             unset($payload['race_distance_other']);
             unset($payload['target_race_date']);
+            unset($payload['goal_time']);
             unset($payload['intermediate_objectives']);
         }
         if (isset($payload['race_distance']) && $payload['race_distance'] !== 'autre') {

@@ -67,6 +67,7 @@ Route::middleware('auth:api')->group(function () {
         Route::get('status', [SubscriptionController::class, 'status']);
         Route::post('checkout', [SubscriptionController::class, 'checkout']);
         Route::post('cancel', [SubscriptionController::class, 'cancel']);
+        Route::get('payment-method', [SubscriptionController::class, 'paymentMethod']);
     });
 
     // Payment routes (for PaymentSheet and embedded payments)
@@ -75,6 +76,8 @@ Route::middleware('auth:api')->group(function () {
         Route::post('create-subscription', [SubscriptionController::class, 'createSubscription']);
         // New: generic PaymentIntent for embedded Stripe Payment Element (web)
         Route::post('create-intent', [SubscriptionController::class, 'createPaymentIntent']);
+        // SetupIntent for updating payment method
+        Route::post('setup-intent', [SubscriptionController::class, 'createSetupIntent']);
     });
 
     // Device token routes

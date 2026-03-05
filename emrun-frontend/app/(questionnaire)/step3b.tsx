@@ -71,12 +71,11 @@ export default function Step3bScreen() {
         <Animated.View style={[styles.mainContent, { opacity: fadeAnim }]}>
           {/* Headline */}
           <View style={styles.headlineContainer}>
-            <Text style={styles.preLabel}>PRÉPARER</Text>
             <Text style={styles.headline}>
-              Vos <Text style={styles.headlineHighlight}>objectifs de course</Text>
+              Vos <Text style={styles.headlineHighlight}>objectifs intermédiaires</Text>
             </Text>
             <Text style={styles.subheadline}>
-              Partagez-nous vos objectifs pour créer un plan adapté.
+              Partagez-nous de vos objectifs intermédiaires pour créer un plan adapté.
             </Text>
           </View>
 
@@ -86,10 +85,10 @@ export default function Step3bScreen() {
               Objectif(s) intermédiaire(s){' '}
               <Text style={styles.inputOptional}>(Optionnel)</Text>
             </Text>
-            <Text style={styles.inputSubtitle}>Distance(s) et date(s) à préciser</Text>
+            <Text style={styles.inputSubtitle}>Distance et date à préciser pour chaque objectif intermédiaire</Text>
             <TextInput
               style={styles.textInput}
-              placeholder="Ex: 10km en mars, Semi-marathon en mai..."
+              placeholder="Ex: 10km le 12/03/2027 et Semi-marathon le 25/09/2027..."
               placeholderTextColor={colors.text.tertiary}
               value={objectives}
               onChangeText={setObjectives}
@@ -108,10 +107,10 @@ export default function Step3bScreen() {
               Record(s) personnel(s){' '}
               <Text style={styles.inputOptional}>(Optionnel)</Text>
             </Text>
-            <Text style={styles.inputSubtitle}>Préciser la distance</Text>
+            <Text style={styles.inputSubtitle}>Préciser la distance de chaque record</Text>
             <TextInput
               style={styles.textInput}
-              placeholder="Ex: 5km en 25min, 10km en 55min, Semi en 2h..."
+              placeholder="Ex: 22min12 au 5km, 36min24 au 10km, 1h47min32s au semi-marathon..."
               placeholderTextColor={colors.text.tertiary}
               value={records}
               onChangeText={setRecords}

@@ -19,6 +19,7 @@ import { colors } from '@/constants/colors';
 import { plansApi } from '@/lib/api/plans';
 import type { PlanDay, SessionType } from '@/types/plan';
 import { isPlanReady, SESSION_TYPE_COLORS, SESSION_TYPE_LABELS } from '@/types/plan';
+import { BottomNav } from '@/components/ui/BottomNav';
 
 // Icons for session types
 const SESSION_TYPE_ICONS: Record<SessionType, string> = {
@@ -32,8 +33,13 @@ export default function DayDetailScreen() {
   const router = useRouter();
   const { dayId } = useLocalSearchParams<{ dayId: string }>();
 
-  // Parse dayId format: "weekNumber-dayIndex"
-  const [weekNum, dayIndex] = (dayId || '1-0').split('-').map(Number);
+  // Parse dayId format: "weekNumber-DD-MM" (date-based) or legacy "weekNumber-dayIndex"
+  const parts = (dayId || '1-0').split('-');
+  const weekNum = Number(parts[0]);
+  // New format: "2-09-03" -> date "09/03"; Legacy format: "2-1" -> index 1
+  const isDateFormat = parts.length === 3;
+  const dayDate = isDateFormat ? `${parts[1]}/${parts[2]}` : null;
+  const dayIndex = !isDateFormat ? Number(parts[1]) : 0;
 
   const [day, setDay] = useState<PlanDay | null>(null);
   const [loading, setLoading] = useState(true);
@@ -57,9 +63,12 @@ export default function DayDetailScreen() {
         return;
       }
 
-      const foundDay = week.days[dayIndex];
+      // Find day by date (new format) or by index (legacy)
+      const foundDay = dayDate
+        ? week.days.find(d => d.date === dayDate)
+        : week.days[dayIndex];
       if (!foundDay) {
-        setError('Séance introuvable');
+        setError('Sortie introuvable');
         return;
       }
 
@@ -70,7 +79,7 @@ export default function DayDetailScreen() {
     } finally {
       setLoading(false);
     }
-  }, [weekNum, dayIndex]);
+  }, [weekNum, dayDate, dayIndex]);
 
   useEffect(() => {
     fetchDay();
@@ -99,7 +108,7 @@ export default function DayDetailScreen() {
         </View>
         <View style={styles.centerContent}>
           <Ionicons name="alert-circle-outline" size={48} color={colors.text.tertiary} />
-          <Text style={styles.errorText}>{error || 'Séance introuvable'}</Text>
+          <Text style={styles.errorText}>{error || 'Sortie introuvable'}</Text>
           <TouchableOpacity style={styles.retryButton} onPress={() => router.back()}>
             <Text style={styles.retryButtonText}>Retour</Text>
           </TouchableOpacity>
@@ -122,7 +131,7 @@ export default function DayDetailScreen() {
     steps.push({ title: 'Corps de séance', description: day.content.corps_de_seance, color: colors.accent.blue });
   }
   if (day.content.recuperation) {
-    steps.push({ title: 'Retour au calme', description: day.content.recuperation, color: '#A78BFA' });
+    steps.push({ title: 'Récupération', description: day.content.recuperation, color: '#A78BFA' });
   }
 
   // If no structured steps, use the description as the main content
@@ -154,7 +163,7 @@ export default function DayDetailScreen() {
         <View style={styles.dateTitle}>
           <Text style={styles.dateLabelSmall}>Plan d'entraînement</Text>
           <Text style={styles.dateText}>
-            Séance du{'\n'}
+            Sortie du{'\n'}
             <Text style={[styles.dateHighlight, { color: sessionColor }]}>
               {day.day_name} {day.date.split('/')[0]}
             </Text>
@@ -182,7 +191,7 @@ export default function DayDetailScreen() {
               <Ionicons name="document-text" size={24} color={sessionColor} />
             </View>
             <Text style={styles.cardTitle}>
-              {day.content.session_type || 'Détails de la séance'}
+              {day.content.session_type || 'Détails de la sortie'}
             </Text>
           </View>
 
@@ -228,9 +237,12 @@ export default function DayDetailScreen() {
           </View>
         </View>
 
-        {/* Spacer */}
-        <View style={{ height: 40 }} />
+        {/* Spacer for bottom nav */}
+        <View style={{ height: 120 }} />
       </ScrollView>
+
+      {/* Bottom Navigation */}
+      <BottomNav activeTab="plans" />
     </View>
   );
 }

@@ -50,7 +50,7 @@ export default function PricingScreen() {
 
         <View style={styles.priceCard}>
           <View style={styles.priceRow}>
-            <Text style={styles.price}>19,99 $</Text>
+            <Text style={styles.price}>19,99€</Text>
             <Text style={styles.period}>{t('subscription.pricing.period')}</Text>
           </View>
           <Text style={styles.priceDescription}>
@@ -64,7 +64,6 @@ export default function PricingScreen() {
           <FeatureRow icon="calendar-refresh" text={t('subscription.features.monthlyRegeneration')} />
           <FeatureRow icon="trending-up" text={t('subscription.features.adaptiveDifficulty')} />
           <FeatureRow icon="calendar-week" text={t('subscription.features.weeklySchedule')} />
-          <FeatureRow icon="brain" text={t('subscription.features.aiPowered')} />
         </View>
       </ScrollView>
 

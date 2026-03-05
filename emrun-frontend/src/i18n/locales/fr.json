@@ -23,6 +23,8 @@
         "marathon": "Marathon",
         "autre": "Autre"
       },
+      "goalTimeLabel": "Temps visé",
+      "goalTimeHint": "Quel temps souhaitez-vous atteindre ?",
       "dateLabel": "Date de l'objectif",
       "datePlaceholder": "Sélectionnez une date",
       "objectifsIntermediairesLabel": "Objectif(s) intermédiaire(s)",
@@ -133,19 +135,18 @@
   },
   "subscription": {
     "pricing": {
-      "title": "Votre plan personnalisé",
-      "subtitle": "Accédez à votre plan d'entraînement et bénéficiez de mises à jour mensuelles",
-      "period": "/mois",
-      "cancelAnytime": "Annulez à tout moment",
+      "title": "S'abonner à l'application",
+      "subtitle": "Accédez a votre plan d'entrainement mensuel.",
+      "period": " / mois",
+      "cancelAnytime": "Sans engagement",
       "whatIncluded": "Ce qui est inclus",
-      "subscribe": "S'abonner - 19,99 €/mois"
+      "subscribe": "S'abonner"
     },
     "features": {
-      "personalizedPlan": "Plan d'entraînement personnalisé adapté à vos objectifs",
-      "monthlyRegeneration": "Régénération automatique chaque mois",
-      "adaptiveDifficulty": "Difficulté ajustée à votre progression",
-      "weeklySchedule": "Calendrier hebdomadaire détaillé",
-      "aiPowered": "Propulsé par l'intelligence artificielle"
+      "personalizedPlan": "Plan d'entrainement personnalisé adapté à vos objectifs",
+      "monthlyRegeneration": "Nouveau plan chaque mois",
+      "adaptiveDifficulty": "Adaptation totale à votre profil",
+      "weeklySchedule": "Organisation hebdomadaire détaillée"
     },
     "success": {
       "title": "Félicitations !",

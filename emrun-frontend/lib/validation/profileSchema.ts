@@ -43,6 +43,7 @@ export const profileSchema = z.object({
   race_distance_km: z.number().int().min(1).max(50).optional(), // when race_distance === 'autre' (legacy)
   race_distance_other: z.string().max(500).optional(), // text description when race_distance === 'autre'
   target_race_date: z.string().optional(),
+  goal_time: z.string().max(10).optional(), // "H:MM:SS" format e.g. "0:30:00"
   intermediate_objectives: z.string().max(1000).optional(),
   current_race_times: z.array(
     z.object({
@@ -271,6 +272,7 @@ export function cleanConditionalFields(
     cleaned.race_distance_km = undefined;
     cleaned.race_distance_other = undefined;
     cleaned.target_race_date = undefined;
+    cleaned.goal_time = undefined;
     cleaned.intermediate_objectives = undefined;
     cleaned.current_race_times = undefined;
   }

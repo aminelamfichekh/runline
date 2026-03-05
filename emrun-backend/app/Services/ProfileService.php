@@ -73,6 +73,7 @@ class ProfileService
             'race_distance_km' => 'nullable|integer|min:1|max:50', // Legacy field
             'race_distance_other' => 'nullable|string|max:500', // Text description when race_distance is 'autre'
             'target_race_date' => 'nullable|required_if:primary_goal,courir_race|required_if:primary_goal,ameliorer_chrono|date|after:today',
+            'goal_time' => 'nullable|string|max:10|regex:/^\d{1,2}:\d{2}:\d{2}$/',
             'intermediate_objectives' => 'nullable|string|max:1000',
             'current_race_times' => 'nullable|array',
             'current_race_times.*.distance' => 'required_with:current_race_times|string',
@@ -166,6 +167,9 @@ class ProfileService
             if (empty($data['target_race_date'])) {
                 $data['target_race_date'] = null;
             }
+            if (empty($data['goal_time'])) {
+                $data['goal_time'] = null;
+            }
             if (empty($data['intermediate_objectives'])) {
                 $data['intermediate_objectives'] = null;
             }
@@ -174,7 +178,7 @@ class ProfileService
             $data['race_distance_km'] = null;
             $data['race_distance_other'] = null;
         }
-        
+
         // Ensure primary_goal_other is cleared if primary_goal is not "autre"
         if (isset($data['primary_goal']) && $data['primary_goal'] !== 'autre') {
             $data['primary_goal_other'] = null;

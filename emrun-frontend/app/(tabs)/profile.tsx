@@ -22,10 +22,13 @@ import { profileApi } from '@/lib/api/profile';
 import { useNotification } from '@/contexts/NotificationContext';
 import type { UserProfileResponse } from '@/types/profile';
 import { colors } from '@/constants/colors';
+import { useSubscription } from '@/hooks/useSubscription';
+import { BottomNav } from '@/components/ui/BottomNav';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { showNotification } = useNotification();
+  const subscription = useSubscription();
   const [profile, setProfile] = useState<UserProfileResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [userName, setUserName] = useState('');
@@ -157,8 +160,10 @@ export default function ProfileScreen() {
             </View>
           </View>
           <Text style={styles.userName}>{userName}</Text>
-          <View style={styles.premiumBadge}>
-            <Text style={styles.premiumBadgeText}>Athlète Premium</Text>
+          <View style={[styles.premiumBadge, !subscription.isActive && styles.standardBadge]}>
+            <Text style={[styles.premiumBadgeText, !subscription.isActive && styles.standardBadgeText]}>
+              {subscription.badgeLabel}
+            </Text>
           </View>
         </View>
 
@@ -275,27 +280,7 @@ export default function ProfileScreen() {
       </ScrollView>
 
       {/* Bottom Navigation */}
-      <View style={styles.bottomNavContainer}>
-        <View style={styles.bottomNav}>
-          <TouchableOpacity
-            style={styles.navItem}
-            onPress={() => router.push('/(tabs)/home')}
-          >
-            <Ionicons name="home" size={24} color={colors.text.tertiary} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.navItem}
-            onPress={() => router.push('/(tabs)/plans')}
-          >
-            <Ionicons name="calendar" size={24} color={colors.text.tertiary} />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.navItemActive}>
-            <Ionicons name="person" size={24} color={colors.accent.blue} />
-          </TouchableOpacity>
-        </View>
-      </View>
+      <BottomNav activeTab="profile" />
     </View>
   );
 }
@@ -429,6 +414,13 @@ const styles = StyleSheet.create({
     color: colors.accent.blue,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+  standardBadge: {
+    backgroundColor: 'rgba(148, 163, 184, 0.1)',
+    borderColor: 'rgba(148, 163, 184, 0.2)',
+  },
+  standardBadgeText: {
+    color: '#94a3b8',
   },
 
   // Section
@@ -565,43 +557,4 @@ const styles = StyleSheet.create({
     color: colors.text.tertiary,
   },
 
-  // Bottom Navigation
-  bottomNavContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingHorizontal: 24,
-    paddingBottom: 24,
-    paddingTop: 12,
-    backgroundColor: 'transparent',
-    zIndex: 100,
-  },
-  bottomNav: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    backgroundColor: 'rgba(30, 41, 59, 0.9)',
-    borderRadius: 32,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    shadowColor: colors.accent.blue,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.15,
-    shadowRadius: 15,
-    elevation: 8,
-  },
-  navItem: {
-    padding: 8,
-  },
-  navItemActive: {
-    padding: 8,
-    backgroundColor: 'rgba(50, 140, 231, 0.2)',
-    borderRadius: 20,
-    shadowColor: colors.accent.blue,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 15,
-  },
 });

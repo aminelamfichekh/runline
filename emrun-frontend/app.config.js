@@ -23,25 +23,27 @@ try {
 
 module.exports = {
   expo: {
-    name: 'Emrun',
-    slug: 'emrun-mobile',
+    name: 'RUNLINE',
+    slug: 'runline',
     version: '1.0.0',
     orientation: 'portrait',
     userInterfaceStyle: 'dark',
     splash: {
       resizeMode: 'contain',
-      backgroundColor: '#000000',
+      backgroundColor: '#0F1419',
     },
     assetBundlePatterns: ['**/*'],
     ios: {
-      supportsTablet: true,
-      bundleIdentifier: 'com.emrun.app',
+      supportsTablet: false,
+      bundleIdentifier: 'com.runline.app',
+      buildNumber: '1',
     },
     android: {
       adaptiveIcon: {
-        backgroundColor: '#000000',
+        backgroundColor: '#0F1419',
       },
-      package: 'com.emrun.app',
+      package: 'com.runline.app',
+      versionCode: 1,
     },
     web: {
       bundler: 'metro',
@@ -51,19 +53,22 @@ module.exports = {
         },
       },
     },
-    scheme: 'emrun',
+    scheme: 'runline',
     plugins: [
       'expo-router',
       [
         '@stripe/stripe-react-native',
         {
           merchantIdentifier: 'merchant.com.runline.app',
-          enableGooglePay: true
-        }
-      ]
+          enableGooglePay: true,
+        },
+      ],
     ],
     extra: {
       apiUrl: apiUrl,
+      eas: {
+        projectId: '7c46a573-6cf8-4060-8e06-8166ca29b682',
+      },
     },
   },
 };

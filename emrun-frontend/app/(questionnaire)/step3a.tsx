@@ -100,10 +100,10 @@ export default function Step3aScreen() {
           <View style={styles.headlineContainer}>
             <Text style={styles.headline}>
               Depuis combien de temps{'\n'}
-              <Text style={styles.headlineHighlight}>avez-vous arrêté</Text> ?
+              <Text style={styles.headlineHighlight}>avez-vous arrêté de courir régulièrement</Text> ?
             </Text>
             <Text style={styles.subheadline}>
-              Cela nous aide à adapter votre reprise en douceur.
+              Cela nous aide à adapter votre reprise.
             </Text>
           </View>
 
@@ -127,11 +127,11 @@ export default function Step3aScreen() {
               <Text style={styles.recordsOptional}>(Optionnel)</Text>
             </Text>
             <Text style={styles.recordsSubtitle}>
-              Ex: 5km en 25min, 10km en 55min, Semi en 2h...
+              Préciser la distance de chaque record
             </Text>
             <TextInput
               style={styles.textInput}
-              placeholder="Vos meilleurs temps..."
+              placeholder="Ex: 22min12 au 5km, 36min24 au 10km, 1h47min32s au semi-marathon..."
               placeholderTextColor={colors.text.tertiary}
               value={records}
               onChangeText={setRecords}

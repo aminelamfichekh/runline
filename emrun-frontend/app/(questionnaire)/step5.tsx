@@ -99,7 +99,7 @@ export default function Step5Screen() {
               Votre <Text style={styles.headlineHighlight}>volume hebdomadaire</Text>
             </Text>
             <Text style={styles.subheadline}>
-              Cela nous aide à adapter l'intensité de votre programme.
+              Cela nous aide à adapter le volume de votre programme.
             </Text>
           </View>
 
@@ -120,7 +120,7 @@ export default function Step5Screen() {
 
           <View style={styles.questionSection}>
             <Text style={styles.questionLabel}>
-              Quel est votre volume hebdomadaire classique ?
+              En période d'entraînement classique, quel est votre volume hebdomadaire ?
             </Text>
             <WheelPicker
               data={volumeOptions}

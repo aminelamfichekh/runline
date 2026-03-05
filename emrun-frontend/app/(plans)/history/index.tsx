@@ -18,6 +18,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/constants/colors';
 import { plansApi } from '@/lib/api/plans';
+import { BottomNav } from '@/components/ui/BottomNav';
 import type { Plan } from '@/types/plan';
 import { isPlanReady, SESSION_TYPE_COLORS } from '@/types/plan';
 
@@ -187,7 +188,7 @@ export default function HistoryIndexScreen() {
                     <View style={styles.statDivider} />
                     <View style={styles.statItem}>
                       <Ionicons name="fitness-outline" size={14} color={colors.text.tertiary} />
-                      <Text style={styles.statText}>{sessionCount} séances</Text>
+                      <Text style={styles.statText}>{sessionCount} sorties</Text>
                     </View>
                   </View>
 
@@ -219,8 +220,11 @@ export default function HistoryIndexScreen() {
           </View>
         )}
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: 120 }} />
       </ScrollView>
+
+      {/* Bottom Navigation */}
+      <BottomNav activeTab="plans" />
     </View>
   );
 }

@@ -135,7 +135,7 @@ function OptionCard({
           <View style={styles.inputContainer}>
             <TextInput
               style={styles.textInput}
-              placeholder="Précisez votre objectif..."
+              placeholder="Me maintenir en forme, Perdre du poids, etc."
               placeholderTextColor={colors.text.tertiary}
               value={inputValue}
               onChangeText={onInputChange}
@@ -215,9 +215,9 @@ export default function Step1Screen() {
   };
 
   const options: Array<{ value: GoalOption; icon: string; title: string; hasInput?: boolean }> = [
-    { value: 'start', icon: 'run-fast', title: 'Commencer la course' },
-    { value: 'restart', icon: 'reload', title: 'Reprendre la course' },
-    { value: 'race', icon: 'trophy', title: 'Préparer une course' },
+    { value: 'start', icon: 'run-fast', title: 'Commencer la course à pied' },
+    { value: 'restart', icon: 'reload', title: 'Reprendre la course à pied' },
+    { value: 'race', icon: 'trophy', title: 'Préparer une ou des course(s)' },
     { value: 'other', icon: 'note-edit', title: 'Autre', hasInput: true },
   ];
 

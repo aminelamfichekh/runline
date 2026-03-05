@@ -19,6 +19,7 @@ import { colors } from '@/constants/colors';
 import { plansApi } from '@/lib/api/plans';
 import type { Plan, PlanDay } from '@/types/plan';
 import { isPlanReady, SESSION_TYPE_COLORS } from '@/types/plan';
+import { BottomNav } from '@/components/ui/BottomNav';
 
 const MONTHS = [
   'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
@@ -146,7 +147,7 @@ export default function HistoryPlanScreen() {
           <View style={styles.summaryItem}>
             <Ionicons name="fitness" size={20} color={colors.accent.blue} />
             <Text style={styles.summaryValue}>{totalSessions}</Text>
-            <Text style={styles.summaryLabel}>séances</Text>
+            <Text style={styles.summaryLabel}>sorties</Text>
           </View>
         </View>
 
@@ -174,7 +175,7 @@ export default function HistoryPlanScreen() {
 
                   <View style={styles.sessionsBadge}>
                     <Ionicons name="barbell-outline" size={13} color={colors.text.tertiary} />
-                    <Text style={styles.sessionsText}>{week.sessionsCount} séances</Text>
+                    <Text style={styles.sessionsText}>{week.sessionsCount} sorties</Text>
                   </View>
                 </View>
 
@@ -206,8 +207,11 @@ export default function HistoryPlanScreen() {
           ))}
         </View>
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: 120 }} />
       </ScrollView>
+
+      {/* Bottom Navigation */}
+      <BottomNav activeTab="plans" />
     </View>
   );
 }

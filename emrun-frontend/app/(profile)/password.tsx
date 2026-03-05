@@ -21,6 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { authApi } from '@/lib/api/auth';
 import { useNotification } from '@/contexts/NotificationContext';
 import { colors } from '@/constants/colors';
+import { BottomNav } from '@/components/ui/BottomNav';
 
 export default function PasswordScreen() {
   const router = useRouter();
@@ -237,9 +238,12 @@ export default function PasswordScreen() {
             )}
           </TouchableOpacity>
 
-          <View style={{ height: 40 }} />
+          <View style={{ height: 120 }} />
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Bottom Navigation */}
+      <BottomNav activeTab="profile" />
     </View>
   );
 }

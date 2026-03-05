@@ -3,7 +3,7 @@
  * Polished UI with shared components and correct progress tracking
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -25,6 +25,7 @@ import * as Haptics from 'expo-haptics';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { colors } from '@/constants/colors';
+import { WheelPicker } from '@/components/ui/WheelPicker';
 import {
   QuestionnaireHeader,
   ContinueButton,
@@ -119,6 +120,29 @@ function DistanceCard({ value, icon, label, isSelected, onSelect, index }: Dista
   );
 }
 
+// Time ranges per distance (min hours, max hours, default hours, default minutes)
+// All distances allow 0-5 hours so users can set any goal they want
+const GOAL_TIME_RANGES: Record<string, { minH: number; maxH: number; defaultH: number; defaultM: number }> = {
+  '5km':           { minH: 0, maxH: 5, defaultH: 0, defaultM: 30 },
+  '10km':          { minH: 0, maxH: 5, defaultH: 0, defaultM: 55 },
+  'semi_marathon':  { minH: 0, maxH: 5, defaultH: 1, defaultM: 50 },
+  'marathon':       { minH: 0, maxH: 5, defaultH: 3, defaultM: 45 },
+  'autre':          { minH: 0, maxH: 5, defaultH: 1, defaultM: 0 },
+};
+
+/** Parse "H:MM:SS" into { hours, minutes, seconds } */
+function parseGoalTime(s?: string): { hours: number; minutes: number; seconds: number } | null {
+  if (!s) return null;
+  const parts = s.split(':');
+  if (parts.length !== 3) return null;
+  return { hours: parseInt(parts[0], 10), minutes: parseInt(parts[1], 10), seconds: parseInt(parts[2], 10) };
+}
+
+/** Format hours + minutes + seconds to "H:MM:SS" */
+function formatGoalTime(hours: number, minutes: number, seconds: number): string {
+  return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
 export default function Step3bGoalScreen() {
   const router = useRouter();
   const { form, saveNow } = useQuestionnaireForm();
@@ -131,6 +155,7 @@ export default function Step3bGoalScreen() {
   const savedDistance = watch('race_distance') as string | undefined;
   const savedDate = watch('target_race_date') as string | undefined;
   const savedRaceDistanceOther = watch('race_distance_other') as string | undefined;
+  const savedGoalTime = watch('goal_time') as string | undefined;
 
   const mapBackendToPreset = (v?: string): DistancePreset => {
     if (v === '5km' || v === '10km' || v === 'semi_marathon' || v === 'marathon') return v;
@@ -142,6 +167,56 @@ export default function Step3bGoalScreen() {
     mapBackendToPreset(savedDistance)
   );
   const [autreDescription, setAutreDescription] = useState<string>(savedRaceDistanceOther || '');
+
+  // Goal time state
+  const parsed = parseGoalTime(savedGoalTime);
+  const timeRange = GOAL_TIME_RANGES[distancePreset];
+  const [goalHours, setGoalHours] = useState<number>(
+    parsed?.hours ?? timeRange?.defaultH ?? 0
+  );
+  const [goalMinutes, setGoalMinutes] = useState<number>(
+    parsed?.minutes ?? timeRange?.defaultM ?? 30
+  );
+  const [goalSeconds, setGoalSeconds] = useState<number>(
+    parsed?.seconds ?? 0
+  );
+
+  // Build wheel picker data based on distance
+  const hourOptions = useMemo(() => {
+    const range = GOAL_TIME_RANGES[distancePreset];
+    if (!range) return [];
+    const opts = [];
+    for (let h = range.minH; h <= range.maxH; h++) {
+      opts.push({ value: h, label: `${h}` });
+    }
+    return opts;
+  }, [distancePreset]);
+
+  const minuteOptions = useMemo(() => {
+    const opts = [];
+    for (let m = 0; m < 60; m++) {
+      opts.push({ value: m, label: String(m).padStart(2, '0') });
+    }
+    return opts;
+  }, []);
+
+  const secondOptions = useMemo(() => {
+    const opts = [];
+    for (let s = 0; s < 60; s++) {
+      opts.push({ value: s, label: String(s).padStart(2, '0') });
+    }
+    return opts;
+  }, []);
+
+  // When distance changes, reset goal time to defaults for that distance
+  const handleDistanceChangeForTime = useCallback((preset: DistancePreset) => {
+    const range = GOAL_TIME_RANGES[preset];
+    if (range) {
+      setGoalHours(range.defaultH);
+      setGoalMinutes(range.defaultM);
+      setGoalSeconds(0);
+    }
+  }, []);
 
   // Date: null means not selected yet
   const [raceDate, setRaceDate] = useState<Date | null>(() => {
@@ -173,6 +248,8 @@ export default function Step3bGoalScreen() {
       setValue('race_distance_other', undefined as any);
       setValue('race_distance_km', undefined as any);
     }
+    // Save goal time for all distances
+    setValue('goal_time', formatGoalTime(goalHours, goalMinutes, goalSeconds));
     if (raceDate) {
       setValue('target_race_date', format(raceDate, 'yyyy-MM-dd'));
     }
@@ -186,6 +263,7 @@ export default function Step3bGoalScreen() {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
 
     setDistancePreset(preset);
+    handleDistanceChangeForTime(preset);
     if (preset !== 'autre') {
       setValue('race_distance', preset as any);
       setValue('race_distance_other', undefined as any);
@@ -248,11 +326,11 @@ export default function Step3bGoalScreen() {
         <Animated.View style={[styles.mainContent, { opacity: fadeAnim }]}>
           <View style={styles.headlineContainer}>
             <Text style={styles.headline}>
-              Détails de{'\n'}
-              <Text style={styles.headlineHighlight}>votre objectif</Text>
+              Distance de{'\n'}
+              <Text style={styles.headlineHighlight}>l'objectif</Text>
             </Text>
             <Text style={styles.subheadline}>
-              Personnalisez votre plan pour votre prochaine course.
+              Aidez-nous à préparer au mieux votre prochaine course.
             </Text>
           </View>
 
@@ -323,6 +401,67 @@ export default function Step3bGoalScreen() {
             )}
           </View>
 
+          {/* Goal Time Selection - shown for all distances */}
+          {GOAL_TIME_RANGES[distancePreset] && (
+            <View style={styles.section}>
+              <View style={styles.sectionLabelRow}>
+                <MaterialCommunityIcons name="timer-outline" size={18} color={colors.accent.blue} />
+                <Text style={styles.sectionLabel}>Temps visé</Text>
+              </View>
+              <Text style={styles.goalTimeHint}>
+                Quel temps souhaitez-vous atteindre{distancePreset === 'semi_marathon' ? ' sur le semi-marathon' : distancePreset === 'marathon' ? ' sur le marathon' : distancePreset === 'autre' ? '' : ` sur ${distancePreset}`} ?
+              </Text>
+              <View style={styles.goalTimePickerRow}>
+                {/* Hours wheel */}
+                <View style={styles.goalTimeColumn}>
+                  <Text style={styles.goalTimeUnitLabel}>HEURES</Text>
+                  <WheelPicker
+                    key={`hours-${distancePreset}`}
+                    data={hourOptions}
+                    onValueChange={setGoalHours}
+                    itemHeight={44}
+                    wheelHeight={132}
+                    fontSize={20}
+                    initialIndex={hourOptions.findIndex(o => o.value === goalHours)}
+                  />
+                </View>
+                {/* Separator */}
+                <Text style={styles.goalTimeSeparator}>:</Text>
+                {/* Minutes wheel */}
+                <View style={styles.goalTimeColumn}>
+                  <Text style={styles.goalTimeUnitLabel}>MINUTES</Text>
+                  <WheelPicker
+                    key={`minutes-${distancePreset}`}
+                    data={minuteOptions}
+                    onValueChange={setGoalMinutes}
+                    itemHeight={44}
+                    wheelHeight={132}
+                    fontSize={20}
+                    initialIndex={goalMinutes}
+                  />
+                </View>
+                {/* Separator */}
+                <Text style={styles.goalTimeSeparator}>:</Text>
+                {/* Seconds wheel */}
+                <View style={styles.goalTimeColumn}>
+                  <Text style={styles.goalTimeUnitLabel}>SECONDES</Text>
+                  <WheelPicker
+                    key={`seconds-${distancePreset}`}
+                    data={secondOptions}
+                    onValueChange={setGoalSeconds}
+                    itemHeight={44}
+                    wheelHeight={132}
+                    fontSize={20}
+                    initialIndex={goalSeconds}
+                  />
+                </View>
+              </View>
+              <Text style={styles.goalTimeSummary}>
+                Objectif : {goalHours > 0 ? `${goalHours}H` : ''}{String(goalMinutes).padStart(2, '0')}MIN{String(goalSeconds).padStart(2, '0')}SEC
+              </Text>
+            </View>
+          )}
+
           {/* Date Selection */}
           <View style={styles.section}>
             <View style={styles.sectionLabelRow}>
@@ -353,9 +492,6 @@ export default function Step3bGoalScreen() {
                 color={raceDate ? colors.text.secondary : colors.text.tertiary}
               />
             </TouchableOpacity>
-            <Text style={styles.dateHint}>
-              Nous calculerons votre plan à partir de cette date.
-            </Text>
           </View>
         </Animated.View>
       </ScrollView>
@@ -404,7 +540,10 @@ export default function Step3bGoalScreen() {
         <ContinueButton
           onPress={handleContinue}
           label="Suivant"
-          disabled={distancePreset === 'autre' && !autreDescription.trim()}
+          disabled={
+            (distancePreset === 'autre' && !autreDescription.trim()) ||
+            !raceDate
+          }
         />
       </View>
     </View>
@@ -547,6 +686,43 @@ const styles = StyleSheet.create({
     paddingHorizontal: questionnaireTokens.spacing.lg,
     minHeight: 100,
     textAlignVertical: 'top',
+  },
+  goalTimeHint: {
+    fontSize: 14,
+    color: colors.text.secondary,
+    marginBottom: questionnaireTokens.spacing.lg,
+    lineHeight: 20,
+  },
+  goalTimePickerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: questionnaireTokens.spacing.sm,
+  },
+  goalTimeColumn: {
+    flex: 1,
+    maxWidth: 110,
+  },
+  goalTimeUnitLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 1,
+    color: colors.text.tertiary,
+    textAlign: 'center',
+    marginBottom: questionnaireTokens.spacing.sm,
+  },
+  goalTimeSeparator: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: colors.text.primary,
+    marginTop: 16,
+  },
+  goalTimeSummary: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.accent.blue,
+    textAlign: 'center',
+    marginTop: questionnaireTokens.spacing.lg,
   },
   dateTouchable: {
     flexDirection: 'row',

@@ -23,6 +23,7 @@ import {
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { WheelPicker } from '@/components/ui/WheelPicker';
 import { profileApi } from '@/lib/api/profile';
 import type { UserProfileFormData, UserProfileResponse } from '@/types/profile';
 import { format, parseISO } from 'date-fns';
@@ -30,6 +31,7 @@ import { fr } from 'date-fns/locale';
 import { colors } from '@/constants/colors';
 import { useNotification } from '@/contexts/NotificationContext';
 import * as Haptics from 'expo-haptics';
+import { BottomNav } from '@/components/ui/BottomNav';
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -66,12 +68,6 @@ const LABELS = {
     '3_4': '3-4 fois par semaine',
     '5_6': '5-6 fois par semaine',
     '7_plus': '7+ fois par semaine',
-  } as Record<string, string>,
-  problem_to_solve: {
-    structure: 'Besoin de structure',
-    blessure: 'Éviter les blessures',
-    motivation: 'Motivation',
-    autre: 'Autre',
   } as Record<string, string>,
   available_days: {
     monday: 'Lundi',
@@ -115,6 +111,10 @@ const DAYS: { value: DayValue; label: string }[] = [
   { value: 'sunday', label: 'Dimanche' },
 ];
 
+const DAY_ORDER = DAYS.map(d => d.value);
+const sortDays = (days: DayValue[]): DayValue[] =>
+  [...days].sort((a, b) => DAY_ORDER.indexOf(a) - DAY_ORDER.indexOf(b));
+
 const LOCATIONS: { value: LocationValue; icon: string; title: string }[] = [
   { value: 'route', icon: 'road-variant', title: 'Route' },
   { value: 'chemins', icon: 'terrain', title: 'Chemins' },
@@ -155,10 +155,16 @@ export default function ProfileInfoScreen() {
   const [raceDistance, setRaceDistance] = useState<string | null>(null);
   const [raceDistanceOther, setRaceDistanceOther] = useState('');
   const [targetRaceDate, setTargetRaceDate] = useState('');
+  const [goalTimeHours, setGoalTimeHours] = useState(0);
+  const [goalTimeMinutes, setGoalTimeMinutes] = useState(30);
+  const [goalTimeSeconds, setGoalTimeSeconds] = useState(0);
+  const [intermediateObjectives, setIntermediateObjectives] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedDays, setSelectedDays] = useState<DayValue[]>([]);
   const [selectedLocations, setSelectedLocations] = useState<LocationValue[]>([]);
   const [otherLocationText, setOtherLocationText] = useState('');
+  const [heightCm, setHeightCm] = useState('');
+  const [weightKg, setWeightKg] = useState('');
   const [injuries, setInjuries] = useState('');
   const [constraints, setConstraints] = useState('');
 
@@ -222,7 +228,25 @@ export default function ProfileInfoScreen() {
         setRaceDistance(p.race_distance || null);
         setRaceDistanceOther(p.race_distance_other || '');
         setTargetRaceDate(p.target_race_date || '');
-        setSelectedDays((p.available_days as DayValue[]) || []);
+        // Parse goal_time "H:MM:SS" format
+        if (p.goal_time) {
+          const parts = p.goal_time.split(':');
+          if (parts.length === 3) {
+            setGoalTimeHours(parseInt(parts[0], 10) || 0);
+            setGoalTimeMinutes(parseInt(parts[1], 10) || 0);
+            setGoalTimeSeconds(parseInt(parts[2], 10) || 0);
+          }
+        }
+        setIntermediateObjectives(p.intermediate_objectives || '');
+        // Height: stored as cm in DB, display as meters (e.g. 175 -> "1.75")
+        if (p.height_cm) {
+          const h = p.height_cm < 10 ? p.height_cm : p.height_cm / 100;
+          setHeightCm(h.toFixed(2));
+        }
+        if (p.weight_kg) {
+          setWeightKg(String(p.weight_kg));
+        }
+        setSelectedDays(sortDays((p.available_days as DayValue[]) || []));
         setSelectedLocations((p.training_locations as LocationValue[]) || []);
         setOtherLocationText(p.training_location_other || '');
         setInjuries(p.injuries ? p.injuries.join('\n') : '');
@@ -261,7 +285,9 @@ export default function ProfileInfoScreen() {
         if (raceDistance === 'autre') {
           updateData.race_distance_other = raceDistanceOther.trim() || undefined;
         }
+        updateData.goal_time = `${goalTimeHours}:${String(goalTimeMinutes).padStart(2, '0')}:${String(goalTimeSeconds).padStart(2, '0')}`;
         updateData.target_race_date = targetRaceDate || undefined;
+        updateData.intermediate_objectives = intermediateObjectives.trim() || undefined;
       }
 
       // Other location
@@ -275,6 +301,16 @@ export default function ProfileInfoScreen() {
         .map((l) => l.trim())
         .filter((l) => l.length > 0);
       updateData.injuries = injuryLines.length > 0 ? injuryLines : undefined;
+
+      // Height & Weight
+      const parsedHeight = parseFloat(heightCm);
+      if (!isNaN(parsedHeight) && parsedHeight > 0) {
+        updateData.height_cm = parsedHeight;
+      }
+      const parsedWeight = parseInt(weightKg, 10);
+      if (!isNaN(parsedWeight) && parsedWeight > 0) {
+        updateData.weight_kg = parsedWeight;
+      }
 
       // Constraints
       updateData.personal_constraints = constraints.trim() || undefined;
@@ -317,7 +353,7 @@ export default function ProfileInfoScreen() {
       if (prev.includes(day)) {
         return prev.filter((d) => d !== day);
       }
-      return [...prev, day];
+      return sortDays([...prev, day]);
     });
     markChanged();
   };
@@ -353,7 +389,8 @@ export default function ProfileInfoScreen() {
 
   const formatDays = (days: string[] | null | undefined): string => {
     if (!days || days.length === 0) return 'Non défini';
-    return days.map((day) => LABELS.available_days[day] || day).join(', ');
+    const sorted = [...days].sort((a, b) => DAY_ORDER.indexOf(a) - DAY_ORDER.indexOf(b));
+    return sorted.map((day) => LABELS.available_days[day] || day).join(', ');
   };
 
   const formatLocations = (locations: string[] | null | undefined): string => {
@@ -415,7 +452,7 @@ export default function ProfileInfoScreen() {
         {/* Intro */}
         <View style={styles.introSection}>
           <Text style={styles.introSubtitle}>
-            Consultez vos réponses au questionnaire. Certaines informations peuvent être modifiées.
+            Consultez vos réponses au questionnaire. Ces informations peuvent être modifiées à tout moment.
           </Text>
         </View>
 
@@ -433,13 +470,38 @@ export default function ProfileInfoScreen() {
             </View>
           </View>
           <View style={styles.cardDisabled}>
-            <InfoRowDisabled label="Prénom" value={profileData?.first_name || 'Non défini'} />
-            <InfoRowDisabled label="Nom" value={profileData?.last_name || 'Non défini'} />
+            <InfoRowDisabled label="Nom" value={[profileData?.first_name, profileData?.last_name].filter(Boolean).join(' ') || 'Non défini'} />
             <InfoRowDisabled label="Date de naissance" value={formatDate(profileData?.birth_date)} />
             <InfoRowDisabled label="Âge" value={calculateAge(profileData?.birth_date)} />
-            <InfoRowDisabled label="Sexe" value={getLabel('gender', profileData?.gender)} />
-            <InfoRowDisabled label="Taille" value={profileData?.height_cm ? `${(profileData.height_cm < 10 ? profileData.height_cm : profileData.height_cm / 100).toFixed(2)} m` : 'Non défini'} />
-            <InfoRowDisabled label="Poids" value={profileData?.weight_kg ? `${profileData.weight_kg} kg` : 'Non défini'} isLast />
+            <InfoRowDisabled label="Sexe" value={getLabel('gender', profileData?.gender)} isLast />
+          </View>
+          <View style={styles.editableRow}>
+            <View style={styles.editableFieldHalf}>
+              <Text style={styles.editableFieldLabel}>Taille (m)</Text>
+              <TextInput
+                style={styles.compactInput}
+                value={heightCm}
+                onChangeText={(text) => { setHeightCm(text); markChanged(); }}
+                placeholder="1.75"
+                placeholderTextColor={colors.text.tertiary}
+                keyboardType="decimal-pad"
+                selectionColor={colors.accent.blue}
+                cursorColor={colors.accent.blue}
+              />
+            </View>
+            <View style={styles.editableFieldHalf}>
+              <Text style={styles.editableFieldLabel}>Poids (kg)</Text>
+              <TextInput
+                style={styles.compactInput}
+                value={weightKg}
+                onChangeText={(text) => { setWeightKg(text); markChanged(); }}
+                placeholder="70"
+                placeholderTextColor={colors.text.tertiary}
+                keyboardType="number-pad"
+                selectionColor={colors.accent.blue}
+                cursorColor={colors.accent.blue}
+              />
+            </View>
           </View>
         </View>
 
@@ -454,7 +516,7 @@ export default function ProfileInfoScreen() {
           </View>
           <View style={styles.cardDisabled}>
             <InfoRowDisabled
-              label="Période d'expérience"
+              label="Expérience"
               value={getLabel('running_experience_period', profileData?.running_experience_period)}
             />
             <InfoRowDisabled
@@ -471,37 +533,25 @@ export default function ProfileInfoScreen() {
           </View>
         </View>
 
-        {/* READ-ONLY: Problem to Solve */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="help-circle" size={20} color={colors.text.tertiary} />
-            <Text style={styles.sectionTitleDisabled}>Problème à résoudre</Text>
-            <View style={styles.lockBadge}>
-              <Ionicons name="lock-closed" size={12} color={colors.text.tertiary} />
+        {/* READ-ONLY: Records Persos */}
+        {profileData?.records && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="medal" size={20} color={colors.text.tertiary} />
+              <Text style={styles.sectionTitleDisabled}>Records persos</Text>
+              <View style={styles.lockBadge}>
+                <Ionicons name="lock-closed" size={12} color={colors.text.tertiary} />
+              </View>
             </View>
-          </View>
-          <View style={styles.cardDisabled}>
-            <InfoRowDisabled
-              label="Principal problème"
-              value={getLabel('problem_to_solve', profileData?.problem_to_solve)}
-            />
-            {profileData?.problem_to_solve === 'autre' && profileData?.problem_to_solve_other && (
-              <InfoRowDisabled label="Détails" value={profileData.problem_to_solve_other} />
-            )}
-            <InfoRowDisabled
-              label="Jours disponibles (initial)"
-              value={formatDays(profileData?.available_days)}
-              isLast={!profileData?.training_locations}
-            />
-            {profileData?.training_locations && (
+            <View style={styles.cardDisabled}>
               <InfoRowDisabled
-                label="Lieux d'entraînement (initial)"
-                value={formatLocations(profileData.training_locations)}
+                label="Meilleurs temps"
+                value={profileData.records}
                 isLast
               />
-            )}
+            </View>
           </View>
-        </View>
+        )}
 
         {/* ============================================ */}
         {/* EDITABLE SECTIONS */}
@@ -597,7 +647,7 @@ export default function ProfileInfoScreen() {
                   <Text style={styles.inputLabel}>Précisez la distance</Text>
                   <TextInput
                     style={styles.textInput}
-                    placeholder="Ex: Ultra-trail 80km..."
+                    placeholder="Ex: 10km, semi-marathon..."
                     placeholderTextColor={colors.text.tertiary}
                     value={raceDistanceOther}
                     onChangeText={(text) => {
@@ -610,7 +660,7 @@ export default function ProfileInfoScreen() {
               )}
 
               <View style={styles.conditionalInput}>
-                <Text style={styles.inputLabel}>Date de course cible</Text>
+                <Text style={styles.inputLabel}>Date de la course</Text>
                 <TouchableOpacity
                   style={styles.datePickerButton}
                   onPress={() => setShowDatePicker(true)}
@@ -674,6 +724,92 @@ export default function ProfileInfoScreen() {
                     />
                   )
                 )}
+              </View>
+
+              {/* Goal Time - shown for all distances */}
+              {raceDistance && (() => {
+                const hourOpts = [];
+                for (let h = 0; h <= 5; h++) {
+                  hourOpts.push({ value: h, label: `${h}` });
+                }
+                const minuteOpts = [];
+                for (let m = 0; m < 60; m++) {
+                  minuteOpts.push({ value: m, label: String(m).padStart(2, '0') });
+                }
+                const secondOpts = [];
+                for (let s = 0; s < 60; s++) {
+                  secondOpts.push({ value: s, label: String(s).padStart(2, '0') });
+                }
+
+                return (
+                  <View style={styles.conditionalInput}>
+                    <Text style={styles.inputLabel}>Temps visé</Text>
+                    <Text style={styles.inputHint}>
+                      Quel temps souhaitez-vous atteindre ?
+                    </Text>
+                    <View style={styles.goalTimeRow}>
+                      <View style={styles.goalTimeCol}>
+                        <Text style={styles.goalTimeUnitLabel}>HEURES</Text>
+                        <WheelPicker
+                          key={`profile-hours-${raceDistance}`}
+                          data={hourOpts}
+                          onValueChange={(v) => { setGoalTimeHours(v as number); markChanged(); }}
+                          itemHeight={44}
+                          wheelHeight={132}
+                          fontSize={18}
+                          initialIndex={hourOpts.findIndex(o => o.value === goalTimeHours)}
+                        />
+                      </View>
+                      <Text style={styles.goalTimeSep}>:</Text>
+                      <View style={styles.goalTimeCol}>
+                        <Text style={styles.goalTimeUnitLabel}>MINUTES</Text>
+                        <WheelPicker
+                          key={`profile-minutes-${raceDistance}`}
+                          data={minuteOpts}
+                          onValueChange={(v) => { setGoalTimeMinutes(v as number); markChanged(); }}
+                          itemHeight={44}
+                          wheelHeight={132}
+                          fontSize={18}
+                          initialIndex={goalTimeMinutes}
+                        />
+                      </View>
+                      <Text style={styles.goalTimeSep}>:</Text>
+                      <View style={styles.goalTimeCol}>
+                        <Text style={styles.goalTimeUnitLabel}>SECONDES</Text>
+                        <WheelPicker
+                          key={`profile-seconds-${raceDistance}`}
+                          data={secondOpts}
+                          onValueChange={(v) => { setGoalTimeSeconds(v as number); markChanged(); }}
+                          itemHeight={44}
+                          wheelHeight={132}
+                          fontSize={18}
+                          initialIndex={goalTimeSeconds}
+                        />
+                      </View>
+                    </View>
+                    <Text style={styles.goalTimeSummaryText}>
+                      Objectif : {goalTimeHours > 0 ? `${goalTimeHours}H` : ''}{String(goalTimeMinutes).padStart(2, '0')}MIN{String(goalTimeSeconds).padStart(2, '0')}SEC
+                    </Text>
+                  </View>
+                );
+              })()}
+
+              {/* Intermediate Objectives */}
+              <View style={styles.conditionalInput}>
+                <Text style={styles.inputLabel}>Objectif intermédiaire (optionnel)</Text>
+                <TextInput
+                  style={styles.multilineInput}
+                  placeholder="Ex: Courir un 10km en moins de 45 minutes..."
+                  placeholderTextColor={colors.text.tertiary}
+                  value={intermediateObjectives}
+                  onChangeText={(text) => { setIntermediateObjectives(text); markChanged(); }}
+                  multiline
+                  numberOfLines={3}
+                  textAlignVertical="top"
+                  selectionColor={colors.accent.blue}
+                  cursorColor={colors.accent.blue}
+                  maxLength={1000}
+                />
               </View>
             </View>
           )}
@@ -794,7 +930,7 @@ export default function ProfileInfoScreen() {
 
           <View style={styles.inputSection}>
             <Text style={styles.inputLabel}>
-              Blessure(s) ou limitation(s){' '}
+              Blessure(s) ou limitation(s) physique{' '}
               <Text style={styles.inputOptional}>(Optionnel)</Text>
             </Text>
             <TextInput
@@ -856,8 +992,11 @@ export default function ProfileInfoScreen() {
           )}
         </TouchableOpacity>
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: 120 }} />
       </ScrollView>
+
+      {/* Bottom Navigation */}
+      <BottomNav activeTab="profile" />
     </View>
   );
 }
@@ -1075,6 +1214,32 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
   },
+  editableRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 12,
+  },
+  editableFieldHalf: {
+    flex: 1,
+  },
+  editableFieldLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.text.secondary,
+    marginBottom: 6,
+  },
+  compactInput: {
+    backgroundColor: 'rgba(26, 38, 50, 0.5)',
+    color: colors.text.primary,
+    fontSize: 16,
+    fontWeight: '600',
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    textAlign: 'center',
+  },
   multilineInput: {
     backgroundColor: 'rgba(26, 38, 50, 0.5)',
     color: colors.text.primary,
@@ -1090,6 +1255,40 @@ const styles = StyleSheet.create({
   inputSection: {
     gap: 8,
     marginBottom: 16,
+  },
+
+  // Goal Time
+  goalTimeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 8,
+  },
+  goalTimeCol: {
+    flex: 1,
+    maxWidth: 100,
+  },
+  goalTimeUnitLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 1,
+    color: colors.text.tertiary,
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  goalTimeSep: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: colors.text.primary,
+    marginTop: 16,
+  },
+  goalTimeSummaryText: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: colors.accent.blue,
+    textAlign: 'center',
+    marginTop: 12,
   },
 
   // Date Picker

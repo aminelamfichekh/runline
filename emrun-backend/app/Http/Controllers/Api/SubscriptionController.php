@@ -301,6 +301,56 @@ class SubscriptionController extends Controller
     }
 
     /**
+     * Get the user's default payment method details.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function paymentMethod(Request $request): JsonResponse
+    {
+        try {
+            $user = Auth::user();
+            $paymentMethod = $this->paymentService->getDefaultPaymentMethod($user);
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'payment_method' => $paymentMethod,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to get payment method: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Create a SetupIntent for updating payment method.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function createSetupIntent(Request $request): JsonResponse
+    {
+        try {
+            $user = Auth::user();
+            $data = $this->paymentService->createSetupIntent($user);
+
+            return response()->json([
+                'success' => true,
+                'data' => $data,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create setup intent: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Cancel the user's subscription.
      *
      * @param Request $request

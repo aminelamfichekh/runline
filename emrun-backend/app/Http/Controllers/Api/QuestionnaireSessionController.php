@@ -323,6 +323,9 @@ class QuestionnaireSessionController extends Controller
                 'after:today',
             ],
 
+            // Goal time
+            'goal_time' => 'nullable|string|max:10',
+
             // Champs optionnels
             'intermediate_objectives' => 'nullable|string|max:1000',
             'current_race_times' => 'nullable|array',

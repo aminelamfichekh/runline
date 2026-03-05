@@ -39,6 +39,7 @@ class UserProfile extends Model
         'race_distance_km', // 1-50 when race_distance is 'autre' (legacy)
         'race_distance_other', // text description when race_distance is 'autre'
         'target_race_date',
+        'goal_time', // Target finish time e.g. "0:30:00" for 30min
         'intermediate_objectives',
         'objectives', // Objectives text from step3b
         'current_race_times',

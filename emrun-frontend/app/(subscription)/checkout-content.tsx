@@ -57,7 +57,7 @@ function CheckoutContent() {
         customerId: customerId,
         defaultBillingDetails: { name: 'Runner' },
         style: 'alwaysDark',
-        returnURL: 'emrun://subscription/success',
+        returnURL: 'runline://subscription/success',
       });
 
       if (error) {
@@ -137,7 +137,7 @@ function CheckoutContent() {
         <View style={styles.summaryCard}>
           <Text style={styles.summaryLabel}>{t('subscription.checkout.total')}</Text>
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryAmount}>19,99 $</Text>
+            <Text style={styles.summaryAmount}>19,99€</Text>
             <Text style={styles.summaryPeriod}>{t('subscription.pricing.period')}</Text>
           </View>
           <Text style={styles.summaryNote}>{t('subscription.checkout.chargeToday')}</Text>

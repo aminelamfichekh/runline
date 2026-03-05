@@ -15,7 +15,18 @@
       "Bash(npm install:*)",
       "Bash(git reset:*)",
       "Bash(git checkout:*)",
-      "Bash(npx expo start --clear)"
+      "Bash(npx expo start --clear)",
+      "Bash(copy \"C:\\\\Users\\\\dell\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-dell-running\\\\b28d686b-943d-4a0f-8967-0003744b71b3\\\\scratchpad\\\\RUNLINE-Questionnaire-Textes.md\" \"c:\\\\Users\\\\dell\\\\running\\\\emrun-frontend\\\\RUNLINE-Questionnaire-Textes.md\")",
+      "Bash(gh auth:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(Get-Content \"c:\\\\Users\\\\dell\\\\running\\\\emrun-backend\\\\storage\\\\logs\\\\laravel.log\" -Tail 150)",
+      "Bash(php:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(ipconfig:*)",
+      "Bash(curl:*)",
+      "Bash(git push:*)",
+      "Bash(node -e:*)"
     ]
   }
 }

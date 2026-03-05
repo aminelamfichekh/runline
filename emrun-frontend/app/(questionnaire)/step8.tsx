@@ -218,10 +218,10 @@ export default function Step8Screen() {
         <Animated.View style={[styles.mainContent, { opacity: fadeAnim }]}>
           <View style={styles.headlineContainer}>
             <Text style={styles.headline}>
-              Vos <Text style={styles.headlineHighlight}>lieux de pratique</Text>
+              Vos <Text style={styles.headlineHighlight}>lieux d'entrainement</Text>
             </Text>
             <Text style={styles.subheadline}>
-              Sélectionnez tous les terrains sur lesquels vous avez l'habitude de courir.
+              Séléctionnez tous les terrains sur lesquels vous pouvez vous entrainer.
             </Text>
           </View>
 

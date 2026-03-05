@@ -160,7 +160,7 @@ export default function CreateAccountAfterPricingScreen() {
             Finalisez votre <Text style={styles.headlineHighlight}>compte</Text>
           </Text>
           <Text style={styles.subheadline}>
-            Prêt pour votre première session d&apos;entraînement ?
+            Prêt pour votre 1er entrainement à pied ?
           </Text>
         </View>
 

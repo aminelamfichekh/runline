@@ -23,5 +23,17 @@ export const paymentService = {
   async cancelSubscription() {
     const response = await apiClient.post('/subscription/cancel');
     return response.data;
-  }
+  },
+
+  // Get default payment method details
+  async getPaymentMethod() {
+    const response = await apiClient.get('/subscription/payment-method');
+    return response.data;
+  },
+
+  // Create SetupIntent for updating payment method
+  async createSetupIntent() {
+    const response = await apiClient.post('/payment/setup-intent');
+    return response.data;
+  },
 };

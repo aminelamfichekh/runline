@@ -3,7 +3,7 @@
  * Shows subscription details and allows cancellation
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -16,28 +16,123 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { StripeProvider, useStripe } from '@stripe/stripe-react-native';
 import { useNotification } from '@/contexts/NotificationContext';
 import { colors } from '@/constants/colors';
+import { useSubscription } from '@/hooks/useSubscription';
+import { paymentService } from '@/src/services/payment.service';
+import { BottomNav } from '@/components/ui/BottomNav';
+
+const STRIPE_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || '';
 
 export default function SubscriptionScreen() {
+  return (
+    <StripeProvider
+      publishableKey={STRIPE_PUBLISHABLE_KEY}
+      merchantIdentifier="merchant.com.runline.app"
+    >
+      <SubscriptionContent />
+    </StripeProvider>
+  );
+}
+
+interface PaymentMethodInfo {
+  brand: string;
+  last4: string;
+  exp_month: number;
+  exp_year: number;
+}
+
+function SubscriptionContent() {
   const router = useRouter();
   const { showNotification } = useNotification();
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const [isCancelling, setIsCancelling] = useState(false);
+  const [isUpdatingPayment, setIsUpdatingPayment] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodInfo | null>(null);
+  const [loadingPaymentMethod, setLoadingPaymentMethod] = useState(true);
+  const sub = useSubscription();
 
-  // Mock subscription data - in production, fetch from API
+  const fetchPaymentMethod = useCallback(async () => {
+    try {
+      setLoadingPaymentMethod(true);
+      const response = await paymentService.getPaymentMethod();
+      setPaymentMethod(response?.data?.payment_method || null);
+    } catch {
+      setPaymentMethod(null);
+    } finally {
+      setLoadingPaymentMethod(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (sub.isActive) {
+      fetchPaymentMethod();
+    } else {
+      setLoadingPaymentMethod(false);
+    }
+  }, [sub.isActive, fetchPaymentMethod]);
+
+  const handleUpdatePaymentMethod = async () => {
+    setIsUpdatingPayment(true);
+    try {
+      const response = await paymentService.createSetupIntent();
+      const { setupIntentClientSecret, ephemeralKey, customerId } = response.data;
+
+      const { error: initError } = await initPaymentSheet({
+        merchantDisplayName: 'RUNLINE',
+        setupIntentClientSecret,
+        customerEphemeralKeySecret: ephemeralKey,
+        customerId,
+        style: 'alwaysDark',
+        returnURL: 'runline://subscription/success',
+      });
+
+      if (initError) {
+        showNotification('Erreur d\'initialisation du paiement', 'error');
+        return;
+      }
+
+      const { error: presentError } = await presentPaymentSheet();
+
+      if (presentError) {
+        if (presentError.code !== 'Canceled') {
+          showNotification('Erreur lors de la mise à jour', 'error');
+        }
+        return;
+      }
+
+      showNotification('Moyen de paiement mis à jour', 'success');
+      await fetchPaymentMethod();
+    } catch {
+      showNotification('Erreur lors de la mise à jour du moyen de paiement', 'error');
+    } finally {
+      setIsUpdatingPayment(false);
+    }
+  };
+
+  const formatCardBrand = (brand: string): string => {
+    const brands: Record<string, string> = {
+      visa: 'Visa',
+      mastercard: 'Mastercard',
+      amex: 'Amex',
+      discover: 'Discover',
+    };
+    return brands[brand] || brand.charAt(0).toUpperCase() + brand.slice(1);
+  };
+
   const subscription = {
-    plan: 'Premium',
-    price: '9.99',
+    plan: sub.isActive ? 'Premium' : 'Standard',
+    price: '19.99',
     currency: '€',
     interval: 'mois',
-    status: 'active',
-    currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+    status: sub.status,
     features: [
       'Plans d\'entraînement personnalisés',
+      'Planification optimisée',
       'Suivi de progression illimité',
-      'Accès à tous les exercices',
-      'Support prioritaire',
-      'Pas de publicités',
+      'Support 24/7',
+      'Accès premium',
     ],
   };
 
@@ -64,13 +159,10 @@ export default function SubscriptionScreen() {
           onPress: async () => {
             setIsCancelling(true);
             try {
-              // TODO: Call API to cancel subscription
-              // await subscriptionApi.cancel();
+              await paymentService.cancelSubscription();
+              await sub.refresh();
 
-              // Simulate API call
-              await new Promise(resolve => setTimeout(resolve, 1500));
-
-              showNotification('Abonnement annulé. Vous conservez l\'accès jusqu\'au ' + formatDate(subscription.currentPeriodEnd), 'success');
+              showNotification('Abonnement annulé avec succès.', 'success');
               router.back();
             } catch (error) {
               showNotification('Erreur lors de l\'annulation', 'error');
@@ -114,9 +206,11 @@ export default function SubscriptionScreen() {
               <Ionicons name="star" size={16} color={colors.accent.blue} />
               <Text style={styles.planBadgeText}>PLAN ACTUEL</Text>
             </View>
-            <View style={styles.statusBadge}>
-              <View style={styles.statusDot} />
-              <Text style={styles.statusText}>Actif</Text>
+            <View style={[styles.statusBadge, !sub.isActive && styles.statusBadgeInactive]}>
+              <View style={[styles.statusDot, !sub.isActive && styles.statusDotInactive]} />
+              <Text style={[styles.statusText, !sub.isActive && styles.statusTextInactive]}>
+                {sub.isActive ? 'Actif' : 'Inactif'}
+              </Text>
             </View>
           </View>
 
@@ -130,12 +224,14 @@ export default function SubscriptionScreen() {
             <Text style={styles.priceInterval}>/ {subscription.interval}</Text>
           </View>
 
-          <View style={styles.renewalInfo}>
-            <Ionicons name="calendar-outline" size={16} color={colors.text.tertiary} />
-            <Text style={styles.renewalText}>
-              Prochain renouvellement le {formatDate(subscription.currentPeriodEnd)}
-            </Text>
-          </View>
+          {sub.isActive && sub.periodEnd && (
+            <View style={styles.renewalInfo}>
+              <Ionicons name="calendar-outline" size={16} color={colors.text.tertiary} />
+              <Text style={styles.renewalText}>
+                Prochain renouvellement le {formatDate(new Date(sub.periodEnd))}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Features List */}
@@ -167,19 +263,40 @@ export default function SubscriptionScreen() {
               <View style={styles.cardIcon}>
                 <Ionicons name="card" size={24} color={colors.text.primary} />
               </View>
-              <View>
-                <Text style={styles.cardNumber}>•••• •••• •••• 4242</Text>
-                <Text style={styles.cardExpiry}>Expire 12/26</Text>
-              </View>
+              {loadingPaymentMethod ? (
+                <ActivityIndicator size="small" color={colors.text.tertiary} />
+              ) : paymentMethod ? (
+                <View>
+                  <Text style={styles.cardNumber}>
+                    {formatCardBrand(paymentMethod.brand)} •••• {paymentMethod.last4}
+                  </Text>
+                  <Text style={styles.cardExpiry}>
+                    Expire {String(paymentMethod.exp_month).padStart(2, '0')}/{String(paymentMethod.exp_year).slice(-2)}
+                  </Text>
+                </View>
+              ) : (
+                <Text style={styles.cardNumber}>Aucune carte enregistrée</Text>
+              )}
             </View>
-            <TouchableOpacity style={styles.editPaymentButton}>
-              <Text style={styles.editPaymentText}>Modifier</Text>
-            </TouchableOpacity>
+            {sub.isActive && (
+              <TouchableOpacity
+                style={styles.editPaymentButton}
+                onPress={handleUpdatePaymentMethod}
+                disabled={isUpdatingPayment}
+                activeOpacity={0.7}
+              >
+                {isUpdatingPayment ? (
+                  <ActivityIndicator size="small" color={colors.accent.blue} />
+                ) : (
+                  <Text style={styles.editPaymentText}>Modifier</Text>
+                )}
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
         {/* Cancel Section */}
-        <View style={styles.cancelSection}>
+        {sub.isActive && <View style={styles.cancelSection}>
           <Text style={styles.cancelTitle}>Vous souhaitez partir ?</Text>
           <Text style={styles.cancelDescription}>
             Si vous annulez, vous conserverez l'accès Premium jusqu'à la fin de votre période de facturation actuelle.
@@ -200,18 +317,21 @@ export default function SubscriptionScreen() {
               </>
             )}
           </TouchableOpacity>
-        </View>
+        </View>}
 
         {/* Help Section */}
         <View style={styles.helpSection}>
           <Ionicons name="help-circle-outline" size={20} color={colors.text.tertiary} />
           <Text style={styles.helpText}>
-            Des questions ? Contactez notre support à support@runline.app
+            Des questions ? Contactez notre support à contact@runline.fr
           </Text>
         </View>
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: 120 }} />
       </ScrollView>
+
+      {/* Bottom Navigation */}
+      <BottomNav activeTab="profile" />
     </View>
   );
 }
@@ -310,6 +430,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#10B981',
+  },
+  statusBadgeInactive: {},
+  statusDotInactive: {
+    backgroundColor: '#94a3b8',
+  },
+  statusTextInactive: {
+    color: '#94a3b8',
   },
   planName: {
     fontSize: 32,

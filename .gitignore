@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+emrun-frontend/android/
+emrun-frontend/ios/
+emrun-frontend/dist/
+emrun-frontend/web-build/
+
+# Environment files (contain secrets)
+emrun-frontend/.env
+emrun-backend/.env
+
+# Debug/temp scripts
+emrun-backend/check_db.php
+emrun-backend/check_session.php
+emrun-backend/demo-plan.php
+
+# Expo
+.expo/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Laravel
+emrun-backend/vendor/
+emrun-backend/storage/logs/
+emrun-backend/bootstrap/cache/
+
+# Demo
+emrun-plan-demo/

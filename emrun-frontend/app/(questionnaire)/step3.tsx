@@ -107,7 +107,7 @@ export default function Step3Screen() {
           {/* Headline */}
           <View style={styles.headlineContainer}>
             <Text style={styles.headline}>
-              Votre <Text style={styles.headlineHighlight}>morphologie</Text>
+              Vos <Text style={styles.headlineHighlight}>informations</Text>
             </Text>
             <Text style={styles.subheadline}>
               Ces informations nous aident à personnaliser votre plan d'entraînement.

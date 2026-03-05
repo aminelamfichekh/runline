@@ -53,9 +53,10 @@ export function WheelPicker<T = string | number>({
   );
 
   // WheelPicker requires visibleItemCount to be an odd number
+  // Height MUST equal visibleRows * itemHeight exactly for proper centering
   const calculatedRows = wheelHeight ? Math.round(wheelHeight / itemHeight) : DEFAULT_VISIBLE_ROWS;
   const visibleRows = calculatedRows % 2 === 0 ? calculatedRows + 1 : calculatedRows;
-  const height = wheelHeight ?? visibleRows * itemHeight;
+  const height = visibleRows * itemHeight;
 
   // Fire initial callback to ensure value is stored
   useEffect(() => {

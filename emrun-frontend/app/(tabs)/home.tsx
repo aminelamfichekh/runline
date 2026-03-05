@@ -21,6 +21,7 @@ import { plansApi } from '@/lib/api/plans';
 import { colors } from '@/constants/colors';
 import { isPlanReady } from '@/types/plan';
 import type { Plan } from '@/types/plan';
+import { BottomNav } from '@/components/ui/BottomNav';
 
 // Month names in French
 const MONTHS = [
@@ -301,33 +302,7 @@ export default function HomeScreen() {
       </ScrollView>
 
       {/* Bottom Navigation */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navItem}>
-          <Ionicons name="home" size={26} color={colors.accent.blue} />
-          <Text style={[styles.navLabel, styles.navLabelActive]}>Accueil</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => router.push('/(tabs)/plans')}
-        >
-          <View style={styles.navIconContainer}>
-            <Ionicons name="calendar" size={26} color={colors.text.tertiary} />
-          </View>
-          <Text style={styles.navLabel}>Plans</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => router.push('/(tabs)/profile')}
-        >
-          <Ionicons name="person" size={26} color={colors.text.tertiary} />
-          <Text style={styles.navLabel}>Profil</Text>
-        </TouchableOpacity>
-
-        {/* iOS Home Indicator */}
-        <View style={styles.homeIndicator} />
-      </View>
+      <BottomNav activeTab="home" />
     </View>
   );
 }
@@ -691,46 +666,4 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  // Bottom Navigation
-  bottomNav: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    backgroundColor: colors.primary.dark,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.08)',
-    paddingTop: 12,
-    paddingBottom: 24,
-    paddingHorizontal: 24,
-  },
-  navItem: {
-    alignItems: 'center',
-    gap: 4,
-  },
-  navIconContainer: {
-    position: 'relative',
-  },
-  navLabel: {
-    fontSize: 10,
-    fontWeight: '500',
-    color: colors.text.tertiary,
-  },
-  navLabelActive: {
-    color: colors.accent.blue,
-    fontWeight: '700',
-  },
-  homeIndicator: {
-    position: 'absolute',
-    bottom: 8,
-    left: '50%',
-    marginLeft: -60,
-    width: 120,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-  },
 });

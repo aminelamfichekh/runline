@@ -123,7 +123,6 @@ export default function QuestionnaireLayout() {
           <Stack.Screen name="step7" />
           <Stack.Screen name="step8" />
           <Stack.Screen name="step9" />
-          <Stack.Screen name="preview" />
         </Stack>
       </SafeAreaView>
     </QuestionnaireProvider>

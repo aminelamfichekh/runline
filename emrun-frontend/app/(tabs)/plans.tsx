@@ -20,6 +20,7 @@ import { colors } from '@/constants/colors';
 import { plansApi } from '@/lib/api/plans';
 import type { Plan, PlanWeek, PlanDay } from '@/types/plan';
 import { isPlanReady, SESSION_TYPE_COLORS } from '@/types/plan';
+import { BottomNav } from '@/components/ui/BottomNav';
 
 // Month names in French
 const MONTHS = [
@@ -191,7 +192,7 @@ export default function PlansScreen() {
           </Text>
           <Text style={styles.emptySubtitle}>
             {plan?.status === 'generating'
-              ? 'Votre plan personnalisé est en cours de création par notre IA. Cela peut prendre quelques minutes.'
+              ? 'Votre plan personnalisé est en cours de création. Cela peut prendre quelques minutes.'
               : plan?.status === 'pending'
               ? 'Votre plan sera généré très prochainement.'
               : plan?.status === 'failed'
@@ -207,30 +208,7 @@ export default function PlansScreen() {
         </View>
 
         {/* Bottom Navigation */}
-        <View style={styles.bottomNav}>
-          <TouchableOpacity
-            style={styles.navItem}
-            onPress={() => router.push('/(tabs)/home')}
-          >
-            <Ionicons name="home" size={26} color={colors.text.tertiary} />
-            <Text style={styles.navLabel}>Accueil</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.navItem}>
-            <Ionicons name="calendar" size={26} color={colors.accent.blue} />
-            <Text style={[styles.navLabel, styles.navLabelActive]}>Plans</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.navItem}
-            onPress={() => router.push('/(tabs)/profile')}
-          >
-            <Ionicons name="person" size={26} color={colors.text.tertiary} />
-            <Text style={styles.navLabel}>Profil</Text>
-          </TouchableOpacity>
-
-          <View style={styles.homeIndicator} />
-        </View>
+        <BottomNav activeTab="plans" />
       </View>
     );
   }
@@ -266,7 +244,7 @@ export default function PlansScreen() {
             Vos semaines de <Text style={styles.titleHighlight}>{currentMonthLower}</Text>
           </Text>
           <Text style={styles.subtitle}>
-            Préparez-vous à dépasser vos limites ce mois-ci.
+            Préparez-vous à prendre un maximum de plaisir ce mois-ci.
           </Text>
         </View>
 
@@ -330,7 +308,7 @@ export default function PlansScreen() {
                         styles.sessionsText,
                         isActive && styles.sessionsTextActive,
                       ]}>
-                        {week.sessionsCount} séances
+                        {week.sessionsCount} sorties
                       </Text>
                     </View>
                   </View>
@@ -379,30 +357,7 @@ export default function PlansScreen() {
       </ScrollView>
 
       {/* Bottom Navigation */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => router.push('/(tabs)/home')}
-        >
-          <Ionicons name="home" size={26} color={colors.text.tertiary} />
-          <Text style={styles.navLabel}>Accueil</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.navItem}>
-          <Ionicons name="calendar" size={26} color={colors.accent.blue} />
-          <Text style={[styles.navLabel, styles.navLabelActive]}>Plans</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => router.push('/(tabs)/profile')}
-        >
-          <Ionicons name="person" size={26} color={colors.text.tertiary} />
-          <Text style={styles.navLabel}>Profil</Text>
-        </TouchableOpacity>
-
-        <View style={styles.homeIndicator} />
-      </View>
+      <BottomNav activeTab="plans" />
     </View>
   );
 }
@@ -657,43 +612,4 @@ const styles = StyleSheet.create({
     backgroundColor: '#10B981',
   },
 
-  // Bottom Navigation
-  bottomNav: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    backgroundColor: colors.primary.dark,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.08)',
-    paddingTop: 12,
-    paddingBottom: 24,
-    paddingHorizontal: 24,
-  },
-  navItem: {
-    alignItems: 'center',
-    gap: 4,
-  },
-  navLabel: {
-    fontSize: 10,
-    fontWeight: '500',
-    color: colors.text.tertiary,
-  },
-  navLabelActive: {
-    color: colors.accent.blue,
-    fontWeight: '700',
-  },
-  homeIndicator: {
-    position: 'absolute',
-    bottom: 8,
-    left: '50%',
-    marginLeft: -60,
-    width: 120,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-  },
 });
