@@ -4,12 +4,16 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Services\PaymentService;
+use App\Services\PlanGeneratorService;
+use App\Models\Subscription;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Stripe\StripeClient;
 use App\Models\QuestionnaireSession;
+use Carbon\Carbon;
 
 /**
  * SubscriptionController
@@ -22,7 +26,7 @@ class SubscriptionController extends Controller
     public function __construct(
         protected PaymentService $paymentService
     ) {
-        $this->middleware('auth:api');
+        // Middleware is applied in routes/api.php for Laravel 12
     }
 
     /**
@@ -74,9 +78,10 @@ class SubscriptionController extends Controller
                 ],
             ]);
         } catch (\Exception $e) {
+            Log::error('Failed to get subscription', ['error' => $e->getMessage(), 'user_id' => Auth::id()]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to get subscription: ' . $e->getMessage(),
+                'message' => 'Une erreur est survenue lors de la récupération de l\'abonnement.',
             ], 500);
         }
     }
@@ -123,9 +128,10 @@ class SubscriptionController extends Controller
                 ],
             ]);
         } catch (\Exception $e) {
+            Log::error('Failed to create checkout session', ['error' => $e->getMessage(), 'user_id' => Auth::id()]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create checkout session: ' . $e->getMessage(),
+                'message' => 'Une erreur est survenue lors de la création de la session de paiement.',
             ], 500);
         }
     }
@@ -196,9 +202,10 @@ class SubscriptionController extends Controller
                 ],
             ]);
         } catch (\Exception $e) {
+            Log::error('Failed to create subscription', ['error' => $e->getMessage(), 'user_id' => Auth::id()]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create subscription: ' . $e->getMessage(),
+                'message' => 'Une erreur est survenue lors de la création de l\'abonnement.',
             ], 500);
         }
     }
@@ -266,9 +273,10 @@ class SubscriptionController extends Controller
                 ],
             ]);
         } catch (\Exception $e) {
+            Log::error('Failed to create payment intent', ['error' => $e->getMessage(), 'user_id' => Auth::id()]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create payment intent: ' . $e->getMessage(),
+                'message' => 'Une erreur est survenue lors de la création du paiement.',
             ], 500);
         }
     }
@@ -293,9 +301,10 @@ class SubscriptionController extends Controller
                 ],
             ]);
         } catch (\Exception $e) {
+            Log::error('Failed to get subscription status', ['error' => $e->getMessage(), 'user_id' => Auth::id()]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to get subscription status: ' . $e->getMessage(),
+                'message' => 'Une erreur est survenue lors de la récupération du statut.',
             ], 500);
         }
     }
@@ -319,9 +328,10 @@ class SubscriptionController extends Controller
                 ],
             ]);
         } catch (\Exception $e) {
+            Log::error('Failed to get payment method', ['error' => $e->getMessage(), 'user_id' => Auth::id()]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to get payment method: ' . $e->getMessage(),
+                'message' => 'Une erreur est survenue lors de la récupération du moyen de paiement.',
             ], 500);
         }
     }
@@ -343,9 +353,10 @@ class SubscriptionController extends Controller
                 'data' => $data,
             ]);
         } catch (\Exception $e) {
+            Log::error('Failed to create setup intent', ['error' => $e->getMessage(), 'user_id' => Auth::id()]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create setup intent: ' . $e->getMessage(),
+                'message' => 'Une erreur est survenue.',
             ], 500);
         }
     }
@@ -370,9 +381,114 @@ class SubscriptionController extends Controller
                 ],
             ]);
         } catch (\Exception $e) {
+            Log::error('Failed to cancel subscription', ['error' => $e->getMessage(), 'user_id' => Auth::id()]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to cancel subscription: ' . $e->getMessage(),
+                'message' => 'Une erreur est survenue lors de l\'annulation de l\'abonnement.',
+            ], 500);
+        }
+    }
+
+    /**
+     * DEV ONLY: Skip payment, create test subscription, and trigger plan generation.
+     *
+     * @param Request $request
+     * @param PlanGeneratorService $planGeneratorService
+     * @return JsonResponse
+     */
+    public function skipPayment(Request $request, PlanGeneratorService $planGeneratorService): JsonResponse
+    {
+        // Block in production
+        if (config('app.env') === 'production') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Not available in production',
+            ], 403);
+        }
+
+        try {
+            $user = Auth::user();
+
+            // 1. Create or update test subscription to active
+            $subscription = Subscription::where('user_id', $user->id)->first();
+
+            if (!$subscription) {
+                $subscription = Subscription::create([
+                    'user_id' => $user->id,
+                    'stripe_subscription_id' => 'test_sub_' . uniqid(),
+                    'stripe_customer_id' => 'test_cus_' . uniqid(),
+                    'stripe_price_id' => 'test_price',
+                    'status' => 'active',
+                    'current_period_start' => Carbon::now(),
+                    'current_period_end' => Carbon::now()->addMonth(),
+                ]);
+            } else {
+                $subscription->update([
+                    'status' => 'active',
+                    'current_period_start' => Carbon::now(),
+                    'current_period_end' => Carbon::now()->addMonth(),
+                ]);
+            }
+
+            Log::info('Test subscription created/activated', [
+                'user_id' => $user->id,
+                'subscription_id' => $subscription->id,
+            ]);
+
+            // 2. Trigger plan generation if questionnaire is completed
+            $plan = null;
+            if ($user->profile && $user->profile->questionnaire_completed) {
+                // Delete any existing failed plans so we can regenerate
+                \App\Models\Plan::where('user_id', $user->id)
+                    ->where('status', 'failed')
+                    ->delete();
+
+                // Check if a plan is already generating or completed
+                $existingPlan = \App\Models\Plan::where('user_id', $user->id)
+                    ->whereIn('status', ['pending', 'generating', 'completed'])
+                    ->first();
+
+                if (!$existingPlan) {
+                    // Create the plan record
+                    $startDate = \Carbon\Carbon::now()->next(\Carbon\Carbon::MONDAY);
+                    $endDate = $startDate->copy()->addWeeks(4)->subDay();
+
+                    $plan = \App\Models\Plan::create([
+                        'user_id' => $user->id,
+                        'start_date' => $startDate,
+                        'end_date' => $endDate,
+                        'type' => 'initial',
+                        'status' => 'pending',
+                        'content' => [],
+                    ]);
+
+                    // Run synchronously instead of queuing (no queue:work needed)
+                    \App\Jobs\GeneratePlanJob::dispatchSync($plan, 'initial');
+                    $plan->refresh();
+
+                    Log::info('Plan generated synchronously via skip-payment', [
+                        'user_id' => $user->id,
+                        'plan_id' => $plan->id,
+                        'status' => $plan->status,
+                    ]);
+                } else {
+                    $plan = $existingPlan;
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Test subscription activated and plan generation triggered',
+                'data' => [
+                    'subscription' => $subscription,
+                    'plan' => $plan,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Skip payment failed', ['error' => $e->getMessage(), 'user_id' => Auth::id()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed: ' . $e->getMessage(),
             ], 500);
         }
     }

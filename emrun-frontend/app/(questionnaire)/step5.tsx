@@ -111,7 +111,7 @@ export default function Step5Screen() {
               data={volumeOptions}
               onValueChange={setLastWeekVolume}
               itemHeight={48}
-              wheelHeight={264}
+              wheelHeight={240}
               fontSize={18}
               highlightColor={colors.accent.blue}
               initialIndex={lastWeekInitialIndex >= 0 ? lastWeekInitialIndex : DEFAULT_VOLUME_INDEX}
@@ -126,7 +126,7 @@ export default function Step5Screen() {
               data={volumeOptions}
               onValueChange={setTypicalVolume}
               itemHeight={48}
-              wheelHeight={264}
+              wheelHeight={240}
               fontSize={18}
               highlightColor={colors.accent.blue}
               initialIndex={typicalInitialIndex >= 0 ? typicalInitialIndex : DEFAULT_VOLUME_INDEX + 2}

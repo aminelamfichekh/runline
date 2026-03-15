@@ -91,7 +91,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
       }
     } catch (error) {
-      console.error('Failed to restore auth session:', error);
       await clearTokens();
       setUser(null);
       setProfile(null);
@@ -141,7 +140,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       await authApi.logout();
     } catch (error) {
-      console.error('Logout error:', error);
     } finally {
       setUser(null);
       setProfile(null);
@@ -156,7 +154,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const response = await authApi.getCurrentUser();
       setUser(response.user);
     } catch (error) {
-      console.error('Failed to refresh user:', error);
       throw error;
     }
   }, []);
@@ -172,7 +169,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setProfile(response.profile);
       setLastProfileFetch(Date.now());
     } catch (error) {
-      console.error('Failed to refresh profile:', error);
     }
   }, [lastProfileFetch]);
 
@@ -187,7 +183,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setActivePlan(response.plan);
       setLastPlanFetch(Date.now());
     } catch (error) {
-      console.error('Failed to refresh plan:', error);
     }
   }, [lastPlanFetch]);
 

@@ -1,11 +1,16 @@
 /**
  * WheelPicker - Uses @quidone/react-native-wheel-picker for proper scroll handling
- * Simple bold text for selected value
+ * Selected (center) value is bold dark blue; others are white.
+ * Uses Animated color interpolation driven by scroll offset for fluid transitions.
  */
 
 import React, { useCallback, useRef, useState, useEffect } from 'react';
-import { View, StyleSheet, ViewStyle, Platform } from 'react-native';
-import NativeWheelPicker from '@quidone/react-native-wheel-picker';
+import { View, Animated, StyleSheet, ViewStyle, Platform } from 'react-native';
+import NativeWheelPicker, {
+  useScrollContentOffset,
+  usePickerItemHeight,
+} from '@quidone/react-native-wheel-picker';
+import type { RenderItemProps, PickerItem } from '@quidone/react-native-wheel-picker';
 import * as Haptics from 'expo-haptics';
 
 export interface WheelPickerOption<T = string | number> {
@@ -31,6 +36,59 @@ const DEFAULT_VISIBLE_ROWS = 5;
 const DEFAULT_FONT_SIZE = 18;
 const CONTAINER_BG = 'rgba(26, 38, 50, 0.8)';
 const BORDER_COLOR = 'rgba(255, 255, 255, 0.08)';
+const SELECTED_COLOR = '#328ce7';
+const NORMAL_COLOR = 'rgba(150, 170, 190, 0.5)';
+
+/**
+ * Custom item component that interpolates text color based on scroll position.
+ * Center item = bold blue, others = faded white. Fully scroll-driven, no state updates.
+ */
+function AnimatedPickerItem({ item, index, fontSize }: {
+  item: PickerItem<any>;
+  index: number;
+  fontSize: number;
+}) {
+  const scrollOffset = useScrollContentOffset();
+  const itemHeight = usePickerItemHeight();
+
+  // Interpolate color: when this item is at center position, show blue; otherwise white
+  const centerOffset = index * itemHeight;
+  const color = scrollOffset.interpolate({
+    inputRange: [
+      centerOffset - itemHeight,
+      centerOffset,
+      centerOffset + itemHeight,
+    ],
+    outputRange: [NORMAL_COLOR, SELECTED_COLOR, NORMAL_COLOR],
+    extrapolate: 'clamp',
+  });
+
+  // Interpolate scale: slightly larger when selected
+  const scale = scrollOffset.interpolate({
+    inputRange: [
+      centerOffset - itemHeight,
+      centerOffset,
+      centerOffset + itemHeight,
+    ],
+    outputRange: [1, 1.15, 1],
+    extrapolate: 'clamp',
+  });
+
+  return (
+    <Animated.Text
+      style={{
+        textAlign: 'center',
+        lineHeight: itemHeight,
+        fontWeight: '700',
+        fontSize,
+        color,
+        transform: [{ scale }],
+      }}
+    >
+      {item.label ?? item.value}
+    </Animated.Text>
+  );
+}
 
 export function WheelPicker<T = string | number>({
   data,
@@ -92,6 +150,11 @@ export function WheelPicker<T = string | number>({
     label: unitLabel ? `${item.label} ${unitLabel}` : item.label,
   }));
 
+  // Custom renderItem using animated color interpolation
+  const renderItem = ({ item, index }: RenderItemProps<PickerItem<any>>) => (
+    <AnimatedPickerItem item={item} index={index} fontSize={fontSize} />
+  );
+
   return (
     <View
       style={[
@@ -109,16 +172,11 @@ export function WheelPicker<T = string | number>({
         itemHeight={itemHeight}
         visibleItemCount={visibleRows}
         width="100%"
-        itemTextStyle={{
-          fontSize: fontSize,
-          color: 'rgba(150, 170, 190, 0.5)',
-          fontWeight: '400',
-        }}
+        renderItem={renderItem}
         overlayItemStyle={{
-          fontSize: fontSize + 4,
-          color: '#ffffff',
-          fontWeight: '800',
-        } as any}
+          backgroundColor: 'rgba(50, 140, 231, 0.06)',
+          borderRadius: 8,
+        }}
         style={styles.picker}
       />
     </View>

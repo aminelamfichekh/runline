@@ -18,7 +18,8 @@ import { TextInputField } from '@/components/forms/TextInputField';
 import { Button } from '@/components/ui/Button';
 import { registerSchema, type RegisterFormData } from '@/lib/validation/authSchema';
 import { authApi } from '@/lib/api/auth';
-import { QUESTIONNAIRE_EMAIL, QUESTIONNAIRE_SESSION_UUID } from '@/lib/storage/keys';
+import { KeyboardDoneBar } from '@/components/ui/KeyboardDoneBar';
+import { QUESTIONNAIRE_EMAIL, QUESTIONNAIRE_NAME, QUESTIONNAIRE_SESSION_UUID } from '@/lib/storage/keys';
 
 /**
  * CreateAccountAfterPricingScreen
@@ -42,12 +43,18 @@ export default function CreateAccountAfterPricingScreen() {
     mode: 'onChange',
   });
 
-  // Pre-fill email from questionnaire (Step 2) so the user
-  // doesn't have to type it again here.
+  // Pre-fill name and email from questionnaire (Step 2) so the user
+  // doesn't have to type them again here.
   useEffect(() => {
-    const loadEmail = async () => {
+    const loadSavedFields = async () => {
       try {
-        const storedEmail = await AsyncStorage.getItem(QUESTIONNAIRE_EMAIL);
+        const [storedName, storedEmail] = await Promise.all([
+          AsyncStorage.getItem(QUESTIONNAIRE_NAME),
+          AsyncStorage.getItem(QUESTIONNAIRE_EMAIL),
+        ]);
+        if (storedName) {
+          setValue('name', storedName, { shouldValidate: true });
+        }
         if (storedEmail) {
           setValue('email', storedEmail, { shouldValidate: true });
         }
@@ -55,7 +62,7 @@ export default function CreateAccountAfterPricingScreen() {
         // ignore, user can still type manually if something goes wrong
       }
     };
-    loadEmail();
+    loadSavedFields();
   }, [setValue]);
 
   const onSubmit = async (data: RegisterFormData) => {
@@ -243,10 +250,17 @@ export default function CreateAccountAfterPricingScreen() {
             disabled={isLoading}
           />
           <Text style={styles.footerNote}>
-            En cliquant, vous acceptez nos conditions d&apos;utilisation
+            En cliquant, vous acceptez nos{' '}
+            <Text
+              style={styles.footerLink}
+              onPress={() => router.push('/(legal)/terms')}
+            >
+              conditions d'utilisation
+            </Text>
           </Text>
         </View>
       </ScrollView>
+      <KeyboardDoneBar />
     </KeyboardAvoidingView>
   );
 }
@@ -372,6 +386,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+  footerLink: {
+    color: colors.accent.blue,
+    textDecorationLine: 'underline',
   },
 });
 

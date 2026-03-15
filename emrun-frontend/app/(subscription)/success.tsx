@@ -1,8 +1,9 @@
-import { useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { paymentService } from '@/src/services/payment.service';
 import {
   QUESTIONNAIRE_SESSION_UUID,
   QUESTIONNAIRE_PENDING_ATTACH,
@@ -18,10 +19,13 @@ const TEXT_PRIMARY = '#ffffff';
 const TEXT_SECONDARY = '#94a3b8';
 const TEXT_MUTED = '#64748b';
 
+type ConfirmState = 'polling' | 'confirmed' | 'timeout';
+
 export default function SuccessScreen() {
   const router = useRouter();
+  const [confirmState, setConfirmState] = useState<ConfirmState>('polling');
 
-  // Clear all temporary questionnaire/signup data on success
+  // Clear temporary questionnaire/signup data
   useEffect(() => {
     const clearTemporaryData = async () => {
       try {
@@ -32,11 +36,45 @@ export default function SuccessScreen() {
           QUESTIONNAIRE_EMAIL,
         ]);
       } catch {
-        // Non-critical: stale data will be ignored on next session
+        // Non-critical
       }
     };
     clearTemporaryData();
   }, []);
+
+  // Poll backend to confirm subscription is actually active
+  useEffect(() => {
+    let cancelled = false;
+    const maxAttempts = 10;
+    const interval = 3000;
+
+    const pollStatus = async () => {
+      for (let i = 0; i < maxAttempts; i++) {
+        if (cancelled) return;
+        try {
+          const data = await paymentService.getSubscriptionStatus();
+          const status = data?.status;
+          if (status === 'active' || status === 'trialing') {
+            if (!cancelled) setConfirmState('confirmed');
+            return;
+          }
+        } catch {
+          // Continue polling
+        }
+        if (i < maxAttempts - 1) {
+          await new Promise(resolve => setTimeout(resolve, interval));
+        }
+      }
+      // After all attempts, show confirmed anyway (webhook may still be in transit)
+      // Better UX than showing an error after the user already paid
+      if (!cancelled) setConfirmState('confirmed');
+    };
+
+    pollStatus();
+    return () => { cancelled = true; };
+  }, []);
+
+  const isReady = confirmState === 'confirmed';
 
   return (
     <View style={styles.container}>
@@ -52,59 +90,74 @@ export default function SuccessScreen() {
           <View style={styles.iconGlow} />
           <View style={styles.iconRing}>
             <View style={styles.iconCircle}>
-              <MaterialCommunityIcons name="check" size={36} color={TEXT_PRIMARY} />
+              {isReady ? (
+                <MaterialCommunityIcons name="check" size={36} color={TEXT_PRIMARY} />
+              ) : (
+                <ActivityIndicator size="large" color={TEXT_PRIMARY} />
+              )}
             </View>
           </View>
         </View>
 
         {/* Title & subtitle */}
-        <Text style={styles.title}>Félicitations !</Text>
-        <Text style={styles.subtitle}>Votre abonnement est désormais actif.</Text>
+        <Text style={styles.title}>
+          {isReady ? 'Félicitations !' : 'Confirmation...'}
+        </Text>
+        <Text style={styles.subtitle}>
+          {isReady
+            ? 'Votre abonnement est désormais actif.'
+            : 'Vérification de votre paiement en cours...'}
+        </Text>
 
-        {/* Info card */}
-        <View style={styles.card}>
-          <View style={styles.cardRow}>
-            <MaterialCommunityIcons name="clipboard-text-outline" size={22} color={ACCENT} style={styles.cardIcon} />
-            <Text style={styles.cardText}>
-              Consultez votre plan d'entraînement personnalisé dans l'onglet Plans.
-            </Text>
+        {/* Info card - only show when confirmed */}
+        {isReady && (
+          <View style={styles.card}>
+            <View style={styles.cardRow}>
+              <MaterialCommunityIcons name="clipboard-text-outline" size={22} color={ACCENT} style={styles.cardIcon} />
+              <Text style={styles.cardText}>
+                Consultez votre plan d'entraînement personnalisé dans l'onglet Plans.
+              </Text>
+            </View>
+            <View style={styles.cardRow}>
+              <MaterialCommunityIcons name="account-edit-outline" size={22} color={ACCENT} style={styles.cardIcon} />
+              <Text style={styles.cardText}>
+                Modifiez votre profil à tout moment dans l'onglet Profil.
+              </Text>
+            </View>
+            <View style={styles.cardRow}>
+              <MaterialCommunityIcons name="chart-line" size={22} color={ACCENT} style={styles.cardIcon} />
+              <Text style={styles.cardText}>
+                Suivez votre progression dans l'onglet Accueil.
+              </Text>
+            </View>
           </View>
-          <View style={styles.cardRow}>
-            <MaterialCommunityIcons name="account-edit-outline" size={22} color={ACCENT} style={styles.cardIcon} />
-            <Text style={styles.cardText}>
-              Modifiez votre profil à tout moment dans l'onglet Profil.
-            </Text>
-          </View>
-          <View style={styles.cardRow}>
-            <MaterialCommunityIcons name="chart-line" size={22} color={ACCENT} style={styles.cardIcon} />
-            <Text style={styles.cardText}>
-              Suivez votre progression dans l'onglet Accueil.
-            </Text>
-          </View>
-        </View>
+        )}
 
         {/* Spacer */}
         <View style={{ flex: 1 }} />
 
-        {/* Buttons */}
-        <TouchableOpacity
-          style={styles.primaryButton}
-          onPress={() => router.replace('/(tabs)/plans')}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.primaryButtonText}>Accéder à mon plan</Text>
-        </TouchableOpacity>
+        {/* Buttons - only when confirmed */}
+        {isReady && (
+          <>
+            <TouchableOpacity
+              style={styles.primaryButton}
+              onPress={() => router.replace('/(tabs)/plans')}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.primaryButtonText}>Accéder à mon plan</Text>
+            </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.secondaryButton}
-          onPress={() => router.replace('/(tabs)/home')}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.secondaryButtonText}>Aller à l'accueil</Text>
-        </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              onPress={() => router.replace('/(tabs)/home')}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.secondaryButtonText}>Aller à l'accueil</Text>
+            </TouchableOpacity>
 
-        {/* Footer badge */}
-        <Text style={styles.footerBadge}>Runline Premium</Text>
+            <Text style={styles.footerBadge}>Runline Premium</Text>
+          </>
+        )}
       </View>
     </View>
   );

@@ -164,7 +164,18 @@ function CheckoutContent() {
         {__DEV__ && (
           <TouchableOpacity
             style={styles.skipButton}
-            onPress={() => router.replace('/(subscription)/success')}
+            disabled={loading}
+            onPress={async () => {
+              setLoading(true);
+              try {
+                await paymentService.skipPayment();
+                router.replace('/(subscription)/success');
+              } catch (err: any) {
+                Alert.alert('Erreur', err.message || 'Skip payment failed');
+              } finally {
+                setLoading(false);
+              }
+            }}
             activeOpacity={0.8}
           >
             <Text style={styles.skipButtonText}>Passer (test)</Text>

@@ -11,6 +11,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { registerSchema, type RegisterFormData } from '@/lib/validation/authSchema';
 import { TextInputField } from '@/components/forms/TextInputField';
+import { KeyboardDoneBar } from '@/components/ui/KeyboardDoneBar';
 import { Button } from '@/components/ui/Button';
 import { authApi } from '@/lib/api/auth';
 import { QUESTIONNAIRE_SESSION_UUID } from '@/lib/storage/keys';
@@ -32,8 +33,6 @@ export default function RegisterScreen() {
 
   const onSubmit = async (data: RegisterFormData) => {
     setIsLoading(true);
-    console.log('Starting registration with:', { email: data.email, name: data.name });
-    
     try {
       // Récupérer session_uuid depuis AsyncStorage
       let sessionUuid: string | undefined;
@@ -41,10 +40,9 @@ export default function RegisterScreen() {
         const storedUuid = await AsyncStorage.getItem(QUESTIONNAIRE_SESSION_UUID);
         if (storedUuid) {
           sessionUuid = storedUuid;
-          console.log('Found questionnaire session UUID:', sessionUuid);
         }
-      } catch (error) {
-        console.log('No questionnaire session UUID found');
+      } catch {
+        // No session UUID found, continue without it
       }
 
       // Préparer payload avec session_uuid si disponible
@@ -60,7 +58,6 @@ export default function RegisterScreen() {
       }
 
       const response = await authApi.register(registerPayload);
-      console.log('Registration successful:', response);
       setIsLoading(false);
 
       // Rediriger vers profil (questionnaire déjà attaché automatiquement)
@@ -75,14 +72,6 @@ export default function RegisterScreen() {
         );
       }, 500);
     } catch (error: any) {
-      console.error('Registration error:', error);
-      console.error('Error details:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-        stack: error.stack,
-      });
-
       setIsLoading(false);
 
       let errorMessage = 'Échec de la création du compte. Veuillez réessayer.';
@@ -209,6 +198,16 @@ export default function RegisterScreen() {
             />
           </View>
 
+          <Text style={styles.termsNote}>
+            En créant un compte, vous acceptez nos{' '}
+            <Text
+              style={styles.termsLink}
+              onPress={() => router.push('/(legal)/terms')}
+            >
+              conditions d'utilisation
+            </Text>
+          </Text>
+
           <View style={styles.footer}>
             <Text style={styles.footerText}>Vous avez déjà un compte ? </Text>
             <TouchableOpacity onPress={() => router.back()}>
@@ -217,6 +216,7 @@ export default function RegisterScreen() {
           </View>
         </View>
       </ScrollView>
+      <KeyboardDoneBar />
     </KeyboardAvoidingView>
   );
 }
@@ -268,5 +268,18 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#fff',
     fontWeight: '600',
+  },
+  termsNote: {
+    marginTop: 16,
+    marginBottom: 20,
+    fontSize: 10,
+    color: '#999',
+    textAlign: 'center',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  termsLink: {
+    color: '#328ce7',
+    textDecorationLine: 'underline',
   },
 });

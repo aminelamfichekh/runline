@@ -4,16 +4,19 @@
  */
 
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { loginSchema, type LoginFormData } from '@/lib/validation/authSchema';
 import { TextInputField } from '@/components/forms/TextInputField';
+import { KeyboardDoneBar } from '@/components/ui/KeyboardDoneBar';
 import { Button } from '@/components/ui/Button';
 import { authApi } from '@/lib/api/auth';
 import { clearTokens } from '@/lib/utils/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const runlineLogo = require('@/assets/images/runline-logo.jpeg');
 import {
   QUESTIONNAIRE_SESSION_UUID,
   QUESTIONNAIRE_PENDING_ATTACH,
@@ -113,9 +116,7 @@ export default function LoginScreen() {
             </TouchableOpacity>
 
             <View style={styles.brandWrapper}>
-              <View style={styles.brandLogo}>
-                <Text style={styles.brandBolt}>⚡</Text>
-              </View>
+              <Image source={runlineLogo} style={styles.brandLogo} />
               <Text style={styles.brandText}>RUNLINE</Text>
             </View>
 
@@ -177,49 +178,58 @@ export default function LoginScreen() {
             />
           </View>
 
-          {/* No "continuer avec" / social section as requested */}
-          {/* No sign up link - login page is only for existing users */}
-          {/* Users who want to create an account should go through the questionnaire flow */}
-
-          {/* Debug / recovery action: clear tokens and questionnaire state */}
-          <View style={styles.debugFooter}>
-            <TouchableOpacity
-              onPress={async () => {
-                try {
-                  await clearTokens();
-                  await AsyncStorage.multiRemove([
-                    QUESTIONNAIRE_SESSION_UUID,
-                    QUESTIONNAIRE_PENDING_ATTACH,
-                    QUESTIONNAIRE_DRAFT,
-                  ]);
-                  Alert.alert(
-                    'Session réinitialisée',
-                    'Toutes les données de connexion et du questionnaire ont été effacées.',
-                    [
-                      {
-                        text: 'OK',
-                        onPress: () => router.replace('/'),
-                      },
-                    ]
-                  );
-                } catch (error: any) {
-                  console.error('Reset session error:', error);
-                  Alert.alert(
-                    'Erreur',
-                    `Échec de la réinitialisation de la session : ${
-                      error?.message || 'Erreur inconnue'
-                    }. Veuillez réessayer.`
-                  );
-                }
-              }}
+          <Text style={styles.termsNote}>
+            En vous connectant, vous acceptez nos{' '}
+            <Text
+              style={styles.termsLink}
+              onPress={() => router.push('/(legal)/terms')}
             >
-              <Text style={styles.debugText}>
-                Réinitialiser la session (effacer connexion & questionnaire)
-              </Text>
-            </TouchableOpacity>
-          </View>
+              conditions d'utilisation
+            </Text>
+            {' '}et notre politique de confidentialité.
+          </Text>
+
+          {/* Debug / recovery action - only in development */}
+          {__DEV__ && (
+            <View style={styles.debugFooter}>
+              <TouchableOpacity
+                onPress={async () => {
+                  try {
+                    await clearTokens();
+                    await AsyncStorage.multiRemove([
+                      QUESTIONNAIRE_SESSION_UUID,
+                      QUESTIONNAIRE_PENDING_ATTACH,
+                      QUESTIONNAIRE_DRAFT,
+                    ]);
+                    Alert.alert(
+                      'Session réinitialisée',
+                      'Toutes les données de connexion et du questionnaire ont été effacées.',
+                      [
+                        {
+                          text: 'OK',
+                          onPress: () => router.replace('/'),
+                        },
+                      ]
+                    );
+                  } catch (error: any) {
+                    Alert.alert(
+                      'Erreur',
+                      `Échec de la réinitialisation de la session : ${
+                        error?.message || 'Erreur inconnue'
+                      }. Veuillez réessayer.`
+                    );
+                  }
+                }}
+              >
+                <Text style={styles.debugText}>
+                  Réinitialiser la session (effacer connexion & questionnaire)
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       </ScrollView>
+      <KeyboardDoneBar />
     </KeyboardAvoidingView>
   );
 }
@@ -275,14 +285,7 @@ const styles = StyleSheet.create({
   brandLogo: {
     width: 32,
     height: 32,
-    borderRadius: 16,
-    backgroundColor: '#328ce7',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  brandBolt: {
-    color: '#ffffff',
-    fontSize: 18,
+    borderRadius: 10,
   },
   brandText: {
     color: '#ffffff',
@@ -324,6 +327,17 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#328ce7',
     fontWeight: '500',
+  },
+  termsNote: {
+    fontSize: 12,
+    color: '#93adc8',
+    textAlign: 'center',
+    marginTop: 16,
+    lineHeight: 18,
+  },
+  termsLink: {
+    color: '#328ce7',
+    textDecorationLine: 'underline',
   },
   debugFooter: {
     marginTop: 12,

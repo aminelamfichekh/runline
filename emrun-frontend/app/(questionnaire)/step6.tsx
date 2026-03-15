@@ -80,10 +80,10 @@ export default function Step6Screen() {
   }, []);
 
   const handleContinue = async () => {
-    // Clear all running experience fields first
-    setValue('running_experience_weeks', undefined);
-    setValue('running_experience_months', undefined);
-    setValue('running_experience_years', undefined);
+    // Clear all running experience fields first (use null, not undefined, so JSON includes them)
+    setValue('running_experience_weeks', null);
+    setValue('running_experience_months', null);
+    setValue('running_experience_years', null);
 
     if (selectedExperience === 'beginner') {
       setValue('running_experience_period', 'je_commence');

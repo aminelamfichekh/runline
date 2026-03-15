@@ -13,14 +13,16 @@ import {
   StyleSheet,
   Animated,
   Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuestionnaireForm } from '@/hooks/useQuestionnaireForm';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
-import { QUESTIONNAIRE_EMAIL } from '@/lib/storage/keys';
+import { QUESTIONNAIRE_EMAIL, QUESTIONNAIRE_NAME } from '@/lib/storage/keys';
 import { WheelPicker } from '@/components/ui/WheelPicker';
+import { KeyboardDoneBar, KEYBOARD_DONE_ID } from '@/components/ui/KeyboardDoneBar';
 import { colors } from '@/constants/colors';
 import {
   QuestionnaireHeader,
@@ -38,7 +40,7 @@ const ageOptions = Array.from({ length: MAX_AGE - MIN_AGE + 1 }, (_, i) => MIN_A
 }));
 
 // Email validation regex
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL_REGEX = /^[a-zA-Z0-9._%-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
 const validateEmail = (email: string): string | null => {
   if (!email.trim()) return 'L\'email est requis';
@@ -168,11 +170,12 @@ export default function Step2Screen() {
     // Email maps directly
     setValue('email', email);
 
-    // Persist email so we can reuse it on the "Créer un compte" screen
+    // Persist email and name so we can reuse them on the "Créer un compte" screen
     if (email) {
-      AsyncStorage.setItem(QUESTIONNAIRE_EMAIL, email).catch(() => {
-        // Non-blocking: ignore storage errors
-      });
+      AsyncStorage.setItem(QUESTIONNAIRE_EMAIL, email).catch(() => {});
+    }
+    if (name.trim()) {
+      AsyncStorage.setItem(QUESTIONNAIRE_NAME, name.trim()).catch(() => {});
     }
 
     // Split "Nom & Prénom" into first_name / last_name
@@ -209,7 +212,10 @@ export default function Step2Screen() {
   };
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <View style={styles.backgroundGradient} />
 
       <QuestionnaireHeader
@@ -272,6 +278,8 @@ export default function Step2Screen() {
                   selectionColor={colors.accent.blue}
                   cursorColor={colors.accent.blue}
                   underlineColorAndroid="transparent"
+                  returnKeyType="done"
+                  inputAccessoryViewID={Platform.OS === 'ios' ? KEYBOARD_DONE_ID : undefined}
                 />
               </View>
               {emailError && (
@@ -299,6 +307,8 @@ export default function Step2Screen() {
                   selectionColor={colors.accent.blue}
                   cursorColor={colors.accent.blue}
                   underlineColorAndroid="transparent"
+                  returnKeyType="done"
+                  inputAccessoryViewID={Platform.OS === 'ios' ? KEYBOARD_DONE_ID : undefined}
                 />
               </View>
             </View>
@@ -347,7 +357,8 @@ export default function Step2Screen() {
           disabled={!isEmailValid || !name.trim() || !sex}
         />
       </View>
-    </View>
+      <KeyboardDoneBar />
+    </KeyboardAvoidingView>
   );
 }
 

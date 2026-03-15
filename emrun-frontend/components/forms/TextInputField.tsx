@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, TextInput, StyleSheet, TextInputProps } from 'react-native';
+import { View, Text, TextInput, StyleSheet, TextInputProps, Platform } from 'react-native';
+import { KEYBOARD_DONE_ID } from '@/components/ui/KeyboardDoneBar';
 
 interface TextInputFieldProps extends TextInputProps {
   label: string;
@@ -13,6 +14,7 @@ export const TextInputField: React.FC<TextInputFieldProps> = ({
   error,
   required = false,
   helperText,
+  multiline,
   ...textInputProps
 }) => {
   return (
@@ -27,6 +29,10 @@ export const TextInputField: React.FC<TextInputFieldProps> = ({
         selectionColor="#328ce7"
         cursorColor="#328ce7"
         underlineColorAndroid="transparent"
+        returnKeyType={multiline ? 'default' : 'done'}
+        blurOnSubmit={!multiline}
+        multiline={multiline}
+        {...(Platform.OS === 'ios' ? { inputAccessoryViewID: KEYBOARD_DONE_ID } : {})}
         {...textInputProps}
       />
       {helperText && !error && <Text style={styles.helperText}>{helperText}</Text>}

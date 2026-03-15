@@ -13,11 +13,14 @@ import {
   StyleSheet,
   Animated,
   Platform,
+  Keyboard,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuestionnaireForm } from '@/hooks/useQuestionnaireForm';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { KeyboardDoneBar, KEYBOARD_DONE_ID } from '@/components/ui/KeyboardDoneBar';
 import { colors } from '@/constants/colors';
 import {
   QuestionnaireHeader,
@@ -139,9 +142,12 @@ function OptionCard({
               placeholderTextColor={colors.text.tertiary}
               value={inputValue}
               onChangeText={onInputChange}
+              maxLength={500}
               selectionColor={colors.accent.blue}
               cursorColor={colors.accent.blue}
               underlineColorAndroid="transparent"
+              returnKeyType="done"
+              inputAccessoryViewID={Platform.OS === 'ios' ? KEYBOARD_DONE_ID : undefined}
             />
           </View>
         )}
@@ -206,11 +212,15 @@ export default function Step1Screen() {
   };
 
   const handleContinue = async () => {
+    Keyboard.dismiss();
     if (selectedGoal === 'other') {
       setValue('primary_goal_other', otherText);
     }
-    // Save data immediately before navigation to ensure it's persisted
-    await saveNow();
+    try {
+      await saveNow();
+    } catch {
+      // Continue anyway - data is also saved locally
+    }
     router.push('/(questionnaire)/step2');
   };
 
@@ -222,7 +232,10 @@ export default function Step1Screen() {
   ];
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <View style={styles.backgroundGradient} />
 
       <QuestionnaireHeader
@@ -270,7 +283,8 @@ export default function Step1Screen() {
           disabled={!selectedGoal || (selectedGoal === 'other' && !otherText.trim())}
         />
       </View>
-    </View>
+      <KeyboardDoneBar />
+    </KeyboardAvoidingView>
   );
 }
 

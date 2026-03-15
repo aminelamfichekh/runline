@@ -59,8 +59,6 @@ export const authApi = {
    */
   async register(data: RegisterRequest): Promise<AuthResponse> {
     try {
-      console.log('📤 Calling register API with:', { email: data.email, name: data.name });
-
       const response = await apiClient.post<AuthResponse>('/auth/register', data);
 
       // extractData in client.ts unwraps { success: true, data: {...} } → {...}
@@ -73,30 +71,18 @@ export const authApi = {
         authData = authData.data;
       }
 
-      console.log('📥 Register response keys:', Object.keys(authData || {}));
-
       if (!authData?.access_token || !authData?.refresh_token) {
-        console.error('❌ Missing tokens in response:', JSON.stringify(authData));
         throw new Error('Registration response missing tokens');
       }
 
       if (!authData?.user?.id) {
-        console.error('❌ Missing user in response:', JSON.stringify(authData));
         throw new Error('Registration response missing user data');
       }
 
       await storeTokens(authData.access_token, authData.refresh_token);
-      console.log('✅ Tokens stored, user ID:', authData.user.id);
 
       return authData as AuthResponse;
     } catch (error: any) {
-      console.error('❌ Register API error:', {
-        message: error.message,
-        code: error.code,
-        response: error.response?.data,
-        status: error.response?.status,
-      });
-
       // Enhanced error message for network issues
       if (error.code === 'ECONNREFUSED' || error.code === 'ERR_NETWORK' || error.message?.includes('Network') || error.message?.includes('network')) {
         const enhancedError: any = new Error('Cannot connect to server. Please check:\n1. Backend is running (php artisan serve --host=0.0.0.0 --port=8000)\n2. Correct IP address in .env file\n3. Phone and computer on same WiFi');

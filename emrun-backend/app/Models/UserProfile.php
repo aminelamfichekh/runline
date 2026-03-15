@@ -46,6 +46,7 @@ class UserProfile extends Model
         
         // Current Running Status
         'current_weekly_volume_km',
+        'last_week_volume', // Volume from last week (km)
         'current_runs_per_week',
         'available_days',
         
@@ -97,6 +98,7 @@ class UserProfile extends Model
             'weight_kg' => 'integer',
             'race_distance_km' => 'integer',
             'current_weekly_volume_km' => 'integer',
+            'last_week_volume' => 'integer',
             'weekly_frequency' => 'integer', // Legacy
             'average_pace_min_per_km' => 'integer',
             'longest_run_km' => 'integer',

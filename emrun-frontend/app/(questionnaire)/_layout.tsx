@@ -45,7 +45,7 @@ export default function QuestionnaireLayout() {
             await AsyncStorage.setItem(QUESTIONNAIRE_SESSION_UUID, storedUuid);
           } catch (e) {
             // If server is unavailable, we still allow local-only questionnaire
-            console.log('Failed to create questionnaire session on server, using local only.');
+            // Server unavailable, continue with local-only questionnaire
           }
         }
         if (storedUuid) {

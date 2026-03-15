@@ -12,9 +12,11 @@ import {
   StyleSheet,
   Animated,
   Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuestionnaireForm } from '@/hooks/useQuestionnaireForm';
+import { KeyboardDoneBar, KEYBOARD_DONE_ID } from '@/components/ui/KeyboardDoneBar';
 import { colors } from '@/constants/colors';
 import {
   QuestionnaireHeader,
@@ -53,7 +55,10 @@ export default function Step3bScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <View style={styles.backgroundGradient} />
 
       <QuestionnaireHeader
@@ -94,10 +99,14 @@ export default function Step3bScreen() {
               onChangeText={setObjectives}
               multiline
               numberOfLines={4}
+              maxLength={1000}
               textAlignVertical="top"
               selectionColor={colors.accent.blue}
               cursorColor={colors.accent.blue}
               underlineColorAndroid="transparent"
+              returnKeyType="default"
+              blurOnSubmit={false}
+              inputAccessoryViewID={Platform.OS === 'ios' ? KEYBOARD_DONE_ID : undefined}
             />
           </View>
 
@@ -116,10 +125,14 @@ export default function Step3bScreen() {
               onChangeText={setRecords}
               multiline
               numberOfLines={3}
+              maxLength={1000}
               textAlignVertical="top"
               selectionColor={colors.accent.blue}
               cursorColor={colors.accent.blue}
               underlineColorAndroid="transparent"
+              returnKeyType="default"
+              blurOnSubmit={false}
+              inputAccessoryViewID={Platform.OS === 'ios' ? KEYBOARD_DONE_ID : undefined}
             />
           </View>
         </Animated.View>
@@ -128,7 +141,8 @@ export default function Step3bScreen() {
       <View style={styles.footer}>
         <ContinueButton onPress={handleContinue} />
       </View>
-    </View>
+      <KeyboardDoneBar />
+    </KeyboardAvoidingView>
   );
 }
 

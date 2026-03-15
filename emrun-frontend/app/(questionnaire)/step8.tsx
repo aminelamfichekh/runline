@@ -15,11 +15,14 @@ import {
   Platform,
   LayoutAnimation,
   UIManager,
+  Keyboard,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuestionnaireForm } from '@/hooks/useQuestionnaireForm';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { KeyboardDoneBar, KEYBOARD_DONE_ID } from '@/components/ui/KeyboardDoneBar';
 import { colors } from '@/constants/colors';
 import {
   QuestionnaireHeader,
@@ -113,6 +116,9 @@ function LocationCard({ location, isSelected, onToggle, index }: LocationCardPro
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         activeOpacity={1}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: isSelected }}
+        accessibilityLabel={`${location.title} - ${location.subtitle}`}
         style={[styles.locationCard, isSelected && styles.locationCardSelected]}
       >
         <View style={[styles.iconContainer, isSelected && styles.iconContainerSelected]}>
@@ -185,21 +191,28 @@ export default function Step8Screen() {
   };
 
   const handleContinue = async () => {
+    Keyboard.dismiss();
     setValue('training_locations', selectedLocations);
     if (selectedLocations.includes('autre') && otherLocationText.trim()) {
       setValue('other_training_location', otherLocationText.trim());
     } else {
       setValue('other_training_location', undefined);
     }
-    // Save data immediately before navigation to ensure it's persisted
-    await saveNow();
+    try {
+      await saveNow();
+    } catch {
+      // Continue anyway - data is also saved locally
+    }
     router.push('/(questionnaire)/step9');
   };
 
   const showOtherInput = selectedLocations.includes('autre');
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <View style={styles.backgroundGradient} />
 
       <QuestionnaireHeader
@@ -247,9 +260,12 @@ export default function Step8Screen() {
                 placeholderTextColor={colors.text.tertiary}
                 value={otherLocationText}
                 onChangeText={setOtherLocationText}
+                maxLength={500}
                 selectionColor={colors.accent.blue}
                 cursorColor={colors.accent.blue}
                 underlineColorAndroid="transparent"
+                returnKeyType="done"
+                inputAccessoryViewID={Platform.OS === 'ios' ? KEYBOARD_DONE_ID : undefined}
               />
             </View>
           )}
@@ -265,7 +281,8 @@ export default function Step8Screen() {
           }
         />
       </View>
-    </View>
+      <KeyboardDoneBar />
+    </KeyboardAvoidingView>
   );
 }
 

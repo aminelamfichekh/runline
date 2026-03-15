@@ -53,10 +53,11 @@ class ApiClient {
 
     this.instance = axios.create({
       baseURL: API_URL,
-      timeout: 30000,
+      timeout: 120000,
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
+        'Bypass-Tunnel-Reminder': 'true',
       },
       validateStatus: (status) => status < 600,
     });

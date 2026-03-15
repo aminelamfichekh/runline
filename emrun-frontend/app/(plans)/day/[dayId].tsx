@@ -29,6 +29,44 @@ const SESSION_TYPE_ICONS: Record<SessionType, string> = {
   course: 'trophy',
 };
 
+// Exercise icons for renforcement cards (cycling through)
+const EXERCISE_ICONS = ['🦵', '🏋️', '🤸', '⚡', '🔥', '💪', '🎯', '🦴', '🌀', '⬆️'];
+
+const RENFORCEMENT_COLOR = '#328ce7';
+
+/**
+ * Parse renforcement string into structured exercise items.
+ * Format: "Nom (description) — 3 x 10 reps | Nom2 (desc) — 3 x 12 reps"
+ * Matches the parsing logic from index_claude.html demo.
+ */
+function parseRenforcement(raw: string): Array<{ name: string; desc: string; volume: string; icon: string }> {
+  const parts = raw.replace(/\n/g, ' | ').split(' | ').map(s => s.trim()).filter(Boolean);
+  const exercises = parts.filter(p => p.includes('(') || p.includes('—') || /\d+\s*x/i.test(p));
+  if (exercises.length === 0) return [];
+
+  return exercises.map((ex, i) => {
+    const dashIdx = ex.lastIndexOf('—');
+    const volume = dashIdx > -1 ? ex.slice(dashIdx + 1).trim() : '';
+    const rest = dashIdx > -1 ? ex.slice(0, dashIdx).trim() : ex;
+    const parenOpen = rest.indexOf('(');
+    const parenClose = rest.lastIndexOf(')');
+    const name = parenOpen > -1 ? rest.slice(0, parenOpen).trim() : rest;
+    const desc = (parenOpen > -1 && parenClose > parenOpen) ? rest.slice(parenOpen + 1, parenClose) : '';
+    const icon = EXERCISE_ICONS[i % EXERCISE_ICONS.length];
+    return { name: name || ex, desc, volume, icon };
+  });
+}
+
+/** Estimate recovery time based on volume string */
+function getRecoveryTime(volume: string): string {
+  if (/sec/i.test(volume)) return '30 sec repos';
+  const repsMatch = volume.match(/(\d+)\s*reps/i);
+  if (repsMatch) {
+    return parseInt(repsMatch[1]) <= 10 ? '45 sec repos' : '30 sec repos';
+  }
+  return '30 sec repos';
+}
+
 export default function DayDetailScreen() {
   const router = useRouter();
   const { dayId } = useLocalSearchParams<{ dayId: string }>();
@@ -74,7 +112,6 @@ export default function DayDetailScreen() {
 
       setDay(foundDay);
     } catch (err: any) {
-      console.error('Failed to fetch day detail:', err);
       setError(err.message || 'Erreur lors du chargement');
     } finally {
       setLoading(false);
@@ -221,6 +258,47 @@ export default function DayDetailScreen() {
               <Text style={styles.summaryText}>Distance: {day.content.race_distance}</Text>
             </View>
           )}
+
+          {/* Renforcement Section */}
+          {day.content.renforcement && (() => {
+            const exercises = parseRenforcement(day.content.renforcement);
+            if (exercises.length === 0) {
+              // Raw text fallback (no parseable exercises)
+              return (
+                <View style={styles.renforcementSection}>
+                  <View style={styles.renforcementHeader}>
+                    <Text style={styles.renforcementIcon}>💪</Text>
+                    <Text style={styles.renforcementTitle}>RENFORCEMENT</Text>
+                  </View>
+                  <Text style={styles.renforcementRawText}>{day.content.renforcement}</Text>
+                </View>
+              );
+            }
+            return (
+              <View style={styles.renforcementSection}>
+                <View style={styles.renforcementHeader}>
+                  <Text style={styles.renforcementIcon}>💪</Text>
+                  <Text style={styles.renforcementTitle}>RENFORCEMENT</Text>
+                </View>
+                <View style={styles.renforcementList}>
+                  {exercises.map((ex, idx) => (
+                    <View key={idx} style={styles.renforcementItem}>
+                      <Text style={styles.renforcementItemIcon}>{ex.icon}</Text>
+                      <View style={styles.renforcementItemBody}>
+                        <Text style={styles.renforcementItemName}>{ex.name}</Text>
+                        {ex.desc ? <Text style={styles.renforcementItemDesc}>{ex.desc}</Text> : null}
+                        {ex.volume ? (
+                          <View style={styles.renforcementVolumeBadge}>
+                            <Text style={styles.renforcementVolumeText}>🔁 {ex.volume}  ·  ⏸ {getRecoveryTime(ex.volume)}</Text>
+                          </View>
+                        ) : null}
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            );
+          })()}
 
           {/* Tags */}
           <View style={styles.tagsRow}>
@@ -461,6 +539,79 @@ const styles = StyleSheet.create({
     color: colors.text.tertiary,
     lineHeight: 22,
     flex: 1,
+  },
+
+  // Renforcement Section
+  renforcementSection: {
+    marginTop: 24,
+    marginBottom: 24,
+    backgroundColor: RENFORCEMENT_COLOR + '12',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: RENFORCEMENT_COLOR + '30',
+  },
+  renforcementHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 14,
+  },
+  renforcementIcon: {
+    fontSize: 20,
+  },
+  renforcementTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: RENFORCEMENT_COLOR,
+    letterSpacing: 1,
+  },
+  renforcementList: {
+    gap: 12,
+  },
+  renforcementItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    borderRadius: 12,
+    padding: 12,
+    gap: 10,
+  },
+  renforcementItemIcon: {
+    fontSize: 22,
+    marginTop: 2,
+  },
+  renforcementItemBody: {
+    flex: 1,
+  },
+  renforcementItemName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.text.primary,
+    marginBottom: 2,
+  },
+  renforcementItemDesc: {
+    fontSize: 13,
+    fontStyle: 'italic',
+    color: colors.text.tertiary,
+    marginBottom: 6,
+  },
+  renforcementVolumeBadge: {
+    backgroundColor: RENFORCEMENT_COLOR + '20',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    alignSelf: 'flex-start',
+  },
+  renforcementVolumeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: RENFORCEMENT_COLOR,
+  },
+  renforcementRawText: {
+    fontSize: 14,
+    color: colors.text.secondary,
+    lineHeight: 22,
   },
 
   // Tags

@@ -3,37 +3,36 @@ import { apiClient } from '@/lib/api/client';
 export const paymentService = {
   // Get subscription plans/prices
   async getPlans() {
-    const response = await apiClient.get('/subscription/plans');
-    return response.data;
+    return apiClient.get('/subscription/plans');
   },
 
   // Create subscription (returns clientSecret for PaymentSheet)
   async createSubscription(priceId: string) {
-    const response = await apiClient.post('/payment/create-subscription', { priceId });
-    return response.data; // { clientSecret, subscriptionId, ephemeralKey, customerId }
+    return apiClient.post('/payment/create-subscription', { priceId });
   },
 
   // Get current subscription status
   async getSubscriptionStatus() {
-    const response = await apiClient.get('/subscription/status');
-    return response.data;
+    return apiClient.get('/subscription/status');
   },
 
   // Cancel subscription
   async cancelSubscription() {
-    const response = await apiClient.post('/subscription/cancel');
-    return response.data;
+    return apiClient.post('/subscription/cancel');
   },
 
   // Get default payment method details
   async getPaymentMethod() {
-    const response = await apiClient.get('/subscription/payment-method');
-    return response.data;
+    return apiClient.get('/subscription/payment-method');
   },
 
   // Create SetupIntent for updating payment method
   async createSetupIntent() {
-    const response = await apiClient.post('/payment/setup-intent');
-    return response.data;
+    return apiClient.post('/payment/setup-intent');
+  },
+
+  // DEV ONLY: Skip payment, create test subscription + trigger plan generation
+  async skipPayment() {
+    return apiClient.post('/payment/skip', {}, { timeout: 120000 });
   },
 };

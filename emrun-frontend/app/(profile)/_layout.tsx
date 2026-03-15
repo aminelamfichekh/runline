@@ -14,8 +14,10 @@ export default function ProfileLayout() {
       }}
     >
       <Stack.Screen name="info" />
+      <Stack.Screen name="email" />
       <Stack.Screen name="password" />
       <Stack.Screen name="subscription" />
+      <Stack.Screen name="contact" />
     </Stack>
   );
 }

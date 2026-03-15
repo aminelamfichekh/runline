@@ -74,7 +74,7 @@ export function QuestionnaireProvider({ children, initialData, sessionUuid }: Qu
           await questionnaireApi.updateSession(sessionUuidRef.current, values, false);
         } catch (e) {
           // Network/server errors are tolerated; local draft is still available
-          console.log('Failed to autosave questionnaire to server session, using local draft only.');
+          // Network/server errors are tolerated; local draft is still available
         }
       }
     } catch (e) {

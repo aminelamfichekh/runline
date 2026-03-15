@@ -12,9 +12,14 @@ import {
   StyleSheet,
   Animated,
   Platform,
+  Keyboard,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuestionnaireForm } from '@/hooks/useQuestionnaireForm';
+import { questionnaireApi } from '@/lib/api/questionnaireApi';
+import { autosaveService } from '@/lib/services/AutosaveService';
+import { KeyboardDoneBar, KEYBOARD_DONE_ID } from '@/components/ui/KeyboardDoneBar';
 import { colors } from '@/constants/colors';
 import {
   QuestionnaireHeader,
@@ -50,6 +55,7 @@ export default function Step9Screen() {
   }, []);
 
   const handleContinue = async () => {
+    Keyboard.dismiss();
     // Map multi-line injuries text to string[] for backend
     const lines = injuries
       .split('\n')
@@ -68,13 +74,24 @@ export default function Step9Screen() {
       setValue('personal_constraints', undefined);
     }
 
-    // Save data immediately before navigation to ensure it's persisted
-    await saveNow();
+    try {
+      await saveNow();
+      // Mark questionnaire as completed on the server
+      const sessionUuid = autosaveService.getSessionUuid();
+      if (sessionUuid) {
+        await questionnaireApi.updateSession(sessionUuid, form.getValues(), true);
+      }
+    } catch {
+      // Continue anyway - data is also saved locally
+    }
     router.push('/(subscription)/pricing');
   };
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <View style={styles.backgroundGradient} />
 
       <QuestionnaireHeader
@@ -106,6 +123,7 @@ export default function Step9Screen() {
               Blessure(s) passée(s) ou limitation(s) physique(s){' '}
               <Text style={styles.inputOptional}>(Optionnel)</Text>
             </Text>
+            <Text style={styles.inputSubtitle}>Entrez chaque blessure sur une nouvelle ligne</Text>
             <TextInput
               style={styles.textInput}
               placeholder="Ex: Tendinite d'Achille, douleur au genou..."
@@ -114,10 +132,14 @@ export default function Step9Screen() {
               onChangeText={setInjuries}
               multiline
               numberOfLines={4}
+              maxLength={1000}
               textAlignVertical="top"
               selectionColor={colors.accent.blue}
               cursorColor={colors.accent.blue}
               underlineColorAndroid="transparent"
+              returnKeyType="default"
+              blurOnSubmit={false}
+              inputAccessoryViewID={Platform.OS === 'ios' ? KEYBOARD_DONE_ID : undefined}
             />
           </View>
 
@@ -136,10 +158,14 @@ export default function Step9Screen() {
               onChangeText={setConstraints}
               multiline
               numberOfLines={4}
+              maxLength={1000}
               textAlignVertical="top"
               selectionColor={colors.accent.blue}
               cursorColor={colors.accent.blue}
               underlineColorAndroid="transparent"
+              returnKeyType="default"
+              blurOnSubmit={false}
+              inputAccessoryViewID={Platform.OS === 'ios' ? KEYBOARD_DONE_ID : undefined}
             />
           </View>
         </Animated.View>
@@ -148,7 +174,8 @@ export default function Step9Screen() {
       <View style={styles.footer}>
         <ContinueButton onPress={handleContinue} label="Terminer" icon="check" />
       </View>
-    </View>
+      <KeyboardDoneBar />
+    </KeyboardAvoidingView>
   );
 }
 

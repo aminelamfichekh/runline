@@ -37,16 +37,15 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | OpenAI Configuration
+    | Anthropic (Claude) Configuration
     |--------------------------------------------------------------------------
     |
-    | Configuration for OpenAI API integration.
+    | Configuration for Anthropic Claude API integration.
     | Used for generating personalized training plans.
     |
     */
-    'openai' => [
-        'api_key' => env('OPENAI_API_KEY'),
-        'organization' => env('OPENAI_ORGANIZATION'),
+    'anthropic' => [
+        'api_key' => env('ANTHROPIC_API_KEY'),
     ],
 
     /*

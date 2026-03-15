@@ -126,13 +126,16 @@ class PlanController extends Controller
         try {
             $user = Auth::user();
 
-            // Check if user has active subscription
-            $subscription = $user->subscription;
-            if (!$subscription || !$subscription->isActive()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Active subscription required to generate plans',
-                ], 403);
+            // Check if user has active subscription (bypass for testing)
+            $bypassSubscription = config('app.bypass_subscription', false);
+            if (!$bypassSubscription) {
+                $subscription = $user->subscription;
+                if (!$subscription || !$subscription->isActive()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Active subscription required to generate plans',
+                    ], 403);
+                }
             }
 
             // Check if questionnaire is completed

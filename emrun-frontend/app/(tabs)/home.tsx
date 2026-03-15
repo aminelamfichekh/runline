@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   StatusBar,
   RefreshControl,
+  Image,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,6 +23,8 @@ import { colors } from '@/constants/colors';
 import { isPlanReady } from '@/types/plan';
 import type { Plan } from '@/types/plan';
 import { BottomNav } from '@/components/ui/BottomNav';
+
+const runlineLogo = require('@/assets/images/runline-logo.jpeg');
 
 // Month names in French
 const MONTHS = [
@@ -61,7 +64,6 @@ export default function HomeScreen() {
       }).sort((a, b) => new Date(b.end_date!).getTime() - new Date(a.end_date!).getTime());
       setPastPlans(past);
     } catch (err) {
-      console.error('Failed to fetch plan:', err);
       setPlan(null);
     } finally {
       setLoading(false);
@@ -125,9 +127,7 @@ export default function HomeScreen() {
       {/* Top App Bar */}
       <View style={styles.topBar}>
         <View style={styles.brandContainer}>
-          <View style={styles.brandLogo}>
-            <Ionicons name="fitness" size={24} color={colors.accent.blue} />
-          </View>
+          <Image source={runlineLogo} style={styles.brandLogo} />
           <View>
             <Text style={styles.brandName}>RUNLINE</Text>
             <Text style={styles.brandSubtitle}>Coach Running</Text>
@@ -193,9 +193,6 @@ export default function HomeScreen() {
                       </View>
 
                       <View style={styles.activeCardRight}>
-                        <View style={styles.cardImagePlaceholder}>
-                          <Ionicons name="map" size={40} color={colors.accent.blue} />
-                        </View>
                         <View style={styles.arrowButton}>
                           <Ionicons name="arrow-forward" size={20} color="#fff" />
                         </View>
@@ -345,9 +342,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: 'rgba(50, 140, 231, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   brandName: {
     fontSize: 18,
@@ -466,17 +460,8 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   activeCardRight: {
-    width: 100,
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-  },
-  cardImagePlaceholder: {
-    width: 80,
-    height: 80,
-    borderRadius: 12,
-    backgroundColor: 'rgba(50, 140, 231, 0.1)',
     justifyContent: 'center',
-    alignItems: 'center',
+    alignItems: 'flex-end',
   },
   arrowButton: {
     width: 32,

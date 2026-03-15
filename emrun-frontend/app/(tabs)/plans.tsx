@@ -111,7 +111,6 @@ export default function PlansScreen() {
       const response = await plansApi.getActivePlan();
       setPlan(response.plan);
     } catch (err: any) {
-      console.error('Failed to fetch plan:', err);
       setError(err.message || 'Erreur lors du chargement du plan');
     } finally {
       setLoading(false);

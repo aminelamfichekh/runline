@@ -25,9 +25,9 @@ class Plan extends Model
         'content',
         'type',
         'status',
-        'openai_prompt',
-        'openai_response',
-        'openai_tokens_used',
+        'ai_prompt',
+        'ai_response',
+        'ai_tokens_used',
         'error_message',
     ];
 
@@ -42,7 +42,7 @@ class Plan extends Model
             'start_date' => 'date',
             'end_date' => 'date',
             'content' => 'array',
-            'openai_tokens_used' => 'integer',
+            'ai_tokens_used' => 'integer',
         ];
     }
 

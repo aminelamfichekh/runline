@@ -16,6 +16,7 @@ import {
   Animated,
   LayoutAnimation,
   UIManager,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuestionnaireForm } from '@/hooks/useQuestionnaireForm';
@@ -24,6 +25,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Haptics from 'expo-haptics';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { KeyboardDoneBar, KEYBOARD_DONE_ID } from '@/components/ui/KeyboardDoneBar';
 import { colors } from '@/constants/colors';
 import { WheelPicker } from '@/components/ui/WheelPicker';
 import {
@@ -221,7 +223,8 @@ export default function Step3bGoalScreen() {
   // Date: null means not selected yet
   const [raceDate, setRaceDate] = useState<Date | null>(() => {
     if (savedDate) {
-      const d = new Date(savedDate);
+      // Append T12:00:00 to avoid UTC midnight → previous day in local timezone
+      const d = new Date(`${savedDate}T12:00:00`);
       if (!isNaN(d.getTime())) return d;
     }
     return null;
@@ -299,16 +302,17 @@ export default function Step3bGoalScreen() {
     { value: 'marathon', icon: 'trophy-outline', label: 'Marathon' },
   ];
 
-  // Default date for picker (2 months from now)
+  // Default date for picker (today)
   const getPickerDate = () => {
     if (raceDate) return raceDate;
-    const d = new Date();
-    d.setMonth(d.getMonth() + 2);
-    return d;
+    return new Date();
   };
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <View style={styles.backgroundGradient} />
 
       <QuestionnaireHeader
@@ -392,10 +396,14 @@ export default function Step3bGoalScreen() {
                   onChangeText={handleAutreDescriptionChange}
                   multiline
                   numberOfLines={3}
+                  maxLength={500}
                   textAlignVertical="top"
                   selectionColor={colors.accent.blue}
                   cursorColor={colors.accent.blue}
                   underlineColorAndroid="transparent"
+                  returnKeyType="default"
+                  blurOnSubmit={false}
+                  inputAccessoryViewID={Platform.OS === 'ios' ? KEYBOARD_DONE_ID : undefined}
                 />
               </View>
             )}
@@ -414,7 +422,7 @@ export default function Step3bGoalScreen() {
               <View style={styles.goalTimePickerRow}>
                 {/* Hours wheel */}
                 <View style={styles.goalTimeColumn}>
-                  <Text style={styles.goalTimeUnitLabel}>HEURES</Text>
+                  <Text style={styles.goalTimeUnitLabel}>heures</Text>
                   <WheelPicker
                     key={`hours-${distancePreset}`}
                     data={hourOptions}
@@ -429,7 +437,7 @@ export default function Step3bGoalScreen() {
                 <Text style={styles.goalTimeSeparator}>:</Text>
                 {/* Minutes wheel */}
                 <View style={styles.goalTimeColumn}>
-                  <Text style={styles.goalTimeUnitLabel}>MINUTES</Text>
+                  <Text style={styles.goalTimeUnitLabel}>minutes</Text>
                   <WheelPicker
                     key={`minutes-${distancePreset}`}
                     data={minuteOptions}
@@ -444,7 +452,7 @@ export default function Step3bGoalScreen() {
                 <Text style={styles.goalTimeSeparator}>:</Text>
                 {/* Seconds wheel */}
                 <View style={styles.goalTimeColumn}>
-                  <Text style={styles.goalTimeUnitLabel}>SECONDES</Text>
+                  <Text style={styles.goalTimeUnitLabel}>secondes</Text>
                   <WheelPicker
                     key={`seconds-${distancePreset}`}
                     data={secondOptions}
@@ -457,7 +465,7 @@ export default function Step3bGoalScreen() {
                 </View>
               </View>
               <Text style={styles.goalTimeSummary}>
-                Objectif : {goalHours > 0 ? `${goalHours}H` : ''}{String(goalMinutes).padStart(2, '0')}MIN{String(goalSeconds).padStart(2, '0')}SEC
+                Objectif : {goalHours > 0 ? `${goalHours}h ` : ''}{String(goalMinutes).padStart(2, '0')}min {String(goalSeconds).padStart(2, '0')}s
               </Text>
             </View>
           )}
@@ -520,6 +528,7 @@ export default function Step3bGoalScreen() {
               onChange={onDateChange}
               minimumDate={new Date()}
               locale="fr-FR"
+              textColor={colors.text.primary}
             />
           </View>
         </Modal>
@@ -546,7 +555,8 @@ export default function Step3bGoalScreen() {
           }
         />
       </View>
-    </View>
+      <KeyboardDoneBar />
+    </KeyboardAvoidingView>
   );
 }
 
@@ -695,7 +705,7 @@ const styles = StyleSheet.create({
   },
   goalTimePickerRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'center',
     gap: questionnaireTokens.spacing.sm,
   },
@@ -710,12 +720,13 @@ const styles = StyleSheet.create({
     color: colors.text.tertiary,
     textAlign: 'center',
     marginBottom: questionnaireTokens.spacing.sm,
+    textTransform: 'lowercase',
   },
   goalTimeSeparator: {
     fontSize: 24,
     fontWeight: '700',
     color: colors.text.primary,
-    marginTop: 16,
+    marginTop: 24,
   },
   goalTimeSummary: {
     fontSize: 18,

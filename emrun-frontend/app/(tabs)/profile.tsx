@@ -51,11 +51,8 @@ export default function ProfileScreen() {
       setUserName(firstName);
 
       const response = await profileApi.getProfile();
-      console.log('📊 Profile Response:', JSON.stringify(response, null, 2));
       setProfile(response);
     } catch (error: any) {
-      console.error('Profile load error:', error);
-      console.error('Error details:', error.message, error.response?.data);
       if (error.response?.status === 404) {
         setProfile(null);
       }
@@ -229,10 +226,26 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* Account Settings Section */}
+        {/* Account Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Paramètres du compte</Text>
+          <Text style={styles.sectionTitle}>Mon compte</Text>
           <View style={styles.glassPanel}>
+            <TouchableOpacity
+              style={styles.settingsItem}
+              onPress={() => router.push('/(profile)/email')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.settingsItemLeft}>
+                <View style={styles.settingsIcon}>
+                  <Ionicons name="mail" size={18} color={colors.text.secondary} />
+                </View>
+                <Text style={styles.settingsItemText}>Modifier mon email</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.accent.blue} />
+            </TouchableOpacity>
+
+            <View style={styles.settingsDivider} />
+
             <TouchableOpacity
               style={styles.settingsItem}
               onPress={() => router.push('/(profile)/password')}
@@ -259,6 +272,22 @@ export default function ProfileScreen() {
                   <Ionicons name="card" size={18} color={colors.text.secondary} />
                 </View>
                 <Text style={styles.settingsItemText}>Gérer mon abonnement</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.accent.blue} />
+            </TouchableOpacity>
+
+            <View style={styles.settingsDivider} />
+
+            <TouchableOpacity
+              style={styles.settingsItem}
+              onPress={() => router.push('/(profile)/contact')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.settingsItemLeft}>
+                <View style={styles.settingsIcon}>
+                  <Ionicons name="chatbubble-ellipses-outline" size={18} color={colors.text.secondary} />
+                </View>
+                <Text style={styles.settingsItemText}>Contactez-nous</Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color={colors.accent.blue} />
             </TouchableOpacity>
@@ -355,7 +384,6 @@ const styles = StyleSheet.create({
   // Scroll View
   scrollView: {
     flex: 1,
-    zIndex: 10,
   },
   scrollContent: {
     paddingHorizontal: 24,

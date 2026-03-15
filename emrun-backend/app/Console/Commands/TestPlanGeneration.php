@@ -23,7 +23,7 @@ class TestPlanGeneration extends Command
     protected $signature = 'test:plan-generation
                             {--user= : Use existing user ID}
                             {--email=test@runline.app : Email for new test user}
-                            {--skip-openai : Skip OpenAI call and use mock data}
+                            {--skip-ai : Skip AI call and use mock data}
                             {--sync : Run synchronously instead of queued}
                             {--cleanup : Remove test data after showing results}';
 
@@ -57,7 +57,7 @@ class TestPlanGeneration extends Command
         $this->info('');
         $this->info('--- Generating Plan ---');
 
-        if ($this->option('skip-openai')) {
+        if ($this->option('skip-ai')) {
             $plan = $this->createMockPlan($user, $planGeneratorService);
             $this->info("Plan created with MOCK data (ID: {$plan->id})");
         } else {
@@ -318,7 +318,7 @@ class TestPlanGeneration extends Command
                 ['Start Date', $plan->start_date?->format('d/m/Y') ?? 'N/A'],
                 ['End Date', $plan->end_date?->format('d/m/Y') ?? 'N/A'],
                 ['Weeks', isset($plan->content['weeks']) ? count($plan->content['weeks']) : 0],
-                ['Tokens Used', $plan->openai_tokens_used ?? 'N/A'],
+                ['Tokens Used', $plan->ai_tokens_used ?? 'N/A'],
                 ['Created', $plan->created_at->format('d/m/Y H:i')],
             ]
         );

@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Log;
  * PlanGeneratorService
  *
  * Handles all plan generation-related business logic.
- * Manages when plans should be generated and prepares data for OpenAI.
+ * Manages when plans should be generated and prepares data for Claude AI.
  */
 class PlanGeneratorService
 {
@@ -52,9 +52,10 @@ class PlanGeneratorService
         // Calculate start date: First Monday after today
         $startDate = $this->getNextMonday(Carbon::now());
 
-        // Calculate end date: Always 4 full weeks (28 days) from start date
-        // This guarantees every subscriber gets a full plan regardless of when in the month they sign up
-        $endDate = $startDate->copy()->addWeeks(4)->subDay();
+        // Calculate end date: Sunday before the first Monday of next month
+        // This aligns the initial plan with the monthly subscription cycle —
+        // the initial plan fills the gap until the first monthly plan kicks in.
+        $endDate = $this->getSundayBeforeNextMonthFirstMonday($startDate);
 
         $plan = Plan::create([
             'user_id' => $user->id,
@@ -239,7 +240,7 @@ class PlanGeneratorService
     }
 
     /**
-     * Build the OpenAI prompt for plan generation.
+     * Build the AI prompt for plan generation.
      *
      * @param Plan $plan
      * @param string $type 'initial' or 'monthly'
@@ -422,8 +423,32 @@ class PlanGeneratorService
     {
         $period = $profile->running_experience_period;
 
+        // Cross-reference: if period says "je_commence" but years/months/weeks are set,
+        // use the actual experience data instead (questionnaire data mismatch)
+        if ($period === 'je_commence' || $period === 'je_reprends') {
+            if (!empty($profile->running_experience_years)) {
+                $years = (int) $profile->running_experience_years;
+                if ($years > 0) {
+                    return "{$years} ans d'expérience";
+                }
+            }
+            if (!empty($profile->running_experience_months)) {
+                $months = (int) $profile->running_experience_months;
+                if ($months > 0) {
+                    return "{$months} mois d'expérience";
+                }
+            }
+            if (!empty($profile->running_experience_weeks)) {
+                $weeks = (int) $profile->running_experience_weeks;
+                if ($weeks > 0) {
+                    return "{$weeks} semaines d'expérience";
+                }
+            }
+        }
+
         $levels = [
             'je_commence' => 'Débutant (je commence)',
+            'je_reprends' => 'Reprise (je reprends)',
             '1_4_semaines' => $profile->running_experience_weeks ? "{$profile->running_experience_weeks} semaines" : '1 à 4 semaines',
             '1_11_mois' => $profile->running_experience_months ? "{$profile->running_experience_months} mois" : '1 à 11 mois',
             '1_10_ans' => $profile->running_experience_years ? "{$profile->running_experience_years} ans" : '1 à 10 ans',
@@ -573,174 +598,19 @@ class PlanGeneratorService
         $fullName = trim(($profile->first_name ?? '') . ' ' . ($profile->last_name ?? ''));
         $availableDays = $this->formatAvailableDaysFr($profile->available_days);
         $unavailableDays = implode(', ', $this->getUnavailableDays($profile->available_days)) ?: 'Aucun';
+        $weekStructure = $this->buildWeekStructureSection($plan);
+        $weeks = $this->calculateWeeks($plan->start_date, $plan->end_date);
+        $totalWeeks = count($weeks);
 
-        $prompt = <<<PROMPT
-0. RÔLE & MISSION DU MODÈLE
-Tu es un expert en coaching running pour athlètes amateurs.
-Ta mission : générer un plan d'entraînement complet, progressif, 100 % personnalisé, basé sur les meilleures pratiques scientifiques.
-L'objectif est de construire une planification cohérente, logique, utile, motivante et sécurisée, adaptée au type d'objectif déclaré par l'athlète (préparer une/des courses, commencer la course à pied, reprendre la course à pied ou autre).
-
-1. RÉFÉRENCES SCIENTIFIQUES (OBLIGATOIRES)
-Tu dois toujours t'appuyer sur les références suivantes :
-- Jack Daniels' Running Formula (zones, progressivité, équilibre charge/récupération)
-- Does Polarized Training Improve Performance in Recreational Runners?
-- Polarized and Pyramidal Training Intensity Distributions in Distance Running
-Tu utilises intelligemment l'entraînement polarisé ou pyramidal selon le profil de l'athlète.
-
-2. LOGIQUE GLOBALE D'ENTRAÎNEMENT (NON NÉGOCIABLE)
-Chaque mois, chaque semaine et chaque séance doit être :
-- logique
-- utile
-- intégrée dans un cycle structuré
-- cohérente avec la phase de préparation
-
-Le type de séance choisi chaque semaine (VMA courte, tempo, seuil, spécifique, etc.) doit toujours avoir du sens par rapport à :
-- l'objectif principal déclaré
-- la distance et la date de l'objectif uniquement si une course est renseignée
-- la phase de préparation dans laquelle se trouve l'athlète
-- le profil de l'athlète
-
-Ne propose jamais une séance qui ne correspond pas à cette logique d'enchaînement.
-Le fond peut rester identique, mais le format des séances doit varier pour éviter la monotonie et rendre le plan ludique.
-
-Pour toute course (objectif principal ou objectif intermédiaire), la planification doit obligatoirement inclure :
-- une phase d'affûtage débutant environ 10 jours avant la course,
-- une phase de récupération la semaine suivant immédiatement la course.
-
-3. DONNÉES D'ENTRÉE
-{$this->buildWeekStructureSection($plan)}
-
-4. AJUSTEMENT DE L'OBJECTIF (RÔLE D'EXPERT)
-- Si l'objectif annoncé est cohérent avec le niveau actuel → construit le plan directement pour l'atteindre.
-- Si l'objectif annoncé est trop ambitieux par rapport au niveau actuel → construit un plan basé sur la réalité de l'athlète, avec montée progressive. Considère l'objectif annoncé comme un objectif aspirationnel plus lointain.
-- Si l'objectif annoncé n'est pas assez ambitieux par rapport au niveau actuel → ajuste le plan à la hausse pour refléter le vrai potentiel de progression de l'athlète et lui permettre d'aller chercher un objectif plus exigeant.
-- Si l'objectif principal n'est pas une course (commencer la course à pied, reprendre la course à pied ou autre), l'ajustement doit se faire en fonction du profil réel de l'athlète et de la logique de progression, sans recherche de performance immédiate.
-Tu es l'expert : cette décision est cruciale pour éviter le surmenage ou la stagnation.
-
-5. STRUCTURE DU PLAN À PRODUIRE
-Tu dois analyser la date actuelle {$now}.
-Si l'objectif principal est une course (ou si une date d'objectif est renseignée), prendre en compte la date de l'objectif et calculer le nombre de semaines disponibles. Sinon, se baser uniquement sur la période à couvrir et le profil pour construire un mois cohérent.
-Inclure explicitement les jours de repos dans chaque semaine.
-
-Objectif de course (UNIQUEMENT SI UNE COURSE EST RENSEIGNÉE) :
-Si une course objectif (date + distance) se situe dans la période couverte par le plan, tu dois obligatoirement l'inclure dans la semaine correspondante. La journée de la course doit être explicitement mentionnée ("Course 5 km", "Course 10 km", "Course Semi-Marathon", "Course Marathon").
-Il est strictement interdit d'omettre une course objectif située dans la période planifiée.
-Si l'objectif est après la période couverte, le plan doit clairement préparer cette échéance.
-Si un objectif intermédiaire se situe dans le mois couvert par le plan, tu dois obligatoirement l'inclure dans la semaine et au jour correspondant sous la forme "Course + distance".
-
-6. RÈGLES DE STRUCTURE HEBDOMADAIRE
-Les semaines doivent conserver une structure régulière pour créer des habitudes stables et une routine de progression.
-Essaie, autant que possible, de garder les mêmes jours de repos et les mêmes jours de séance d'une semaine à l'autre.
-Cela permet à l'athlète de s'organiser facilement et d'ancrer ses automatismes (exemple : mardi = séance qualitative, jeudi = footing, dimanche = sortie longue).
-Cependant, cette régularité ne doit jamais être rigide :
-- Si les contraintes personnelles de l'athlète l'exigent, adapte la structure pour que le plan reste réaliste et faisable.
-- Si la charge hebdomadaire doit évoluer (ex. ajout d'une séance supplémentaire), modifie la répartition intelligemment, sans casser totalement la routine.
-L'objectif est de maintenir une routine cohérente et motivante, tout en gardant une souplesse intelligente selon le contexte et la progression.
-
-7. CONSTRUCTION DES SÉANCES
-Séances qualitatives (fractionné, allure spécifique, marathon, seuil, VMA, tempo) → toujours inclure :
-1. Échauffement → durée et contenu adaptés au niveau et à l'objectif (ex. débutant = 10 min footing + gammes, marathonien confirmé = 30 min footing + gammes + 3 accélérations progressives ~20 sec). Ne précise jamais le nombre de gammes à faire. Indique simplement "gammes", sans nombre.
-2. Corps de séance → distances, répétitions, récupérations, allures cibles calculées selon le niveau et l'objectif.
-3. Récupération → durée adaptée (ex. débutant = 5-10 min footing, confirmé = 10-15 min footing).
-
-Même au fil du mois ou dans des blocs plus avancés, ne jamais arrêter de détailler ces trois parties et toujours les adapter au coureur.
-
-Les jours de course suivent le même schéma que les séances qualitatives avec l'échauffement et la récupération, mais à la place du corps de séance tu mets "Course + distance" (ex : "Course 5km", "Course 10km", "Course Semi-Marathon", "Course Marathon").
-
-Footings simples → juste indiquer la durée et "en aisance" (pas besoin d'échauffement ni récup détaillée).
-
-Fréquence hebdomadaire →
-Tu es l'expert : n'utilise jamais directement le nombre de jours disponibles déclarés comme fréquence d'entraînement. Ce n'est pas une consigne, c'est une contrainte à prendre en compte intelligemment.
-Évalue toi-même le bon nombre de séances selon le niveau, l'objectif, l'expérience, le volume actuel, les blessures passées et le temps disponible. Tu dois prendre la décision finale.
-Ta mission est de proposer une fréquence réaliste, qui respecte les contraintes du coureur mais permet une progression optimale.
-Si nécessaire, fais évoluer progressivement la fréquence (ex : passer de 2 à 4 séances/semaine sur 3 mois) de manière sécurisée et motivante, sans jamais choquer ou démotiver.
-
-Limite-toi strictement aux séances de course à pied ; n'inclut aucune musculation, mobilité ou cross-training.
-
-8. STYLE & VOCABULAIRE
-Ton clair, motivant, inspirant, facile à exécuter.
-Langage compréhensible par tous, même les coureurs qui n'ont aucune base en course à pied.
-Tu expliques avec des mots simples tout en gardant une structure professionnelle et crédible pour un amateur initié.
-Tu ne donnes jamais l'impression de parler en jargon ou d'être réservé à un public élite.
-Toutes les allures doivent être compréhensibles pour l'athlète amateur. Tu dois donc toujours spécifier l'allure cible de chaque séance qualitative en langage simple en temps/km (ex : 4'30/km).
-Ne jamais écrire uniquement "seuil 90 %" sans indiquer à quoi cela correspond.
-Si nécessaire, convertis directement les zones en allures concrètes adaptées au chrono de l'athlète, même approximatives.
-
-RÈGLE PRIORITAIRE — SÉANCES SUR PISTE
-Pour toutes les séances réalisées sur piste, les intensités doivent être exprimées exclusivement en temps par répétition (secondes ou minutes selon la distance).
-Il est strictement interdit d'indiquer une allure au kilomètre pour une répétition sur piste.
-Exemples valides :
-- 36s/200m au 200 m
-- 45s/300m au 300 m
-- 1'36/600m au 600 m
-- 2'00/500m au 500 m
-Exemples interdits :
-- 3'00/km au 200 m
-- 4'20/km au 800 m
-Cette règle est prioritaire sur toute autre règle d'expression des allures.
-
-FORMAT D'ÉCRITURE UNIVERSEL (OBLIGATOIRE)
-Toutes les séances doivent être rédigées selon un format d'écriture strict et universel, identique pour tous les profils.
-Le contenu des séances peut varier librement selon le coureur, mais le format d'écriture doit toujours respecter les règles suivantes :
-1) Footings simples
-Toujours utiliser exclusivement le format :
-- "Footing X en aisance"
-Aucune autre formulation n'est autorisée (ex. facile, très facile, cool, etc.).
-Exemples :
-- Footing 45 min en aisance
-- Footing 55 min en aisance
-- Footing 1h10 en aisance
-2) Séances qualitatives
-Toujours utiliser exclusivement le format suivant, sur une seule ligne :
-- "Séance [type] - Échauffement : ... | Corps de séance : ... | Récupération : ..."
-Aucune autre structure de phrase ou de présentation n'est autorisée pour les séances.
-Ces règles concernent uniquement le format d'écriture.
-Elles ne doivent en aucun cas contraindre le contenu, le volume, l'intensité ou la structure des séances, qui restent entièrement adaptés au profil du coureur.
-
-9. INSTRUCTIONS FINALES
-Si certaines infos sont absentes, fais une hypothèse prudente basée sur le profil de la fiche athlète.
-Si des objectifs intermédiaires sont fournis, tu dois les interpréter (date + distance) et les intégrer dans la planification sans casser la cohérence globale, en les utilisant comme étapes logiques vers l'objectif principal.
-Si aucun objectif intermédiaire n'est fourni, tu ignores totalement ce point.
-Objectif ultime : Créer un plan ultra-personnalisé, scientifique, motivant et sécurisé, avec chaque séance qualitative toujours complète (échauffement + corps + récup), adaptés au niveau et à la distance préparée, sans jamais simplifier ni uniformiser à tous les profils.
-
-10. FORMAT DE SORTIE JSON (STRICTEMENT OBLIGATOIRE)
-Ta réponse doit être UNIQUEMENT un objet JSON valide, sans aucun texte avant ou après.
-
-RÈGLE IMPORTANTE — session_type
-Le champ "session_type" doit contenir UNIQUEMENT un titre court (2-3 mots max) décrivant le type de séance.
-Il ne doit JAMAIS contenir la description complète de la séance ni les détails du workout.
-Exemples valides : "Footing", "VMA courte", "Tempo", "Seuil", "Sortie longue", "Spécifique semi", "Côtes", "Fartlek"
-Exemples interdits : "Footing 45 min en aisance", "Séance VMA - Échauffement : 15 min..."
-Le détail complet de la séance doit être dans le champ "description".
-
-RÈGLE IMPORTANTE — Jours de repos
-Pour les jours de repos, le champ "description" doit contenir UNIQUEMENT le mot "Repos". Aucune explication supplémentaire (ex. "Repos pour récupérer", "Repos actif", "Journée de récupération") n'est autorisée.
-
-11. DONNÉES ATHLÈTE
-Nom et Prénom : {$fullName}
-Âge : {$age} ans
-Sexe : {$this->formatGenderFr($profile->gender)}
-Poids : {$profile->weight_kg} kg
-Taille : {$profile->height_cm} cm
-Objectif principal : {$this->formatPrimaryGoalFr($profile->primary_goal, $profile->primary_goal_other)}
-Distance de l'objectif : {$this->formatRaceDistanceFr($profile->race_distance, $profile->race_distance_other)}
-Temps visé sur la distance : {$this->formatGoalTimeFr($profile->goal_time, $profile->race_distance)}
-Date de l'objectif : {$profile->target_race_date?->format('d/m/Y')}
-Objectifs intermédiaires : {$profile->intermediate_objectives}
-Problème à résoudre : {$this->formatProblemToSolveFr($profile->problem_to_solve, $profile->problem_to_solve_other)}
-Chronos actuels : {$this->formatRaceTimesFr($profile->current_race_times)}
-Volume actuel : {$profile->current_weekly_volume_km} km/semaine
-Niveau : {$this->formatExperienceFr($profile)}
-Nombre de sorties / semaine : {$this->formatRunsPerWeekFr($profile->current_runs_per_week)}
-Jours disponibles : {$availableDays}
-Jours indisponibles : {$unavailableDays}
-Lieu(x) d'entraînement : {$this->formatTrainingLocationsFr($profile->training_locations, $profile->training_location_other)}
-Equipements : {$profile->equipment}
-Contraintes : {$profile->personal_constraints}
-Blessures passées : {$this->formatInjuriesFr($profile->injuries)}
-
-Date actuelle : {$now}
-PROMPT;
+        $prompt = $this->buildSectionRole();
+        $prompt .= "\n\n" . $this->buildSectionReferences();
+        $prompt .= "\n\n" . $this->buildSectionLogique();
+        $prompt .= "\n\n" . $this->buildSectionSeances();
+        $prompt .= "\n\n" . $this->buildSectionInstructionsFinales();
+        $prompt .= "\n\n" . $this->buildSectionFormatJson();
+        $prompt .= "\n\n" . $this->buildSectionDonneesAthlete(
+            $fullName, $age, $profile, $availableDays, $unavailableDays, $now, $totalWeeks, $weekStructure
+        );
 
         return $prompt;
     }
@@ -760,6 +630,9 @@ PROMPT;
         $fullName = trim(($profile->first_name ?? '') . ' ' . ($profile->last_name ?? ''));
         $availableDays = $this->formatAvailableDaysFr($profile->available_days);
         $unavailableDays = implode(', ', $this->getUnavailableDays($profile->available_days)) ?: 'Aucun';
+        $weekStructure = $this->buildWeekStructureSection($plan);
+        $weeks = $this->calculateWeeks($plan->start_date, $plan->end_date);
+        $totalWeeks = count($weeks);
 
         // Get previous plans for history
         $previousPlans = Plan::where('user_id', $user->id)
@@ -770,270 +643,372 @@ PROMPT;
 
         $historySection = $this->buildPlanHistorySection($previousPlans);
 
-        $prompt = <<<PROMPT
-0. RÔLE & MISSION DU MODÈLE
-Tu es un expert en coaching running pour athlètes amateurs.
-Ta mission : générer un plan d'entraînement complet, progressif et 100 % personnalisé, basé sur les meilleures pratiques scientifiques.
-L'objectif est de construire une planification cohérente, logique, utile, motivante et sécurisée, adaptée au type d'objectif déclaré par l'athlète (préparer une/des courses, commencer la course à pied, reprendre la course à pied ou autre).
-
-1. RÉFÉRENCES SCIENTIFIQUES (OBLIGATOIRES)
-Tu dois toujours t'appuyer sur les références suivantes :
-- Jack Daniels' Running Formula (zones, progressivité, équilibre charge/récupération)
-- Does Polarized Training Improve Performance in Recreational Runners?
-- Polarized and Pyramidal Training Intensity Distributions in Distance Running
-Tu utilises intelligemment l'entraînement polarisé ou pyramidal selon le profil de l'athlète.
-
-2. LOGIQUE GLOBALE D'ENTRAÎNEMENT (NON NÉGOCIABLE)
-Chaque mois, chaque semaine et chaque séance doit être :
-- logique
-- utile
-- intégrée dans un cycle structuré
-- cohérente avec la phase de préparation
-
-Le type de séance choisi chaque semaine (VMA courte, tempo, seuil, spécifique, etc.) doit toujours avoir du sens par rapport à :
-- l'objectif principal déclaré (préparer une/des course(s) / commencer la course à pied / reprendre la course à pied / autre)
-- la distance et la date de l'objectif uniquement si une course est renseignée
-- la phase de préparation dans laquelle se trouve l'athlète
-- le profil de l'athlète
-
-Ne propose jamais une séance qui ne correspond pas à cette logique d'enchaînement.
-Tu t'appuies rigoureusement sur les méthodologies de Jack Daniels et de l'entraînement polarisé/pyramidal pour faire les bons choix au bon moment.
-Le fond peut rester identique, mais le format des séances doit varier pour éviter la monotonie et rendre le plan ludique.
-
-Pour toute course (objectif principal ou objectif intermédiaire), la planification doit obligatoirement inclure :
-- une phase d'affûtage débutant environ 10 jours avant la course,
-- une phase de récupération la semaine suivant immédiatement la course.
-Si une course se situe dans le mois couvert par le plan, ces phases doivent être prises en compte dans la construction des semaines concernées.
-Si la course est en dehors du mois couvert, le plan doit préparer progressivement cette échéance.
-
-AFFÛTAGE PRÉ-COMPÉTITION (RÉFÉRENCES SCIENTIFIQUES OBLIGATOIRES)
-Pour toute course (objectif principal ou objectif intermédiaire), les 10 jours précédant immédiatement la course doivent constituer une phase d'affûtage construite exclusivement selon les références scientifiques citées dans ce prompt (Jack Daniels' Running Formula, entraînement polarisé et pyramidal).
-Durant cette phase :
-- la structure et le contenu des séances doivent être déterminés par ces références scientifiques,
-- la planification doit viser une réduction de la fatigue accumulée tout en préservant les qualités physiologiques nécessaires à la performance,
-- la routine habituelle des semaines précédentes ne doit pas être reconduite mécaniquement.
-Cette phase d'affûtage doit être clairement identifiable dans le plan et orientée vers une fraîcheur optimale le jour de la course.
-
-3. DONNÉES D'ENTRÉE
-
-3.1 Structure du plan
-{$this->buildWeekStructureSection($plan)}
-
-3.2 Historique des plans précédents
-{$historySection}
-
-4. UTILISATION DE L'HISTORIQUE (CONTINUITÉ, VARIATION ET ROUTINE)
-L'historique des plans précédents est un outil de continuité et de contextualisation, pas un modèle à reproduire.
-
-Tu dois t'en servir pour :
-- assurer une progression logique et sécurisée
-- éviter les ruptures brutales de charge
-- identifier ce qui a déjà été travaillé (filières, volumes, intensités)
-- maintenir une cohérence globale dans la préparation
-
-Si des objectifs intermédiaires sont fournis, tu dois les prendre en compte dans la planification et dans l'utilisation de l'historique.
-Si aucun objectif intermédiaire n'est fourni, ne modifie pas la logique actuelle.
-
-4.1 Principe fondamental
-L'historique ne doit jamais conduire à reproduire le même mois d'entraînement.
-Le fond évolue, mais la routine hebdomadaire doit être préservée autant que possible.
-
-4.2 Routine hebdomadaire (PRIORITAIRE)
-Sauf contrainte spécifique, tu dois chercher à :
-- conserver les mêmes jours de repos
-- conserver les mêmes jours de footing
-- conserver les mêmes jours de séances qualitatives
-
-Cela permet à l'athlète de garder ses habitudes, mieux organiser son quotidien et favoriser la régularité et l'adhésion au plan.
-
-Cette routine peut évoluer uniquement si :
-- la charge globale change (ex. ajout ou retrait d'une séance)
-- les contraintes de l'athlète l'exigent
-- la logique de progression le justifie clairement
-
-4.3 Anti-duplication du contenu (OBLIGATOIRE)
-Même si la structure hebdomadaire reste similaire :
-- ne reproduit jamais une séance identique à celle du mois précédent
-- ne réutilise pas exactement le même format principal de séance sur deux mois consécutifs
-La filière peut rester la même, mais le format doit évoluer.
-Même si la filière physiologique travaillée reste identique d'un mois à l'autre, le format des séances doit varier de manière significative afin de créer de la diversité et du ludique, sans modifier l'objectif physiologique visé.
-
-4.4 Variabilité contrôlée (sans bouleverser la routine)
-Tu dois :
-- t'appuyer sur l'historique pour identifier les filières déjà travaillées
-- conserver la logique physiologique adaptée à la phase
-- faire évoluer les formats de séance, sans changer inutilement les jours clés
-
-Exemples :
-- même jour de séance, mais format différent
-- même logique d'intensité, mais organisation différente du travail
-
-4.5 Progression non systématique, mais intentionnelle
-D'un mois à l'autre :
-- il n'y a pas toujours augmentation du volume
-- il n'y a pas toujours ajout de séance
-- il n'y a pas toujours hausse d'intensité
-
-En revanche, le plan doit toujours être intentionnel :
-- soit progression mesurée
-- soit consolidation
-- soit stabilisation
-- soit allègement raisonné
-
-C'est à toi d'en juger en tant qu'expert, selon l'objectif, la phase de préparation, l'état de l'athlète et l'historique récent.
-
-4.6 Critère de validation
-Si le nouveau plan garde une routine cohérente, propose des séances différentes, respecte la logique scientifique et s'inscrit clairement dans une intention (progression, stabilisation ou récupération), alors l'utilisation de l'historique est correcte.
-Si le plan ressemble trop au mois précédent dans son contenu, considère cela comme une erreur et ajuste-le.
-
-4.7 ÉVOLUTION INTENTIONNELLE (OBLIGATOIRE)
-Le plan du mois à venir ne doit jamais être un simple copier-coller du mois précédent.
-À partir de la fiche athlète, des objectifs (principal + intermédiaires éventuels) et de l'historique, tu dois décider de l'évolution du mois sur ces axes :
-- fréquence (nombre de séances)
-- volume (durée/charge globale, sortie longue)
-- intensité (place et poids des séances qualitatives)
-- densité (récupérations, enchaînements, répartition de la charge)
-- spécificité (plus orienté course si une échéance approche)
-
-Sur chaque axe, tu peux choisir : augmenter légèrement / stabiliser / alléger, selon le contexte.
-Au minimum, le mois doit montrer une évolution intentionnelle sur au moins un axe OU une variation significative des formats, tout en conservant la routine hebdomadaire autant que possible.
-
-Cette évolution doit être cohérente avec le type d'objectif (préparer une course / commencer / reprendre / autre) et ne jamais augmenter la charge de façon agressive si le profil est fragile ou en reprise.
-
-5. AJUSTEMENT DE L'OBJECTIF (RÔLE D'EXPERT)
-- Si l'objectif annoncé est cohérent avec le niveau actuel → construit le plan directement pour l'atteindre.
-- Si l'objectif annoncé est trop ambitieux par rapport au niveau actuel → construit un plan basé sur la réalité de l'athlète, avec montée progressive. Considère l'objectif annoncé comme un objectif aspirationnel plus lointain.
-- Si l'objectif annoncé n'est pas assez ambitieux par rapport au niveau actuel → ajuste le plan à la hausse pour refléter le vrai potentiel de progression de l'athlète et lui permettre d'aller chercher un objectif plus exigeant.
-- Si l'objectif principal n'est pas une course (commencer la course à pied, reprendre la course à pied ou autre), l'ajustement doit se faire en fonction du profil réel de l'athlète et de la logique de progression, sans recherche de performance immédiate.
-Tu es l'expert : cette décision est cruciale pour éviter le surmenage ou la stagnation.
-
-6. STRUCTURE DU PLAN À PRODUIRE
-Tu dois analyser la date actuelle {$now}.
-Si l'objectif principal est une course (ou si une date d'objectif est renseignée), prendre en compte la date de l'objectif et calculer le nombre de semaines disponibles. Sinon, se baser uniquement sur la période à couvrir et le profil pour construire un mois cohérent.
-Tu dois prendre en compte l'historique des plans.
-Inclure explicitement les jours de repos dans chaque semaine.
-
-Objectif de course (UNIQUEMENT SI UNE COURSE EST RENSEIGNÉE) :
-Si une course objectif (date + distance) se situe dans la période couverte par le plan, tu dois obligatoirement l'inclure dans la semaine correspondante. La journée de la course doit être explicitement mentionnée ("Course 5 km", "Course 10 km", "Course Semi-Marathon", "Course Marathon").
-Il est strictement interdit d'omettre une course objectif située dans la période planifiée.
-Si l'objectif est après la période couverte, le plan doit clairement préparer cette échéance.
-Si un objectif intermédiaire se situe dans le mois couvert par le plan, tu dois obligatoirement l'inclure dans la semaine et au jour correspondant sous la forme "Course + distance".
-
-7. RÈGLES DE STRUCTURE HEBDOMADAIRE
-Les semaines doivent conserver une structure régulière pour créer des habitudes stables et une routine de progression.
-Essaie, autant que possible, de garder les mêmes jours de repos et les mêmes jours de séance d'une semaine à l'autre.
-Cela permet à l'athlète de s'organiser facilement et d'ancrer ses automatismes (exemple : mardi = séance qualitative, jeudi = footing, dimanche = sortie longue).
-Cependant, cette régularité ne doit jamais être rigide :
-- Si les contraintes personnelles de l'athlète l'exigent, adapte la structure pour que le plan reste réaliste et faisable.
-- Si la charge hebdomadaire doit évoluer (ex. ajout d'une séance supplémentaire), modifie la répartition intelligemment, sans casser totalement la routine.
-L'objectif est de maintenir une routine cohérente et motivante, tout en gardant une souplesse intelligente selon le contexte et la progression.
-
-8. CONSTRUCTION DES SÉANCES
-Séances qualitatives (fractionné, allure spécifique, marathon, seuil, VMA, tempo) → toujours inclure :
-1. Échauffement → durée et contenu adaptés au niveau et à l'objectif (ex. débutant = 10 min footing + gammes, marathonien confirmé = 30 min footing + gammes + 3 accélérations progressives ~20 sec). Ne précise jamais le nombre de gammes à faire. Indique simplement "gammes", sans nombre.
-2. Corps de séance → distances, répétitions, récupérations, allures cibles calculées selon le niveau et l'objectif.
-3. Récupération → durée adaptée (ex. débutant = 5-10 min footing, confirmé = 10-15 min footing).
-
-Même au fil du mois ou dans des blocs plus avancés, ne jamais arrêter de détailler ces trois parties et toujours les adapter au coureur.
-
-Les jours de course suivent le même schéma que les séances qualitatives avec l'échauffement et la récupération, mais à la place du corps de séance tu mets "Course + distance" (ex : "Course 5km", "Course 10km", "Course Semi-Marathon", "Course Marathon").
-
-Footings simples → juste indiquer la durée et "en aisance" (pas besoin d'échauffement ni récup détaillée).
-
-Fréquence hebdomadaire →
-Tu es l'expert : n'utilise jamais directement le nombre de jours disponibles déclarés comme fréquence d'entraînement. Ce n'est pas une consigne, c'est une contrainte à prendre en compte intelligemment.
-Évalue toi-même le bon nombre de séances selon le niveau, l'objectif, l'expérience, le volume actuel, les blessures passées et le temps disponible. Tu dois prendre la décision finale.
-Ta mission est de proposer une fréquence réaliste, qui respecte les contraintes du coureur mais permet une progression optimale.
-Si nécessaire, fais évoluer progressivement la fréquence (ex : passer de 2 à 4 séances/semaine sur 3 mois) de manière sécurisée et motivante, sans jamais choquer ou démotiver.
-
-Limite-toi strictement aux séances de course à pied ; n'inclut aucune musculation, mobilité ou cross-training.
-
-9. STYLE & VOCABULAIRE
-Ton clair, motivant, inspirant, facile à exécuter.
-Langage compréhensible par tous, même les coureurs qui n'ont aucune base en course à pied.
-Tu expliques avec des mots simples tout en gardant une structure professionnelle et crédible pour un amateur initié.
-Tu ne donnes jamais l'impression de parler en jargon ou d'être réservé à un public élite.
-Toutes les allures doivent être compréhensibles pour l'athlète amateur. Tu dois donc toujours spécifier l'allure cible de chaque séance qualitative en langage simple en temps/km (ex : 4'30/km).
-Ne jamais écrire uniquement "seuil 90 %" sans indiquer à quoi cela correspond.
-Si nécessaire, convertis directement les zones en allures concrètes adaptées au chrono de l'athlète, même approximatives.
-
-RÈGLE PRIORITAIRE — SÉANCES SUR PISTE
-Pour toutes les séances réalisées sur piste, les intensités doivent être exprimées exclusivement en temps par répétition (secondes ou minutes selon la distance).
-Il est strictement interdit d'indiquer une allure au kilomètre pour une répétition sur piste.
-Exemples valides :
-- 36s/200m au 200 m
-- 45s/300m au 300 m
-- 1'36/600m au 600 m
-- 2'00/500m au 500 m
-Exemples interdits :
-- 3'00/km au 200 m
-- 4'20/km au 800 m
-Cette règle est prioritaire sur toute autre règle d'expression des allures.
-
-FORMAT D'ÉCRITURE UNIVERSEL (OBLIGATOIRE)
-Toutes les séances doivent être rédigées selon un format d'écriture strict et universel, identique pour tous les profils.
-Le contenu des séances peut varier librement selon le coureur, mais le format d'écriture doit toujours respecter les règles suivantes :
-1) Footings simples
-Toujours utiliser exclusivement le format :
-- "Footing X en aisance"
-Aucune autre formulation n'est autorisée (ex. facile, très facile, cool, etc.).
-Exemples :
-- Footing 45 min en aisance
-- Footing 55 min en aisance
-- Footing 1h10 en aisance
-2) Séances qualitatives
-Toujours utiliser exclusivement le format suivant, sur une seule ligne :
-- "Séance [type] - Échauffement : ... | Corps de séance : ... | Récupération : ..."
-Aucune autre structure de phrase ou de présentation n'est autorisée pour les séances.
-Ces règles concernent uniquement le format d'écriture.
-Elles ne doivent en aucun cas contraindre le contenu, le volume, l'intensité ou la structure des séances, qui restent entièrement adaptés au profil du coureur.
-
-10. INSTRUCTIONS FINALES
-Si certaines infos sont absentes, fais une hypothèse prudente basée sur le profil de la fiche athlète.
-Si des objectifs intermédiaires sont fournis, tu dois les interpréter (date + distance) et les intégrer dans la planification sans casser la cohérence globale, en les utilisant comme étapes logiques vers l'objectif principal.
-Si aucun objectif intermédiaire n'est fourni, tu ignores totalement ce point.
-Objectif ultime : Créer un plan ultra-personnalisé, scientifique, motivant et sécurisé, avec chaque séance qualitative toujours complète (échauffement + corps + récup), adaptés au niveau et à la distance préparée, sans jamais simplifier ni uniformiser à tous les profils.
-
-11. FORMAT DE SORTIE JSON (STRICTEMENT OBLIGATOIRE)
-Ta réponse doit être UNIQUEMENT un objet JSON valide, sans aucun texte avant ou après.
-
-RÈGLE IMPORTANTE — session_type
-Le champ "session_type" doit contenir UNIQUEMENT un titre court (2-3 mots max) décrivant le type de séance.
-Il ne doit JAMAIS contenir la description complète de la séance ni les détails du workout.
-Exemples valides : "Footing", "VMA courte", "Tempo", "Seuil", "Sortie longue", "Spécifique semi", "Côtes", "Fartlek"
-Exemples interdits : "Footing 45 min en aisance", "Séance VMA - Échauffement : 15 min..."
-Le détail complet de la séance doit être dans le champ "description".
-
-RÈGLE IMPORTANTE — Jours de repos
-Pour les jours de repos, le champ "description" doit contenir UNIQUEMENT le mot "Repos". Aucune explication supplémentaire (ex. "Repos pour récupérer", "Repos actif", "Journée de récupération") n'est autorisée.
-
-12. DONNÉES ATHLÈTE
-Nom : {$fullName}
-Âge : {$age} ans
-Sexe : {$this->formatGenderFr($profile->gender)}
-Poids : {$profile->weight_kg} kg
-Taille : {$profile->height_cm} cm
-Objectif principal : {$this->formatPrimaryGoalFr($profile->primary_goal, $profile->primary_goal_other)}
-Distance de l'objectif : {$this->formatRaceDistanceFr($profile->race_distance, $profile->race_distance_other)}
-Temps visé sur la distance : {$this->formatGoalTimeFr($profile->goal_time, $profile->race_distance)}
-Date de l'objectif : {$profile->target_race_date?->format('d/m/Y')}
-Objectifs intermédiaires : {$profile->intermediate_objectives}
-Problème à résoudre : {$this->formatProblemToSolveFr($profile->problem_to_solve, $profile->problem_to_solve_other)}
-Chronos actuels : {$this->formatRaceTimesFr($profile->current_race_times)}
-Volume actuel : {$profile->current_weekly_volume_km} km/semaine
-Niveau : {$this->formatExperienceFr($profile)}
-Nombre de sorties / semaine : {$this->formatRunsPerWeekFr($profile->current_runs_per_week)}
-Jours disponibles : {$availableDays}
-Jours indisponibles : {$unavailableDays}
-Lieu(x) d'entraînement : {$this->formatTrainingLocationsFr($profile->training_locations, $profile->training_location_other)}
-Equipements : {$profile->equipment}
-Contraintes : {$profile->personal_constraints}
-Blessures passées : {$this->formatInjuriesFr($profile->injuries)}
-
-Date actuelle : {$now}
-PROMPT;
+        $prompt = $this->buildSectionRole();
+        $prompt .= "\n\n" . $this->buildSectionReferences();
+        $prompt .= "\n\n" . $this->buildSectionLogique();
+        $prompt .= "\n\n" . $this->buildSectionSeances();
+        $prompt .= "\n\n" . $this->buildSectionHistorique($historySection);
+        $prompt .= "\n\n" . $this->buildSectionInstructionsFinales();
+        $prompt .= "\n\n" . $this->buildSectionFormatJson();
+        $prompt .= "\n\n" . $this->buildSectionDonneesAthlete(
+            $fullName, $age, $profile, $availableDays, $unavailableDays, $now, $totalWeeks, $weekStructure
+        );
 
         return $prompt;
+    }
+
+    /**
+     * Build the ROLE section of the prompt.
+     */
+    private function buildSectionRole(): string
+    {
+        return <<<'SECTION'
+Tu es un coach running expert. Génère un plan d'entraînement personnalisé basé sur Jack Daniels' Running Formula et l'entraînement polarisé.
+
+ORDRE DE TRAVAIL OBLIGATOIRE :
+1. Lire les données athlète
+2. Identifier TOUTES les dates de course (objectif principal + intermédiaires) — noter chacune
+3. Estimer les allures en croisant : record perso, volume, fréquence, niveau déclaré
+4. Placer CHAQUE course identifiée dans le bon jour (type="course") AVANT de planifier quoi que ce soit d'autre
+5. Construire le plan autour de ces jalons fixes
+SECTION;
+    }
+
+    /**
+     * Build the REFERENCES section of the prompt.
+     */
+    private function buildSectionReferences(): string
+    {
+        return <<<'SECTION'
+ESTIMATION DU NIVEAU :
+Croiser : record perso (indicatif) + volume + fréquence + expérience + blessures. Hypothèse prudente si données insuffisantes.
+Ajustement : si objectif irréaliste -> plan sur niveau réel. Si sous-estimé -> ajuster à la hausse.
+SECTION;
+    }
+
+    /**
+     * Build the LOGIQUE section of the prompt.
+     */
+    private function buildSectionLogique(): string
+    {
+        return <<<'SECTION'
+RÈGLES D'ENTRAÎNEMENT :
+
+COURSES ET OBJECTIFS (RÈGLE ABSOLUE - LA PLUS IMPORTANTE) :
+Toute date de course renseignée (objectif principal ET chaque objectif intermédiaire) qui tombe dans la période du plan DOIT apparaître au bon jour exact avec type="course". AUCUNE EXCEPTION.
+- Placer chaque course AVANT de planifier le reste de la semaine
+- Semaine avant la course : affûtage (voir règles ci-dessous)
+- Semaine après la course : 1 seule semaine de récupération complète (footings légers uniquement, pas de qualitative). Exactement 1 semaine, pas 2, pas 3. La semaine suivante, reprise normale de l'entraînement.
+- Si date tombe sur jour indisponible : placer le samedi ou dimanche le plus proche
+- VEILLE ET AVANT-VEILLE DE COURSE = RÈGLES ABSOLUES (objectif principal ET intermédiaires) :
+  VEILLE de la course = FOOTING LÉGER ou REPOS uniquement. Jamais de séance qualitative la veille d'une course, quelle que soit la distance.
+  AVANT-VEILLE de la course = REPOS OBLIGATOIRE, sans exception.
+  Course lundi → repos samedi, footing léger ou repos dimanche
+  Course mardi → repos dimanche, footing léger ou repos lundi
+  Course mercredi → repos lundi, footing léger ou repos mardi
+  Course jeudi → repos mardi, footing léger ou repos mercredi
+  Course vendredi → repos mercredi, footing léger ou repos jeudi
+  Course samedi → repos jeudi, footing léger ou repos vendredi
+  Course dimanche → repos vendredi, footing léger ou repos samedi
+
+AFFÛTAGE SELON DISTANCE — RÈGLE STRICTE, semaine d'affûtage = volume réduit + intensité réduite :
+- 5km : 5-7j avant la course. Volume -20%. 1 seule séance qualité courte en tout début d'affûtage. Footings légers ensuite.
+- 10km : 7-10j avant la course. Volume -25 à -30%. Dernière qualité J-6 au plus tard. Footings légers ensuite.
+- Semi : 10-14j avant la course. Volume -30 à -40%. Aucune séance intensive les 5 derniers jours. Footings légers uniquement.
+- Marathon : 14-21j avant la course. Volume -40 à -50%. Dernière sortie longue J-14 à J-21. Dernière qualité J-10 au plus tard. Footings légers ensuite.
+- Dans TOUS les cas : 0 séance intensive les 4 derniers jours avant la course. Footings légers uniquement.
+- AVANT-VEILLE DE COURSE = REPOS OBLIGATOIRE (règle universelle).
+- Semaine de course (si course sam/dim) : 1 séance légère de rappel d'allure max lun/mar, puis footings très légers ou repos.
+
+PROGRESSION :
+- Volume et fréquence augmentent progressivement de semaine en semaine, de mois en mois
+- Ne jamais chuter le volume sans justification (affûtage ou récupération)
+- La fréquence évolue si le profil le permet
+- Ne jamais utiliser directement le nombre de jours disponibles déclarés comme fréquence. C'est une contrainte maximale, pas une consigne.
+- Si l'athlète stagne au même nombre de séances depuis 3 mois ou plus sans justification, faire évoluer la fréquence : +1 séance tous les 4 à 6 semaines selon la réponse de l'athlète.
+
+PLAFONDS SORTIE LONGUE (OBLIGATOIRE - bases scientifiques Jack Daniels) :
+La sortie longue ne doit JAMAIS dépasser ces limites, quelle que soit la durée de préparation :
+- Préparation 5km : sortie longue max 1h (inutile d'aller au-delà pour un 5km)
+- Préparation 10km : sortie longue max 1h30
+- Préparation Semi-marathon : sortie longue max 2h15
+- Préparation Marathon : sortie longue max 3h (ou 35km, selon ce qui vient en premier)
+- Préparation générale / pas de course : sortie longue adaptée au volume habituel, max 1h30
+Ces plafonds s'appliquent même en phase de volume maximal et même sur 8-12 mois de préparation.
+
+RÉDUCTION SORTIE LONGUE EN AFFÛTAGE (OBLIGATOIRE) :
+Dans les dernières semaines avant la course, raccourcir progressivement la sortie longue :
+- 5km : la dernière sortie longue avant la course est raccourcie (~50% du max)
+- 10km : la dernière sortie longue avant la course est raccourcie (~50-60% du max)
+- Semi : les 2 dernières sorties longues sont raccourcies (J-3 sem : -20%, J-2 sem : -40%)
+- Marathon : les 3 dernières sorties longues sont raccourcies (J-4 sem : -10%, J-3 sem : -25%, J-2 sem : -40%)
+L'objectif : arriver frais à la course, pas fatigué par une longue sortie trop proche.
+
+STRUCTURE HEBDOMADAIRE :
+- Conserver les mêmes jours de repos et de séances d'une semaine à l'autre (routine = clé de la progression)
+- Nombre de séances = basé sur les habitudes réelles, pas sur le max des jours disponibles
+- Jours disponibles = contrainte maximale, pas la cible
+- Éviter la rotation mécanique automatique des séances (ex: S1=VMA, S2=Tempo, S3=Seuil, S4=Fartlek qui se répète identiquement). Le choix des séances doit être dicté par la logique de préparation, pas par une rotation systématique.
+
+SÉANCES QUALITATIVES ET OBJECTIFS SANS COURSE :
+Les séances qualitatives ne sont pas exclusives aux préparations de course. Pour les objectifs "commencer la course à pied", "reprendre la course à pied" ou "autre", elles font partie de la progression naturelle de tout coureur.
+Le profil de l'athlète (niveau actuel, historique, volume, blessures, contraintes) détermine entièrement si et quand les introduire. Un plan sans qualitatives peut être totalement justifié sur une période donnée. Un plan sans qualitatives sur plusieurs mois consécutifs, sans raison liée au profil, est en revanche une erreur de progression.
+SECTION;
+    }
+
+    /**
+     * Build the SEANCES section of the prompt.
+     */
+    private function buildSectionSeances(): string
+    {
+        return <<<'SECTION'
+CONSTRUCTION DES SÉANCES :
+
+TITRES DE SÉANCES (session_type) — RÈGLES POUR LE TITRE (session_type) :
+- Footing simple : "Footing"
+- Footing avec renforcement : OBLIGATOIREMENT "Footing + Renforcement" (et non "Footing" seul). Si le champ "renforcement" est rempli, le session_type DOIT être "Footing + Renforcement", sans exception.
+- Sortie longue : "Sortie longue"
+- Repos : "Repos"
+- Course : "Course 5km", "Course 10km", "Course Semi-marathon", "Course Marathon"
+- Qualitatives : nom court de la filière travaillée, 2-3 mots max. Exemples : "VMA courte", "VMA longue", "Tempo", "Seuil", "Fartlek", "Côtes", "Spécifique semi", "Fractionné". D'autres noms sont acceptés si pertinents et courts.
+STRICTEMENT INTERDIT : titres inventés comme "Reprise douce", "Récupération active", "Footing léger", "Échauffement", "Jogging", "Endurance fondamentale". Ces précisions vont uniquement dans "description", jamais dans "session_type".
+
+Séances qualitatives (fractionné, seuil, tempo, VMA, spécifique) :
+- Toujours 3 parties : Échauffement | Corps de séance | Récupération
+
+FORMAT UNIVERSEL ÉCHAUFFEMENT (obligatoire, identique pour tous) :
+"X min en aisance + gammes + 3 accélérations progressives ~20 sec"
+- Durée selon niveau et volume hebdomadaire : 10, 15, 20, 25 ou 30 min
+- "gammes" uniquement, sans aucune précision ni liste (jamais "gammes athlétiques", jamais "montées de genoux, talons-fesses", etc.)
+- Les 3 accélérations progressives sont toujours incluses, quel que soit le niveau
+
+FORMAT UNIVERSEL RÉCUPÉRATION FINALE (obligatoire, identique pour tous) :
+"X min en aisance"
+- Durée selon niveau et volume hebdomadaire : 5, 10, 15 ou 20 min
+- Aucune autre formulation autorisée
+
+- Corps de séance : distances, répétitions, allures calculées selon le niveau
+- Récupération entre les séries : "en trottinant" ou "en marchant" (jamais "récup trot" ou abréviations)
+
+Footings : "Footing X min en aisance" UNIQUEMENT. Aucun commentaire supplémentaire, aucune précision sur le terrain, le rythme ou les sensations. Jamais "en aisance respiratoire", "rythme conversationnel", "en aisance complète" ou toute autre variante. Uniquement "Footing X min en aisance", rien d'autre.
+Sortie longue : traiter comme footing (type="footing"), pas comme qualitative. Format : "Footing Xh en aisance (les X dernières minutes à allure marathon X'/km si besoin)". Ne jamais découper en 3 parties.
+Repos : description = "Repos" uniquement.
+Course : type="course". Même format que les qualitatives : échauffement ("X min en aisance + gammes + 3 accélérations progressives ~20 sec") + "Course [distance]" + récupération ("X min en aisance").
+
+Séances piste : format obligatoire "N x Xm en Xs" (ex : "8 x 200m en 48s"). Jamais "à 48s" ou "@ 48s".
+Allures : toujours en min/km (ex : 4'30/km). Jamais uniquement "seuil 90%".
+
+RENFORCEMENT MUSCULAIRE :
+Intégrer selon le niveau :
+- Débutant / intermédiaire : 1 séance/semaine après un footing court.
+- Confirmé (3+ mois d'entraînement régulier, 4+ séances/semaine) : 2 séances/semaine, jamais consécutives.
+Jamais la veille d'une qualitative, jamais la veille ou le jour de course.
+Le renforcement s'ajoute dans le champ "renforcement" du jour, séparément de la description.
+Format exercice : "Nom (description simple et précise de comment faire l'exercice, comme si tu l'expliquais à quelqu'un qui ne l'a jamais fait) — N x reps/durée"
+Règle d'écriture : clair, direct, ultra-accessible. Bonne orthographe, accents et ponctuation obligatoires.
+Exemples corrects :
+- "Planche frontale (allonge-toi face au sol, appuie-toi sur tes avant-bras et la pointe de tes pieds, soulève ton corps pour qu'il forme une ligne droite de la tête aux talons, serre le ventre et les fesses, tiens la position) — 3 x 30 sec"
+- "Pont fessier (allonge-toi sur le dos, plie les genoux, pieds à plat au sol près des fesses, pousse les hanches vers le plafond en serrant fort les fesses, redescends lentement) — 3 x 15 reps"
+- "Fente avant (tiens-toi droit, fais un grand pas en avant avec une jambe, descends le genou arrière vers le sol sans le toucher, remonte et recommence avec l'autre jambe) — 3 x 10 reps par jambe"
+- Débutant : gainage, squats, fentes, pont fessier. 15-20 min.
+- Intermédiaire : gainage dynamique, fentes, squats unilatéraux, mollets excentriques. 20-30 min.
+- Confirmé : pliométrie légère, excentrique, gainage complexe. 25-35 min.
+Adaptation blessures : genou -> quadriceps/fessiers, pas de squats profonds. Achille -> mollets excentriques, pas de sauts.
+
+VARIÉTÉ OBLIGATOIRE DES EXERCICES :
+Ne jamais proposer les mêmes exercices deux semaines de suite. Puiser librement dans cette banque de plus de 60 exercices :
+
+Gainage statique : Planche frontale, Planche latérale, Planche inversée, Superman, Dead bug, Bird-dog, Hollow body hold, Side plank avec rotation, Planche sur les poings
+Gainage dynamique : Mountain climbers, Bear crawl, Gainage avec toucher d'épaule, Planche avec rotation du buste, Bear crawl latéral, Inchworm, Plank jack
+Fessiers : Pont fessier, Pont fessier unilatéral, Hip thrust, Clamshell, Fire hydrant, Donkey kick, Abduction debout élastique, Frog pump, Lateral band walk (sans élastique : pas glissés)
+Cuisses/jambes : Squat, Squat sumo, Goblet squat (lesté ou non), Fente avant, Fente inversée, Fente latérale, Bulgarian split squat, Step-up, Wall sit, Pistol squat assisté, Box squat
+Ischio-jambiers : Nordic curl simplifié, Romanian deadlift poids de corps, Good morning, Glute bridge isométrique, Leg curl sur ballon (si dispo), Single leg deadlift
+Mollets/pieds : Mollets excentriques sur marche, Calf raise bilatéral, Calf raise unilatéral, Towel curl (serviette sous les orteils), Calf raise isométrique contre mur, Triple flexion cheville
+Proprioception/équilibre : Équilibre unipodal, Équilibre yeux fermés, Squat unipodal assisté, Tandem stance, Single leg Romanian deadlift lent, Balance avec lancer de balle (imaginaire)
+Dos/posture : Superman, Rowing inversé (sous une table), Hyperextension poids de corps, Rétraction scapulaire, Y-T-W en prone, Nageur alterné
+Épaules/bras fonctionnels : Pompes, Pompes larges, Pompes diamant, Dips sur chaise, Pike push-up, Rotation externe épaule, Élévation latérale isométrique
+Mobilité active : Hip 90-90, Fente avec rotation thoracique, World's greatest stretch, Cat-cow, Scorpion stretch, Pigeon debout, Squat profond avec respiration
+
+Règles de sélection : chaque séance = 4 à 6 exercices de groupes différents. Sur un mois : couvrir au minimum gainage + fessiers + jambes + un 4e groupe. Jamais le même circuit deux fois.
+SECTION;
+    }
+
+    /**
+     * Build the HISTORIQUE section (monthly only).
+     */
+    private function buildSectionHistorique(string $historyText): string
+    {
+        return <<<SECTION
+HISTORIQUE :
+{$historyText}
+Utiliser pour : progression logique, éviter rupture de charge, ne jamais reproduire le même contenu.
+Structure hebdomadaire stable, contenu des séances évolue. Progression intentionnelle sur au moins un axe.
+SECTION;
+    }
+
+    /**
+     * Build the INSTRUCTIONS FINALES section of the prompt.
+     */
+    private function buildSectionInstructionsFinales(): string
+    {
+        return <<<'SECTION'
+INSTRUCTIONS FINALES ET CHECKLIST
+
+AJUSTEMENT DE L'OBJECTIF (RÔLE D'EXPERT) :
+- Si l'objectif annoncé est cohérent avec le niveau actuel -> construire le plan pour l'atteindre directement.
+- Si l'objectif annoncé est trop ambitieux -> construire sur la réalité de l'athlète avec montée progressive. Traiter l'objectif annoncé comme aspirationnel.
+- Si l'objectif annoncé n'est pas assez ambitieux -> ajuster à la hausse pour refléter le vrai potentiel.
+- Si l'objectif principal n'est pas une course (débuter, reprendre, autre) -> progression logique selon le profil, sans recherche de performance immédiate.
+
+Si certaines infos sont absentes, faire une hypothèse prudente basée sur le profil.
+Si des objectifs intermédiaires sont fournis, les interpréter (date + distance) et les intégrer sans casser la cohérence globale.
+Si aucun objectif intermédiaire n'est fourni, ignorer totalement ce point.
+Orthographe, accents et ponctuation : toutes les descriptions et tous les textes générés doivent être en français correct, avec les accents obligatoires (é, è, ê, à, ù, î, ô, ç…) et une ponctuation soignée. Aucune faute n'est acceptable.
+Objectif ultime : créer un plan ultra-personnalisé, scientifique, motivant et sécurisé, avec chaque séance qualitative toujours complète (échauffement + corps + récup), adapté au niveau et à la distance préparée, sans jamais simplifier ni uniformiser.
+
+CHECKLIST OBLIGATOIRE AVANT DE GÉNÉRER LE JSON :
+[ ] Les allures sont cohérentes avec le niveau réel estimé (croisement record perso + volume + fréquence + expérience)
+[ ] Si une course est dans la période, elle est insérée dans le bon jour exact
+[ ] La semaine 1 ne repart pas à un volume inférieur à la dernière semaine précédente (sauf affûtage justifié)
+[ ] La fréquence hebdomadaire a évolué si l'athlète stagnait depuis plusieurs mois
+[ ] Chaque séance qualitative contient échauffement + corps + récupération complets
+[ ] L'ordre et le type des séances qualitatives sont dictés par la logique de préparation, pas par une rotation automatique
+[ ] La semaine post-course = exactement 1 semaine de récupération (footings légers), puis reprise normale
+SECTION;
+    }
+
+    /**
+     * Build the FORMAT JSON section of the prompt.
+     */
+    private function buildSectionFormatJson(): string
+    {
+        return <<<'SECTION'
+FORMAT JSON (OBLIGATOIRE - RÉPONSE UNIQUEMENT EN JSON) :
+{ "weeks": [ { "week_number": 1, "start_date": "JJ/MM", "end_date": "JJ/MM", "days": [ { "day_name": "Lundi", "date": "JJ/MM", "type": "repos|footing|qualitative|course", "content": { "session_type": "Titre court 2-3 mots", "description": "...", "duration": "...", "echauffement": "...", "corps_de_seance": "...", "recuperation": "...", "renforcement": "exercice1 | exercice2 | ...", "race_distance": "..." } } ] } ] }
+
+Règles JSON :
+- Clé semaine : "days" (pas "workouts")
+- Clé jour : "day_name" (pas "day")
+- "duration" : OBLIGATOIRE sur chaque jour non-repos (ex : "45min", "1h10"). Ne jamais omettre.
+- session_type : titre court UNIQUEMENT parmi ces options exactes :
+  Footings : "Footing", "Footing + Renforcement" ou "Sortie longue"
+  Qualitatives : "VMA courte", "VMA longue", "Tempo", "Seuil", "Fartlek", "Côtes", "Spécifique 5km", "Spécifique 10km", "Spécifique semi", "Spécifique marathon", "Fractionné"
+  Course : "Course 5km", "Course 10km", "Course semi", "Course marathon" (selon la distance)
+  Repos : "Repos"
+  Interdit : tout titre inventé comme "Reprise douce", "Récupération active", "Footing léger", "Échauffement". Ces concepts vont dans la description, pas dans session_type.
+- renforcement : champ optionnel, exercices séparés par " | "
+- Repos : description = "Repos", autres champs vides
+- Générer un workout pour CHAQUE jour listé dans la structure
+SECTION;
+    }
+
+    /**
+     * Build the DONNÉES ATHLÈTE section of the prompt.
+     */
+    private function buildSectionDonneesAthlete(
+        string $fullName,
+        ?int $age,
+        UserProfile $profile,
+        string $availableDays,
+        string $unavailableDays,
+        string $now,
+        int $totalWeeks,
+        string $weekStructure
+    ): string {
+        $genderFr = $this->formatGenderFr($profile->gender);
+        $goalFr = $this->formatPrimaryGoalFr($profile->primary_goal, $profile->primary_goal_other);
+        $distanceFr = $this->formatRaceDistanceFr($profile->race_distance, $profile->race_distance_other);
+        $goalTimeFr = $this->formatGoalTimeFr($profile->goal_time, $profile->race_distance);
+        $raceDateFr = $profile->target_race_date?->format('d/m/Y') ?? 'Non renseigné';
+        // Merge both objectives fields: intermediate_objectives (from step questionnaire)
+        // and objectives (from step3b, may contain specific race dates like "5km le 29/03/2026 sub 17'30")
+        $intermediateObjectives = $this->mergeObjectives($profile->intermediate_objectives, $profile->objectives);
+        // Merge both record sources: free-text records AND structured current_race_times
+        $records = $this->mergeRecords($profile->records, $profile->current_race_times);
+        $weeklyVolume = $profile->current_weekly_volume_km ?? 'Non renseigné';
+        $lastWeekVolume = $profile->last_week_volume ?? 'Non renseigné';
+        $experienceFr = $this->formatExperienceFr($profile);
+        $runsPerWeekFr = $this->formatRunsPerWeekFr($profile->current_runs_per_week);
+        $locationsFr = $this->formatTrainingLocationsFr($profile->training_locations, $profile->training_location_other);
+        $constraints = $profile->personal_constraints ?: 'Aucune contrainte particulière';
+        $injuries = $this->formatInjuriesFr($profile->injuries);
+        $problemToSolve = $this->formatProblemToSolveFr($profile->problem_to_solve, $profile->problem_to_solve_other);
+        $equipment = $profile->equipment ?: 'Non renseigné';
+        $pauseDuration = $profile->pause_duration ?: null;
+
+        $section = <<<SECTION
+DONNÉES ATHLÈTE :
+Nom : {$fullName} | Âge : {$age} ans | Sexe : {$genderFr} | Poids : {$profile->weight_kg}kg | Taille : {$profile->height_cm}cm
+Objectif : {$goalFr} | Distance : {$distanceFr} | Temps visé : {$goalTimeFr}
+Date objectif principal : {$raceDateFr}
+Objectifs intermédiaires : {$intermediateObjectives}
+Records : {$records}
+Volume habituel : {$weeklyVolume} km/sem | Volume semaine dernière : {$lastWeekVolume} km
+Sorties/semaine : {$runsPerWeekFr} | Niveau : {$experienceFr}
+Jours disponibles : {$availableDays} | Jours indisponibles : {$unavailableDays}
+Lieux : {$locationsFr}
+Équipement : {$equipment}
+Problème principal : {$problemToSolve}
+Contraintes : {$constraints}
+Blessures : {$injuries}
+SECTION;
+
+        // Add pause_duration line only for "reprendre" users
+        if ($pauseDuration) {
+            $section .= "\nDurée de la pause (reprise) : {$pauseDuration}";
+        }
+
+        $section .= <<<SECTION
+
+Date du jour : {$now}
+
+STRUCTURE DU PLAN ({$totalWeeks} semaines) :
+{$weekStructure}
+SECTION;
+
+        return $section;
+    }
+
+    /**
+     * Merge intermediate_objectives and objectives fields into one string.
+     * Both fields may contain important race dates and goals.
+     */
+    private function mergeObjectives(?string $intermediateObjectives, ?string $objectives): string
+    {
+        $parts = [];
+
+        if (!empty($intermediateObjectives)) {
+            $parts[] = $intermediateObjectives;
+        }
+
+        if (!empty($objectives) && $objectives !== $intermediateObjectives) {
+            $parts[] = $objectives;
+        }
+
+        return !empty($parts) ? implode(' | ', $parts) : 'Aucun';
+    }
+
+    /**
+     * Merge free-text records and structured current_race_times.
+     * Both sources may contain different data that the AI needs.
+     */
+    private function mergeRecords(?string $records, ?array $currentRaceTimes): string
+    {
+        $parts = [];
+
+        if (!empty($records)) {
+            $parts[] = $records;
+        }
+
+        $formattedTimes = $this->formatRaceTimesFr($currentRaceTimes);
+        if ($formattedTimes !== 'Aucun chrono renseigné' && !empty($currentRaceTimes)) {
+            // Only add if it contains data not already in records
+            if (empty($records) || $formattedTimes !== $records) {
+                $parts[] = "(Chronos structurés : {$formattedTimes})";
+            }
+        }
+
+        return !empty($parts) ? implode("\n", $parts) : 'Aucun chrono renseigné';
     }
 
     /**
@@ -1069,13 +1044,13 @@ PROMPT;
     }
 
     /**
-     * Get the JSON schema for OpenAI structured output.
+     * Get the JSON schema for structured AI output.
      *
      * @return array
      */
     public function getJsonSchema(): array
     {
-        // OpenAI strict mode requires additionalProperties: false at every object level
+        // Strict mode requires additionalProperties: false at every object level
         return [
             'type' => 'object',
             'additionalProperties' => false,
@@ -1114,6 +1089,7 @@ PROMPT;
                                                 'echauffement' => ['type' => ['string', 'null']],
                                                 'corps_de_seance' => ['type' => ['string', 'null']],
                                                 'recuperation' => ['type' => ['string', 'null']],
+                                                'renforcement' => ['type' => ['string', 'null']],
                                                 'race_distance' => ['type' => ['string', 'null']]
                                             ],
                                             'required' => ['description', 'duration', 'session_type', 'echauffement', 'corps_de_seance', 'recuperation', 'race_distance']

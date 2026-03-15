@@ -22,6 +22,7 @@ import { authApi } from '@/lib/api/auth';
 import { useNotification } from '@/contexts/NotificationContext';
 import { colors } from '@/constants/colors';
 import { BottomNav } from '@/components/ui/BottomNav';
+import { KeyboardDoneBar, KEYBOARD_DONE_ID } from '@/components/ui/KeyboardDoneBar';
 
 export default function PasswordScreen() {
   const router = useRouter();
@@ -142,8 +143,13 @@ export default function PasswordScreen() {
                   placeholderTextColor={colors.text.tertiary}
                   secureTextEntry={!showCurrentPassword}
                   autoCapitalize="none"
+                  returnKeyType="done"
+                  inputAccessoryViewID={Platform.OS === 'ios' ? KEYBOARD_DONE_ID : undefined}
                 />
-                <TouchableOpacity onPress={() => setShowCurrentPassword(!showCurrentPassword)}>
+                <TouchableOpacity
+                  onPress={() => setShowCurrentPassword(!showCurrentPassword)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
                   <Ionicons
                     name={showCurrentPassword ? 'eye-off' : 'eye'}
                     size={20}
@@ -174,8 +180,13 @@ export default function PasswordScreen() {
                   placeholderTextColor={colors.text.tertiary}
                   secureTextEntry={!showNewPassword}
                   autoCapitalize="none"
+                  returnKeyType="done"
+                  inputAccessoryViewID={Platform.OS === 'ios' ? KEYBOARD_DONE_ID : undefined}
                 />
-                <TouchableOpacity onPress={() => setShowNewPassword(!showNewPassword)}>
+                <TouchableOpacity
+                  onPress={() => setShowNewPassword(!showNewPassword)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
                   <Ionicons
                     name={showNewPassword ? 'eye-off' : 'eye'}
                     size={20}
@@ -206,8 +217,13 @@ export default function PasswordScreen() {
                   placeholderTextColor={colors.text.tertiary}
                   secureTextEntry={!showConfirmPassword}
                   autoCapitalize="none"
+                  returnKeyType="done"
+                  inputAccessoryViewID={Platform.OS === 'ios' ? KEYBOARD_DONE_ID : undefined}
                 />
-                <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+                <TouchableOpacity
+                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
                   <Ionicons
                     name={showConfirmPassword ? 'eye-off' : 'eye'}
                     size={20}
@@ -244,6 +260,8 @@ export default function PasswordScreen() {
 
       {/* Bottom Navigation */}
       <BottomNav activeTab="profile" />
+
+      <KeyboardDoneBar />
     </View>
   );
 }

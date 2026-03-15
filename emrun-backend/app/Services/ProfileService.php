@@ -81,6 +81,7 @@ class ProfileService
             
             // Current Running Status
             'current_weekly_volume_km' => 'nullable|integer|min:0|max:100',
+            'last_week_volume' => 'nullable|integer|min:0|max:200',
             'current_runs_per_week' => 'nullable|in:0,1_2,3_4,5_6,7_plus',
             'available_days' => 'nullable|array',
             'available_days.*' => 'in:monday,tuesday,wednesday,thursday,friday,saturday,sunday',

@@ -33,7 +33,7 @@ class AutosaveService {
       this.isInitialized = true;
       return this.sessionUuid;
     } catch (error) {
-      console.error('Failed to initialize AutosaveService:', error);
+      // Initialization failed, continue without session
       return null;
     }
   }
@@ -63,7 +63,7 @@ class AutosaveService {
       await AsyncStorage.setItem(QUESTIONNAIRE_SESSION_UUID, this.sessionUuid);
       return this.sessionUuid;
     } catch (error) {
-      console.error('Failed to create questionnaire session:', error);
+      // Session creation failed, continue with local draft
       // En cas d'erreur, on continue avec le draft local
       return null;
     }
@@ -86,7 +86,7 @@ class AutosaveService {
     try {
       await AsyncStorage.setItem(QUESTIONNAIRE_DRAFT, JSON.stringify(data));
     } catch (error) {
-      console.error('Failed to save draft locally:', error);
+      // Local draft save failed
     }
 
     // Débouncer la sauvegarde serveur
@@ -107,7 +107,7 @@ class AutosaveService {
         }
       } catch (error) {
         // Les erreurs réseau sont tolérées, le draft local reste disponible
-        console.log('Failed to autosave to server, using local draft only:', error);
+        // Network errors are tolerated, local draft is available
       } finally {
         this.pendingData = null;
       }
@@ -163,7 +163,7 @@ class AutosaveService {
         await questionnaireApi.updateSession(this.sessionUuid, data, false);
       }
     } catch (error) {
-      console.error('Failed to force save:', error);
+      // Force save failed
     }
   }
 

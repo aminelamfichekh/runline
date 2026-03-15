@@ -19,6 +19,7 @@ import {
   LayoutAnimation,
   UIManager,
   Modal,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -32,6 +33,7 @@ import { colors } from '@/constants/colors';
 import { useNotification } from '@/contexts/NotificationContext';
 import * as Haptics from 'expo-haptics';
 import { BottomNav } from '@/components/ui/BottomNav';
+import { KeyboardDoneBar, KEYBOARD_DONE_ID } from '@/components/ui/KeyboardDoneBar';
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -88,9 +90,6 @@ const LABELS = {
   race_distance: {
     '5km': '5 km',
     '10km': '10 km',
-    '15km': '15 km',
-    '20km': '20 km',
-    '25km': '25 km',
     semi_marathon: 'Semi-marathon',
     marathon: 'Marathon',
     autre: 'Autre distance',
@@ -133,9 +132,6 @@ const GOAL_OPTIONS: { value: GoalOption; icon: string; title: string }[] = [
 const RACE_DISTANCES = [
   { value: '5km', label: '5 km' },
   { value: '10km', label: '10 km' },
-  { value: '15km', label: '15 km' },
-  { value: '20km', label: '20 km' },
-  { value: '25km', label: '25 km' },
   { value: 'semi_marathon', label: 'Semi-marathon' },
   { value: 'marathon', label: 'Marathon' },
   { value: 'autre', label: 'Autre distance' },
@@ -167,6 +163,7 @@ export default function ProfileInfoScreen() {
   const [weightKg, setWeightKg] = useState('');
   const [injuries, setInjuries] = useState('');
   const [constraints, setConstraints] = useState('');
+  const [records, setRecords] = useState('');
 
   useFocusEffect(
     React.useCallback(() => {
@@ -206,22 +203,13 @@ export default function ProfileInfoScreen() {
   };
 
   const loadProfile = async () => {
-    console.log('🔄 loadProfile() called');
     try {
       setIsLoading(true);
-      console.log('📡 Calling profileApi.getProfile()...');
       const response = await profileApi.getProfile();
-      console.log('📊 Profile API Response:', JSON.stringify(response, null, 2));
-      console.log('📊 Response type:', typeof response);
-      console.log('📊 Response keys:', response ? Object.keys(response) : 'null');
       setProfile(response);
 
       // Initialize editable state from profile
       const p = response?.profile;
-      console.log('👤 Profile data:', p ? 'EXISTS' : 'NULL');
-      console.log('👤 first_name:', p?.first_name);
-      console.log('👤 height_cm:', p?.height_cm);
-      console.log('👤 primary_goal:', p?.primary_goal);
       if (p) {
         setSelectedGoal(mapApiGoalToOption(p.primary_goal));
         setOtherGoalText(p.primary_goal_other || '');
@@ -251,13 +239,10 @@ export default function ProfileInfoScreen() {
         setOtherLocationText(p.training_location_other || '');
         setInjuries(p.injuries ? p.injuries.join('\n') : '');
         setConstraints(p.personal_constraints || '');
+        setRecords(p.records || '');
       }
       setHasChanges(false);
     } catch (error: any) {
-      console.error('❌ Failed to load profile:', error);
-      console.error('❌ Error message:', error.message);
-      console.error('❌ Error response:', error.response?.data);
-      console.error('❌ Error status:', error.response?.status);
       showNotification('Erreur lors du chargement du profil', 'error');
     } finally {
       setIsLoading(false);
@@ -315,16 +300,16 @@ export default function ProfileInfoScreen() {
       // Constraints
       updateData.personal_constraints = constraints.trim() || undefined;
 
-      console.log('💾 Saving profile with data:', JSON.stringify(updateData, null, 2));
-      const result = await profileApi.updateProfile(updateData);
-      console.log('✅ Profile saved successfully:', JSON.stringify(result, null, 2));
+      // Records
+      updateData.records = records.trim() || undefined;
+
+      await profileApi.updateProfile(updateData);
       showNotification('Profil mis à jour avec succès', 'success');
       setHasChanges(false);
 
       // Reload to get fresh data
       await loadProfile();
     } catch (error: any) {
-      console.error('Failed to update profile:', error);
       const message = error.response?.data?.message || 'Erreur lors de la mise à jour';
       showNotification(message, 'error');
     } finally {
@@ -381,7 +366,9 @@ export default function ProfileInfoScreen() {
   const formatDate = (date: string | null | undefined): string => {
     if (!date) return 'Non défini';
     try {
-      return format(new Date(date), 'd MMMM yyyy', { locale: fr });
+      // Append T12:00:00 to avoid UTC midnight → previous day in local timezone
+      const safeDate = date.includes('T') ? date : `${date}T12:00:00`;
+      return format(new Date(safeDate), 'd MMMM yyyy', { locale: fr });
     } catch {
       return date;
     }
@@ -427,7 +414,10 @@ export default function ProfileInfoScreen() {
   const isRaceGoal = selectedGoal === 'race';
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <StatusBar barStyle="light-content" />
 
       {/* Header */}
@@ -481,12 +471,21 @@ export default function ProfileInfoScreen() {
               <TextInput
                 style={styles.compactInput}
                 value={heightCm}
-                onChangeText={(text) => { setHeightCm(text); markChanged(); }}
+                onChangeText={(text) => {
+                  if (/^\d*\.?\d*$/.test(text) || text === '') {
+                    setHeightCm(text);
+                    markChanged();
+                  }
+                }}
                 placeholder="1.75"
                 placeholderTextColor={colors.text.tertiary}
                 keyboardType="decimal-pad"
                 selectionColor={colors.accent.blue}
                 cursorColor={colors.accent.blue}
+                textContentType="none"
+                autoComplete="off"
+                returnKeyType="done"
+                inputAccessoryViewID={Platform.OS === 'ios' ? KEYBOARD_DONE_ID : undefined}
               />
             </View>
             <View style={styles.editableFieldHalf}>
@@ -494,12 +493,21 @@ export default function ProfileInfoScreen() {
               <TextInput
                 style={styles.compactInput}
                 value={weightKg}
-                onChangeText={(text) => { setWeightKg(text); markChanged(); }}
+                onChangeText={(text) => {
+                  if (/^\d*$/.test(text) || text === '') {
+                    setWeightKg(text);
+                    markChanged();
+                  }
+                }}
                 placeholder="70"
                 placeholderTextColor={colors.text.tertiary}
                 keyboardType="number-pad"
                 selectionColor={colors.accent.blue}
                 cursorColor={colors.accent.blue}
+                textContentType="none"
+                autoComplete="off"
+                returnKeyType="done"
+                inputAccessoryViewID={Platform.OS === 'ios' ? KEYBOARD_DONE_ID : undefined}
               />
             </View>
           </View>
@@ -533,25 +541,42 @@ export default function ProfileInfoScreen() {
           </View>
         </View>
 
-        {/* READ-ONLY: Records Persos */}
-        {profileData?.records && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="medal" size={20} color={colors.text.tertiary} />
-              <Text style={styles.sectionTitleDisabled}>Records persos</Text>
-              <View style={styles.lockBadge}>
-                <Ionicons name="lock-closed" size={12} color={colors.text.tertiary} />
-              </View>
-            </View>
-            <View style={styles.cardDisabled}>
-              <InfoRowDisabled
-                label="Meilleurs temps"
-                value={profileData.records}
-                isLast
-              />
+        {/* EDITABLE: Records Persos */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="medal" size={20} color={colors.accent.blue} />
+            <Text style={styles.sectionTitle}>Records persos</Text>
+            <View style={styles.editBadge}>
+              <Ionicons name="create" size={12} color={colors.accent.blue} />
             </View>
           </View>
-        )}
+          <View style={styles.inputSection}>
+            <Text style={styles.inputLabel}>
+              Vos meilleurs temps{' '}
+              <Text style={styles.inputOptional}>(Optionnel)</Text>
+            </Text>
+            <Text style={styles.inputHint}>Ex: 5km en 22'30, 10km en 48'15...</Text>
+            <TextInput
+              style={styles.multilineInput}
+              placeholder="Renseignez vos records personnels..."
+              placeholderTextColor={colors.text.tertiary}
+              value={records}
+              onChangeText={(text) => {
+                setRecords(text);
+                markChanged();
+              }}
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
+              selectionColor={colors.accent.blue}
+              cursorColor={colors.accent.blue}
+              maxLength={1000}
+              returnKeyType="default"
+              blurOnSubmit={false}
+              inputAccessoryViewID={Platform.OS === 'ios' ? KEYBOARD_DONE_ID : undefined}
+            />
+          </View>
+        </View>
 
         {/* ============================================ */}
         {/* EDITABLE SECTIONS */}
@@ -606,6 +631,7 @@ export default function ProfileInfoScreen() {
                   markChanged();
                 }}
                 selectionColor={colors.accent.blue}
+                inputAccessoryViewID={Platform.OS === 'ios' ? KEYBOARD_DONE_ID : undefined}
               />
             </View>
           )}
@@ -655,6 +681,7 @@ export default function ProfileInfoScreen() {
                       markChanged();
                     }}
                     selectionColor={colors.accent.blue}
+                    inputAccessoryViewID={Platform.OS === 'ios' ? KEYBOARD_DONE_ID : undefined}
                   />
                 </View>
               )}
@@ -749,7 +776,7 @@ export default function ProfileInfoScreen() {
                     </Text>
                     <View style={styles.goalTimeRow}>
                       <View style={styles.goalTimeCol}>
-                        <Text style={styles.goalTimeUnitLabel}>HEURES</Text>
+                        <Text style={styles.goalTimeUnitLabel}>heures</Text>
                         <WheelPicker
                           key={`profile-hours-${raceDistance}`}
                           data={hourOpts}
@@ -762,7 +789,7 @@ export default function ProfileInfoScreen() {
                       </View>
                       <Text style={styles.goalTimeSep}>:</Text>
                       <View style={styles.goalTimeCol}>
-                        <Text style={styles.goalTimeUnitLabel}>MINUTES</Text>
+                        <Text style={styles.goalTimeUnitLabel}>minutes</Text>
                         <WheelPicker
                           key={`profile-minutes-${raceDistance}`}
                           data={minuteOpts}
@@ -775,7 +802,7 @@ export default function ProfileInfoScreen() {
                       </View>
                       <Text style={styles.goalTimeSep}>:</Text>
                       <View style={styles.goalTimeCol}>
-                        <Text style={styles.goalTimeUnitLabel}>SECONDES</Text>
+                        <Text style={styles.goalTimeUnitLabel}>secondes</Text>
                         <WheelPicker
                           key={`profile-seconds-${raceDistance}`}
                           data={secondOpts}
@@ -788,7 +815,7 @@ export default function ProfileInfoScreen() {
                       </View>
                     </View>
                     <Text style={styles.goalTimeSummaryText}>
-                      Objectif : {goalTimeHours > 0 ? `${goalTimeHours}H` : ''}{String(goalTimeMinutes).padStart(2, '0')}MIN{String(goalTimeSeconds).padStart(2, '0')}SEC
+                      Objectif : {goalTimeHours > 0 ? `${goalTimeHours}h ` : ''}{String(goalTimeMinutes).padStart(2, '0')}min {String(goalTimeSeconds).padStart(2, '0')}s
                     </Text>
                   </View>
                 );
@@ -809,6 +836,9 @@ export default function ProfileInfoScreen() {
                   selectionColor={colors.accent.blue}
                   cursorColor={colors.accent.blue}
                   maxLength={1000}
+                  returnKeyType="default"
+                  blurOnSubmit={false}
+                  inputAccessoryViewID={Platform.OS === 'ios' ? KEYBOARD_DONE_ID : undefined}
                 />
               </View>
             </View>
@@ -913,6 +943,7 @@ export default function ProfileInfoScreen() {
                   markChanged();
                 }}
                 selectionColor={colors.accent.blue}
+                inputAccessoryViewID={Platform.OS === 'ios' ? KEYBOARD_DONE_ID : undefined}
               />
             </View>
           )}
@@ -946,6 +977,9 @@ export default function ProfileInfoScreen() {
               numberOfLines={3}
               textAlignVertical="top"
               selectionColor={colors.accent.blue}
+              returnKeyType="default"
+              blurOnSubmit={false}
+              inputAccessoryViewID={Platform.OS === 'ios' ? KEYBOARD_DONE_ID : undefined}
             />
           </View>
 
@@ -968,6 +1002,9 @@ export default function ProfileInfoScreen() {
               numberOfLines={3}
               textAlignVertical="top"
               selectionColor={colors.accent.blue}
+              returnKeyType="default"
+              blurOnSubmit={false}
+              inputAccessoryViewID={Platform.OS === 'ios' ? KEYBOARD_DONE_ID : undefined}
             />
           </View>
         </View>
@@ -997,7 +1034,9 @@ export default function ProfileInfoScreen() {
 
       {/* Bottom Navigation */}
       <BottomNav activeTab="profile" />
-    </View>
+
+      <KeyboardDoneBar />
+    </KeyboardAvoidingView>
   );
 }
 
@@ -1260,7 +1299,7 @@ const styles = StyleSheet.create({
   // Goal Time
   goalTimeRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'center',
     gap: 8,
     marginTop: 8,
@@ -1276,12 +1315,13 @@ const styles = StyleSheet.create({
     color: colors.text.tertiary,
     textAlign: 'center',
     marginBottom: 4,
+    textTransform: 'lowercase',
   },
   goalTimeSep: {
     fontSize: 24,
     fontWeight: '700',
     color: colors.text.primary,
-    marginTop: 16,
+    marginTop: 20,
   },
   goalTimeSummaryText: {
     fontSize: 17,

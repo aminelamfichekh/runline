@@ -27,7 +27,7 @@ const ALL_DAYS: DayName[] = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 
 
 /**
  * Fill in missing days as rest days.
- * OpenAI sometimes only returns training days, skipping rest days entirely.
+ * The AI sometimes only returns training days, skipping rest days entirely.
  * This ensures all 7 days of the week are displayed.
  */
 function fillMissingDays(week: PlanWeek): PlanDay[] {
@@ -90,7 +90,6 @@ export default function WeekDetailScreen() {
       const response = await plansApi.getActivePlan();
       setPlan(response.plan);
     } catch (err: any) {
-      console.error('Failed to fetch plan:', err);
       setError(err.message || 'Erreur lors du chargement');
     } finally {
       setLoading(false);

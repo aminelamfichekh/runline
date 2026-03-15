@@ -8,13 +8,13 @@ use App\Services\NotificationService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
-use OpenAI\Factory as OpenAIFactory;
+use Anthropic\Client as AnthropicClient;
 
 /**
  * GeneratePlanJob
  *
- * Asynchronous job to generate a training plan using OpenAI.
- * Uses structured outputs (json_schema) for guaranteed valid JSON.
+ * Asynchronous job to generate a training plan using Claude (Anthropic).
+ * Sends a structured prompt and parses JSON from the response.
  */
 class GeneratePlanJob implements ShouldQueue
 {
@@ -65,68 +65,64 @@ class GeneratePlanJob implements ShouldQueue
             $prompt = $planGeneratorService->buildPrompt($this->plan, $this->type);
 
             // Store the prompt used
-            $this->plan->update(['openai_prompt' => $prompt]);
+            $this->plan->update(['ai_prompt' => $prompt]);
 
-            // Initialize OpenAI client
-            $apiKey = config('services.openai.api_key');
+            // Initialize Anthropic (Claude) client
+            $apiKey = config('services.anthropic.api_key');
             if (!$apiKey) {
-                throw new \Exception('OpenAI API key not configured');
+                throw new \Exception('Anthropic API key not configured');
             }
 
-            $factory = new OpenAIFactory();
-            $client = $factory
-                ->withApiKey($apiKey)
-                ->withOrganization(config('services.openai.organization'))
-                ->make();
+            $client = new AnthropicClient(apiKey: $apiKey);
 
-            // Get JSON schema for structured output
+            // Get JSON schema for the system prompt
             $jsonSchema = $planGeneratorService->getJsonSchema();
+            $schemaJson = json_encode($jsonSchema, JSON_UNESCAPED_UNICODE);
 
-            // Call OpenAI API with structured output
-            $response = $client->chat()->create([
-                'model' => 'gpt-4o-2024-08-06', // Model that supports structured outputs
-                'messages' => [
-                    [
-                        'role' => 'system',
-                        'content' => 'Tu es un expert en coaching running pour athlètes amateurs. Tu génères des plans d\'entraînement personnalisés en JSON. Réponds UNIQUEMENT avec un objet JSON valide.',
-                    ],
+            $systemPrompt = 'Tu es un expert en coaching running pour athlètes amateurs. Tu génères des plans d\'entraînement personnalisés en JSON. Réponds UNIQUEMENT avec un objet JSON valide dont la structure racine est exactement { "weeks": [...] }. Sans aucun texte avant ou après, sans balises markdown, sans clé enveloppante. Voici le schema JSON à respecter strictement : ' . $schemaJson;
+
+            // Call Claude API
+            $response = $client->messages->create(
+                maxTokens: 16000,
+                messages: [
                     [
                         'role' => 'user',
                         'content' => $prompt,
                     ],
                 ],
-                'response_format' => [
-                    'type' => 'json_schema',
-                    'json_schema' => [
-                        'name' => 'training_plan',
-                        'strict' => true,
-                        'schema' => $jsonSchema,
-                    ],
-                ],
-                'temperature' => 0.7,
-                'max_tokens' => 8000, // Increased for longer plans
-            ]);
+                model: 'claude-sonnet-4-5-20250929',
+                system: $systemPrompt,
+                temperature: 0.7,
+            );
 
             // Extract the response
-            $content = $response->choices[0]->message->content;
-            $tokensUsed = $response->usage->totalTokens ?? null;
+            $content = $response->content[0]->text;
+            $tokensUsed = ($response->usage->inputTokens ?? 0) + ($response->usage->outputTokens ?? 0);
 
-            Log::info('OpenAI response received', [
+            Log::info('Claude response received', [
                 'plan_id' => $this->plan->id,
                 'tokens_used' => $tokensUsed,
                 'content_length' => strlen($content),
             ]);
 
-            // Parse JSON content - should always be valid with structured outputs
+            // Claude may wrap JSON in ```json ... ``` blocks, strip them
+            $content = trim($content);
+            if (str_starts_with($content, '```')) {
+                $content = preg_replace('/^```(?:json)?\s*/', '', $content);
+                $content = preg_replace('/\s*```$/', '', $content);
+                $content = trim($content);
+            }
+
+            // Parse JSON content
             $planContent = json_decode($content, true);
 
             if (json_last_error() !== JSON_ERROR_NONE) {
-                Log::error('JSON parsing failed despite structured output', [
+                Log::error('JSON parsing failed from Claude response', [
                     'plan_id' => $this->plan->id,
                     'json_error' => json_last_error_msg(),
                     'content' => substr($content, 0, 500),
                 ]);
-                throw new \Exception('Failed to parse OpenAI response as JSON: ' . json_last_error_msg());
+                throw new \Exception('Failed to parse Claude response as JSON: ' . json_last_error_msg());
             }
 
             // Validate the structure
@@ -138,8 +134,8 @@ class GeneratePlanJob implements ShouldQueue
             $this->plan->update([
                 'status' => 'completed',
                 'content' => $planContent,
-                'openai_response' => $content,
-                'openai_tokens_used' => $tokensUsed,
+                'ai_response' => $content,
+                'ai_tokens_used' => $tokensUsed,
             ]);
 
             // Send notification to user

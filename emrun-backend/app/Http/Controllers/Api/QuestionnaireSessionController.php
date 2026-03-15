@@ -298,6 +298,7 @@ class QuestionnaireSessionController extends Controller
             'primary_goal' => 'required|in:me_lancer,reprendre,entretenir,ameliorer_condition,courir_race,ameliorer_chrono,autre',
             'primary_goal_other' => 'required_if:primary_goal,autre|string|max:500',
             'current_weekly_volume_km' => 'required|integer|min:0|max:100',
+            'last_week_volume' => 'nullable|integer|min:0|max:200',
             'current_runs_per_week' => 'required|in:0,1_2,3_4,5_6,7_plus',
             'available_days' => 'required|array|min:1',
             'available_days.*' => 'in:monday,tuesday,wednesday,thursday,friday,saturday,sunday',

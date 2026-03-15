@@ -78,7 +78,7 @@ export default function HistoryPlanScreen() {
       const response = await plansApi.getPlan(parseInt(planId, 10));
       setPlan(response.plan);
     } catch (err) {
-      console.error('Failed to fetch history plan:', err);
+      // Error handled silently
     } finally {
       setLoading(false);
     }

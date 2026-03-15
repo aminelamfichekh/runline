@@ -53,6 +53,7 @@ export default function RootLayout() {
           <Stack.Screen name="(auth)" />
           <Stack.Screen name="(questionnaire)" />
           <Stack.Screen name="(subscription)" />
+          <Stack.Screen name="(legal)" />
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="test-connection" />
           <Stack.Screen name="web-test" />

@@ -77,29 +77,16 @@ export async function getStoredRefreshToken(): Promise<string | null> {
  */
 export async function storeTokens(accessToken: string, refreshToken: string): Promise<void> {
   try {
-    console.log('Storing tokens...', { hasAccessToken: !!accessToken, hasRefreshToken: !!refreshToken });
-    
     if (Platform.OS === 'web') {
       localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
       localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
-      console.log('Tokens stored in localStorage');
     } else {
       await AsyncStorage.multiSet([
         [ACCESS_TOKEN_KEY, accessToken],
         [REFRESH_TOKEN_KEY, refreshToken],
       ]);
-      console.log('Tokens stored in AsyncStorage');
-      
-      // Verify tokens were stored
-      const storedAccess = await AsyncStorage.getItem(ACCESS_TOKEN_KEY);
-      const storedRefresh = await AsyncStorage.getItem(REFRESH_TOKEN_KEY);
-      console.log('Token verification:', { 
-        accessStored: !!storedAccess, 
-        refreshStored: !!storedRefresh 
-      });
     }
   } catch (error) {
-    console.error('Error storing tokens:', error);
     throw new Error('Failed to store tokens: ' + (error instanceof Error ? error.message : 'Unknown error'));
   }
 }

@@ -28,10 +28,8 @@ export async function attachQuestionnaireIfNeeded(): Promise<boolean> {
     // Clear pending flag on success
     await AsyncStorage.removeItem(QUESTIONNAIRE_PENDING_ATTACH);
 
-    console.log('Successfully attached questionnaire session:', sessionUuid);
     return true;
   } catch (error) {
-    console.error('Failed to attach questionnaire session:', error);
     // Don't throw - attachment failure shouldn't block login
     return false;
   }

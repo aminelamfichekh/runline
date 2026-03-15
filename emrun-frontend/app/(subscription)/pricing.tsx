@@ -1,7 +1,11 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+
+const runnerNightImage = require('@/assets/images/runner-city.jpeg');
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const SUBSCRIPTION_BG = '#111921';
 const CARD_BG = '#1a2632';
@@ -15,39 +19,52 @@ export default function PricingScreen() {
 
   return (
     <View style={styles.container}>
-      {/* RUNLINE header – same as create-account */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-          activeOpacity={0.8}
-        >
-          <MaterialCommunityIcons name="arrow-left" size={24} color="#ffffff" />
-        </TouchableOpacity>
-        <Text style={styles.logo}>RUNLINE</Text>
-        <View style={{ width: 40 }} />
-      </View>
-
-      <View style={styles.progressWrapper}>
-        <View style={styles.progressBar}>
-          <View style={[styles.progressFill, { width: '33%' }]} />
-        </View>
-        <Text style={styles.progressLabel}>Étape 1 · Tarif</Text>
-      </View>
-
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.headlineContainer}>
-          <Text style={styles.headline}>
-            Choisissez votre <Text style={styles.headlineHighlight}>abonnement</Text>
-          </Text>
-          <Text style={styles.subtitle}>
-            {t('subscription.pricing.subtitle')}
-          </Text>
+        {/* Full-width hero image with overlay */}
+        <View style={styles.heroSection}>
+          <Image source={runnerNightImage} style={styles.heroImage} resizeMode="cover" />
+          <LinearGradient
+            colors={['transparent', 'rgba(17, 25, 33, 0.6)', SUBSCRIPTION_BG]}
+            locations={[0.1, 0.5, 0.95]}
+            style={styles.heroGradient}
+          />
+
+          {/* Back button over the image */}
+          <View style={styles.headerOverlay}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => router.back()}
+              activeOpacity={0.8}
+            >
+              <MaterialCommunityIcons name="arrow-left" size={22} color="#ffffff" />
+            </TouchableOpacity>
+            <Text style={styles.logo}>RUNLINE</Text>
+            <View style={{ width: 40 }} />
+          </View>
+
+          {/* Progress bar over the image */}
+          <View style={styles.progressOverlay}>
+            <View style={styles.progressBar}>
+              <View style={[styles.progressFill, { width: '33%' }]} />
+            </View>
+            <Text style={styles.progressLabel}>Étape 1 · Tarif</Text>
+          </View>
+
+          {/* Headline at the bottom of the image */}
+          <View style={styles.heroTextOverlay}>
+            <Text style={styles.headline}>
+              Choisissez votre{'\n'}<Text style={styles.headlineHighlight}>abonnement</Text>
+            </Text>
+            <Text style={styles.subtitle}>
+              {t('subscription.pricing.subtitle')}
+            </Text>
+          </View>
         </View>
 
+        {/* Price card */}
         <View style={styles.priceCard}>
           <View style={styles.priceRow}>
             <Text style={styles.price}>19,99€</Text>
@@ -58,6 +75,7 @@ export default function PricingScreen() {
           </Text>
         </View>
 
+        {/* Features */}
         <View style={styles.features}>
           <Text style={styles.featuresTitle}>{t('subscription.pricing.whatIncluded')}</Text>
           <FeatureRow icon="run-fast" text={t('subscription.features.personalizedPlan')} />
@@ -67,6 +85,12 @@ export default function PricingScreen() {
         </View>
       </ScrollView>
 
+      {/* Bottom subscribe button */}
+      <LinearGradient
+        colors={['transparent', SUBSCRIPTION_BG]}
+        style={styles.bottomGradient}
+        pointerEvents="none"
+      />
       <View style={styles.bottomBar}>
         <TouchableOpacity
           style={styles.subscribeButton}
@@ -86,7 +110,9 @@ export default function PricingScreen() {
 function FeatureRow({ icon, text }: { icon: string; text: string }) {
   return (
     <View style={styles.featureItem}>
-      <MaterialCommunityIcons name={icon as any} size={22} color={ACCENT} />
+      <View style={styles.featureIconContainer}>
+        <MaterialCommunityIcons name={icon as any} size={22} color={ACCENT} />
+      </View>
       <Text style={styles.featureText}>{text}</Text>
     </View>
   );
@@ -97,21 +123,48 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: SUBSCRIPTION_BG,
   },
-  header: {
+  scrollContent: {
+    paddingBottom: 120,
+  },
+
+  // Hero section
+  heroSection: {
+    width: SCREEN_WIDTH,
+    height: 380,
+    position: 'relative',
+  },
+  heroImage: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: SCREEN_WIDTH,
+    height: 380,
+  },
+  heroGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  headerOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 24,
     paddingTop: 52,
-    paddingBottom: 12,
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.12)',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'transparent',
   },
   logo: {
     fontSize: 16,
@@ -120,14 +173,16 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     textAlign: 'center',
   },
-  progressWrapper: {
-    paddingHorizontal: 24,
-    paddingBottom: 16,
+  progressOverlay: {
+    position: 'absolute',
+    top: 100,
+    left: 24,
+    right: 24,
   },
   progressBar: {
-    height: 6,
+    height: 4,
     width: '100%',
-    backgroundColor: BORDER,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 9999,
     overflow: 'hidden',
   },
@@ -139,34 +194,38 @@ const styles = StyleSheet.create({
   progressLabel: {
     marginTop: 6,
     fontSize: 12,
-    color: TEXT_SECONDARY,
+    color: 'rgba(255,255,255,0.6)',
     textAlign: 'right',
   },
-  scrollContent: {
-    paddingHorizontal: 24,
-    paddingBottom: 120,
-  },
-  headlineContainer: {
-    marginBottom: 28,
+  heroTextOverlay: {
+    position: 'absolute',
+    bottom: 20,
+    left: 24,
+    right: 24,
   },
   headline: {
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: '700',
     color: '#ffffff',
     marginBottom: 8,
+    lineHeight: 38,
   },
   headlineHighlight: {
     color: ACCENT,
   },
   subtitle: {
     fontSize: 15,
-    color: TEXT_SECONDARY,
+    color: 'rgba(255,255,255,0.65)',
     lineHeight: 22,
   },
+
+  // Price card
   priceCard: {
     backgroundColor: CARD_BG,
     borderRadius: 16,
     padding: 24,
+    marginHorizontal: 24,
+    marginTop: 8,
     marginBottom: 28,
     borderWidth: 1,
     borderColor: BORDER,
@@ -190,7 +249,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: TEXT_SECONDARY,
   },
+
+  // Features
   features: {
+    paddingHorizontal: 24,
     gap: 14,
   },
   featuresTitle: {
@@ -205,11 +267,28 @@ const styles = StyleSheet.create({
     gap: 14,
     paddingVertical: 6,
   },
+  featureIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(50, 140, 231, 0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   featureText: {
     flex: 1,
     fontSize: 15,
     color: '#ffffff',
     lineHeight: 22,
+  },
+
+  // Bottom bar
+  bottomGradient: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 120,
   },
   bottomBar: {
     position: 'absolute',
@@ -218,27 +297,24 @@ const styles = StyleSheet.create({
     right: 0,
     padding: 24,
     paddingBottom: 40,
-    backgroundColor: SUBSCRIPTION_BG,
-    borderTopWidth: 1,
-    borderTopColor: BORDER,
   },
   subscribeButton: {
     backgroundColor: ACCENT,
-    borderRadius: 12,
-    paddingVertical: 16,
+    borderRadius: 16,
+    paddingVertical: 18,
     paddingHorizontal: 24,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
     shadowColor: ACCENT,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    elevation: 10,
   },
   subscribeButtonText: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '700',
     color: '#ffffff',
   },

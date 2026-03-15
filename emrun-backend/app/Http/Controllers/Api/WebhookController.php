@@ -25,8 +25,7 @@ class WebhookController extends Controller
         protected NotificationService $notificationService,
         protected PlanGeneratorService $planGeneratorService
     ) {
-        // Disable CSRF protection for webhooks
-        $this->middleware(\Illuminate\Routing\Middleware\ValidatePostSize::class);
+        // Middleware is applied in routes/api.php for Laravel 12
     }
 
     /**
@@ -60,6 +59,14 @@ class WebhookController extends Controller
                 ]);
                 return response()->json(['error' => 'Invalid signature'], 400);
             }
+
+            // Idempotency check - skip already processed events
+            $cacheKey = 'stripe_webhook_' . $event->id;
+            if (\Illuminate\Support\Facades\Cache::has($cacheKey)) {
+                Log::info('Skipping already processed webhook event', ['event_id' => $event->id]);
+                return response()->json(['success' => true, 'message' => 'Already processed']);
+            }
+            \Illuminate\Support\Facades\Cache::put($cacheKey, true, now()->addHours(24));
 
             // Handle the event
             switch ($event->type) {

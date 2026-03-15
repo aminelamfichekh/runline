@@ -68,7 +68,7 @@ export default function HistoryIndexScreen() {
         .sort((a, b) => new Date(b.end_date!).getTime() - new Date(a.end_date!).getTime());
       setPastPlans(past);
     } catch (err) {
-      console.error('Failed to fetch history:', err);
+      // History fetch failed
     } finally {
       setLoading(false);
       setRefreshing(false);

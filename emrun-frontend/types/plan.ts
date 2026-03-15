@@ -18,6 +18,7 @@ export interface SessionContent {
   echauffement?: string;
   corps_de_seance?: string;
   recuperation?: string;
+  renforcement?: string;
   race_distance?: string;
 }
 
